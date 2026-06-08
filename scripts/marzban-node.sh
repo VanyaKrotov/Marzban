@@ -215,21 +215,6 @@ install_marzban_node_script() {
     colorized_echo green "Marzban-node script installed successfully at $TARGET_PATH"
 }
 
-get_node_release_architecture() {
-    case "$(uname -m)" in
-        amd64 | x86_64)
-            echo "amd64"
-            ;;
-        arm64 | aarch64)
-            echo "arm64"
-            ;;
-        *)
-            colorized_echo red "No Marzban-node Docker image is published for architecture $(uname -m)."
-            return 1
-            ;;
-    esac
-}
-
 get_node_release() {
     local version=${1:-latest}
     local api_url
@@ -245,9 +230,9 @@ get_node_release() {
 
 install_marzban_node_image() {
     local version=${1:-latest}
-    local architecture
     local release
     local release_tag
+    local asset_name
     local asset_url
     local temp_directory
     local archive_path
@@ -259,7 +244,6 @@ install_marzban_node_image() {
         install_package gzip
     fi
 
-    architecture=$(get_node_release_architecture)
     release=$(get_node_release "$version")
     release_tag=$(echo "$release" | jq -r ".tag_name")
 
@@ -268,32 +252,22 @@ install_marzban_node_image() {
         return 1
     fi
 
-    if [ "$architecture" == "amd64" ]; then
-        asset_url=$(echo "$release" | jq -r '
-            [.assets[]
-             | select(.name | test("\\.tar\\.gz$"; "i"))
-             | select(.name | test("amd64|x86_64"; "i"))
-             | .browser_download_url][0] // empty
-        ')
-    else
-        asset_url=$(echo "$release" | jq -r '
-            [.assets[]
-             | select(.name | test("\\.tar\\.gz$"; "i"))
-             | select(.name | test("arm64|aarch64"; "i"))
-             | .browser_download_url][0] // empty
-        ')
-    fi
+    asset_name="marzban-node-${release_tag}.oci.tar.gz"
+    asset_url=$(echo "$release" | jq -r --arg asset_name "$asset_name" '
+        [.assets[]
+         | select(.name == $asset_name)
+         | .browser_download_url][0] // empty
+    ')
 
     if [ -z "$asset_url" ]; then
-        colorized_echo red "Release $release_tag does not contain a Docker image archive for $architecture."
-        colorized_echo yellow "Expected a .tar.gz release asset whose name contains the architecture."
+        colorized_echo red "Release $release_tag does not contain $asset_name."
         return 1
     fi
 
     temp_directory=$(mktemp -d)
-    archive_path="$temp_directory/marzban-node-linux-$architecture.tar.gz"
+    archive_path="$temp_directory/$asset_name"
 
-    colorized_echo blue "Downloading Marzban-node $release_tag image for $architecture"
+    colorized_echo blue "Downloading Marzban-node $release_tag OCI image"
     if ! curl --fail --show-error --location --retry 3 "$asset_url" -o "$archive_path"; then
         rm -rf "$temp_directory"
         colorized_echo red "Unable to download Docker image from $asset_url"
