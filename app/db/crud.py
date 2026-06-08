@@ -72,7 +72,7 @@ def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
     """
     inbound = db.query(ProxyInbound).filter(ProxyInbound.tag == inbound_tag).first()
     if not inbound:
-        inbound = ProxyInbound(tag=inbound_tag, nodes=db.query(Node).all())
+        inbound = ProxyInbound(tag=inbound_tag)
         db.add(inbound)
         db.commit()
         add_default_host(db, inbound)
