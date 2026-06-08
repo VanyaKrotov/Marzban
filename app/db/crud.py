@@ -1339,8 +1339,7 @@ def create_node(db: Session, node: NodeCreate) -> Node:
     dbnode = Node(name=node.name,
                   address=node.address,
                   port=node.port,
-                  api_port=node.api_port,
-                  inbounds=db.query(ProxyInbound).all())
+                  api_port=node.api_port)
 
     db.add(dbnode)
     db.commit()
