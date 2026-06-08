@@ -1,4 +1,5 @@
 import logging
+import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, status
@@ -10,7 +11,7 @@ from fastapi.routing import APIRoute
 
 from config import ALLOWED_ORIGINS, DOCS, XRAY_SUBSCRIPTION_PATH
 
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 
 app = FastAPI(
     title="MarzbanAPI",
@@ -32,10 +33,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-from app import dashboard, jobs, routers, telegram  # noqa
-from app.routers import api_router  # noqa
 
-app.include_router(api_router)
+if os.environ.get("MARZBAN_CLI") != "1":
+    from app import dashboard, jobs, routers, telegram  # noqa
+    from app.routers import api_router  # noqa
+
+    app.include_router(api_router)
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

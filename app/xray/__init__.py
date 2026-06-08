@@ -1,3 +1,4 @@
+import os
 from random import randint
 from typing import TYPE_CHECKING, Dict, Sequence
 
@@ -13,7 +14,11 @@ from xray_api import XRay as XRayAPI
 from xray_api import exceptions, types
 from xray_api import exceptions as exc
 
-core = XRayCore(XRAY_EXECUTABLE_PATH, XRAY_ASSETS_PATH)
+core = (
+    None
+    if os.environ.get("MARZBAN_CLI") == "1"
+    else XRayCore(XRAY_EXECUTABLE_PATH, XRAY_ASSETS_PATH)
+)
 
 # Search for a free API port
 try:
