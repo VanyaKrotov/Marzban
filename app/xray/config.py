@@ -384,8 +384,6 @@ class XRayConfig(dict):
         if node_certificates:
             certificates_by_inbound = defaultdict(list)
             for certificate in node_certificates:
-                if not certificate.active:
-                    continue
                 payload = {
                     "certificate": certificate.certificate.splitlines(),
                     "key": certificate.private_key.splitlines(),

@@ -1275,6 +1275,72 @@ def get_node_certificates(db: Session, node_id: int) -> List[NodeCertificate]:
     )
 
 
+def get_all_node_certificates(db: Session) -> List[NodeCertificate]:
+    return (
+        db.query(NodeCertificate)
+        .options(joinedload(NodeCertificate.inbounds))
+        .order_by(NodeCertificate.node_id, NodeCertificate.domain)
+        .all()
+    )
+
+
+def get_inbound_certificates(
+    db: Session, inbound_tags: List[str]
+) -> Dict[str, List[int]]:
+    return {
+        inbound_tag: [
+            certificate.id
+            for certificate in get_or_create_inbound(
+                db, inbound_tag
+            ).node_certificates
+        ]
+        for inbound_tag in inbound_tags
+    }
+
+
+def update_inbound_certificates(
+    db: Session, inbound_certificates: Dict[str, List[int]]
+) -> Dict[str, List[int]]:
+    certificate_ids = {
+        certificate_id
+        for ids in inbound_certificates.values()
+        for certificate_id in ids
+    }
+    certificates = {
+        certificate.id: certificate
+        for certificate in db.query(NodeCertificate)
+        .filter(NodeCertificate.id.in_(certificate_ids))
+        .all()
+    } if certificate_ids else {}
+
+    missing_certificate_ids = certificate_ids - certificates.keys()
+    if missing_certificate_ids:
+        raise ValueError(
+            f"Certificates {sorted(missing_certificate_ids)} don't exist"
+        )
+
+    for inbound_tag, assigned_certificate_ids in inbound_certificates.items():
+        inbound = get_or_create_inbound(db, inbound_tag)
+        assigned_node_ids = {node.id for node in inbound.nodes}
+        selected_certificates = [
+            certificates[certificate_id]
+            for certificate_id in dict.fromkeys(assigned_certificate_ids)
+        ]
+        invalid_certificate_ids = [
+            certificate.id
+            for certificate in selected_certificates
+            if certificate.node_id not in assigned_node_ids
+        ]
+        if invalid_certificate_ids:
+            raise ValueError(
+                f"Certificates {invalid_certificate_ids} don't belong to assigned nodes"
+            )
+        inbound.node_certificates = selected_certificates
+
+    db.commit()
+    return get_inbound_certificates(db, list(inbound_certificates))
+
+
 def get_node_certificate(
     db: Session, node_id: int, certificate_id: int
 ) -> Optional[NodeCertificate]:

@@ -259,7 +259,7 @@ def issue_node_certificate(
         private_key=private_key,
         expires_at=expires_at,
     )
-    if dbnode.status != NodeStatus.disabled and dbcertificate.active:
+    if dbnode.status != NodeStatus.disabled:
         bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
     return dbcertificate
 

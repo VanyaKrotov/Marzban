@@ -250,11 +250,9 @@ const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { inbounds } = useDashboard();
   const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");
   const queryKey = ["node-certificates", node.id];
-  const inboundList = [...inbounds.values()].flat();
   const { data: certificates = [] } = useQuery<NodeCertificate[]>({
     queryKey,
     queryFn: () => fetch(`/node/${node.id}/certificates`),
@@ -271,25 +269,6 @@ const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
         queryClient.invalidateQueries(queryKey);
         generateSuccessMessage(t("nodes.certificates.issueSuccess"), toast);
       },
-      onError: (error) => {
-        generateErrorMessage(error, toast);
-      },
-    }
-  );
-  const update = useMutation(
-    ({
-      certificate,
-      body,
-    }: {
-      certificate: NodeCertificate;
-      body: Partial<Pick<NodeCertificate, "active" | "inbound_tags">>;
-    }) =>
-      fetch(`/node/${node.id}/certificates/${certificate.id}`, {
-        method: "PUT",
-        body,
-      }),
-    {
-      onSuccess: () => queryClient.invalidateQueries(queryKey),
       onError: (error) => {
         generateErrorMessage(error, toast);
       },
@@ -349,57 +328,16 @@ const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
           borderRadius="md"
           p={3}
         >
-          <HStack justify="space-between">
-            <Box>
-              <Text fontSize="sm" fontWeight="medium">
-                {certificate.domain}
-              </Text>
-              {certificate.expires_at && (
-                <Text fontSize="xs" color="gray.500">
-                  {t("nodes.certificates.expires", {
-                    date: new Date(certificate.expires_at).toLocaleDateString(),
-                  })}
-                </Text>
-              )}
-            </Box>
-            <Switch
-              colorScheme="primary"
-              isChecked={certificate.active}
-              onChange={(event) =>
-                update.mutate({
-                  certificate,
-                  body: { active: event.target.checked },
-                })
-              }
-            />
-          </HStack>
-          <Text fontSize="xs" mt={3} mb={1} color="gray.500">
-            {t("nodes.certificates.inbounds")}
+          <Text fontSize="sm" fontWeight="medium">
+            {certificate.domain}
           </Text>
-          <VStack align="stretch" spacing={1}>
-            {inboundList
-              .filter((inbound) => inbound.tls === "tls")
-              .map((inbound) => (
-                <Checkbox
-                  key={inbound.tag}
-                  size="sm"
-                  isChecked={certificate.inbound_tags.includes(inbound.tag)}
-                  onChange={(event) => {
-                    const tags = event.target.checked
-                      ? [...certificate.inbound_tags, inbound.tag]
-                      : certificate.inbound_tags.filter(
-                          (tag) => tag !== inbound.tag
-                        );
-                    update.mutate({
-                      certificate,
-                      body: { inbound_tags: tags },
-                    });
-                  }}
-                >
-                  {inbound.tag}
-                </Checkbox>
-              ))}
-          </VStack>
+          {certificate.expires_at && (
+            <Text fontSize="xs" color="gray.500">
+              {t("nodes.certificates.expires", {
+                date: new Date(certificate.expires_at).toLocaleDateString(),
+              })}
+            </Text>
+          )}
           <HStack mt={3}>
             <Button
               size="xs"

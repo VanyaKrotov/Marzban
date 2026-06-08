@@ -40,9 +40,12 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  CheckIcon as HeroCheckIcon,
+  ChevronDownIcon as HeroChevronDownIcon,
   DocumentDuplicateIcon,
   InformationCircleIcon,
   LinkIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -108,6 +111,216 @@ const Input = chakra(CustomInput, {
     },
   },
 });
+
+const CheckIcon = chakra(HeroCheckIcon);
+const ChevronDownIcon = chakra(HeroChevronDownIcon);
+const CloseIcon = chakra(XMarkIcon);
+
+type MultiSelectOption = {
+  value: number;
+  label: string;
+};
+
+const MultiSelect: FC<{
+  options: MultiSelectOption[];
+  value: number[];
+  placeholder: string;
+  onChange: (value: number[]) => void;
+}> = ({ options, value, placeholder, onChange }) => {
+  const selectedOptions = options.filter((option) =>
+    value.includes(option.value)
+  );
+
+  const toggleValue = (selectedValue: number) => {
+    if (value.includes(selectedValue)) {
+      onChange(value.filter((item) => item !== selectedValue));
+      return;
+    }
+    onChange([...value, selectedValue]);
+  };
+
+  return (
+    <Popover placement="bottom-start" closeOnBlur matchWidth>
+      {({ isOpen }) => (
+        <>
+          <PopoverTrigger>
+            <Box
+              as="button"
+              type="button"
+              w="full"
+              minH="42px"
+              py={1}
+              pl={1}
+              pr={8}
+              position="relative"
+              textAlign="left"
+              rounded="md"
+              borderWidth="1px"
+              borderColor={isOpen ? "primary.400" : "gray.400"}
+              bg="white"
+              boxShadow="none"
+              outline="none"
+              transition="all 0.15s ease"
+              _hover={{ borderColor: "primary.400" }}
+              _focus={{ outline: "none", boxShadow: "none" }}
+              _focusVisible={{
+                outline: "none",
+                boxShadow: "0 0 0 1px var(--chakra-colors-primary-400)",
+              }}
+              _dark={{
+                bg: "gray.700",
+                borderColor: isOpen ? "primary.300" : "gray.600",
+              }}
+            >
+              <HStack flexWrap="wrap" gap={1.5} spacing={0}>
+                {selectedOptions.length ? (
+                  selectedOptions.map((option) => (
+                    <HStack
+                      key={option.value}
+                      spacing={1.5}
+                      rounded="md"
+                      px={2}
+                      py={1}
+                      bg="rgba(156, 183, 242, 0.6)"
+                      color="primary.500"
+                      _dark={{ bg: "whiteAlpha.200", color: "primary.200" }}
+                    >
+                      <Text fontSize="xs" fontWeight="semibold">
+                        {option.label}
+                      </Text>
+                      <Box
+                        as="span"
+                        role="button"
+                        aria-label={`Remove ${option.label}`}
+                        rounded="full"
+                        p={1}
+                        ml={0.5}
+                        display="inline-flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        _hover={{ bg: "blackAlpha.200" }}
+                        onClick={(event: any) => {
+                          event.stopPropagation();
+                          toggleValue(option.value);
+                        }}
+                      >
+                        <CloseIcon boxSize={3.5} strokeWidth={2.5} />
+                      </Box>
+                    </HStack>
+                  ))
+                ) : (
+                  <Text color="gray.500" fontSize="sm">
+                    {placeholder}
+                  </Text>
+                )}
+              </HStack>
+              <ChevronDownIcon
+                position="absolute"
+                right={3}
+                top="50%"
+                boxSize={4}
+                color="gray.500"
+                transform={`translateY(-50%) rotate(${isOpen ? 180 : 0}deg)`}
+                transition="transform 0.15s ease"
+              />
+            </Box>
+          </PopoverTrigger>
+          <Portal>
+            <PopoverContent
+              w="var(--popper-reference-width)"
+              maxW="calc(100vw - 32px)"
+              mt={1}
+              p={1.5}
+              rounded="lg"
+              borderColor="gray.200"
+              boxShadow="xl"
+              _dark={{ bg: "gray.800", borderColor: "gray.600" }}
+            >
+              <PopoverBody p={0}>
+                <VStack
+                  align="stretch"
+                  maxH="240px"
+                  overflowY="auto"
+                  spacing={1}
+                >
+                  {options.map((option) => {
+                    const isSelected = value.includes(option.value);
+                    return (
+                      <HStack
+                        key={option.value}
+                        role="option"
+                        aria-selected={isSelected}
+                        tabIndex={0}
+                        cursor="pointer"
+                        justify="space-between"
+                        rounded="md"
+                        px={2}
+                        py={2.5}
+                        bg={
+                          isSelected
+                            ? "rgba(156, 183, 242, 0.6)"
+                            : "transparent"
+                        }
+                        color={isSelected ? "primary.700" : undefined}
+                        _dark={{
+                          bg: isSelected
+                            ? "rgba(255, 255, 255, 0.12)"
+                            : "transparent",
+                          color: isSelected ? "primary.200" : undefined,
+                        }}
+                        _hover={{
+                          bg: isSelected
+                            ? "rgba(136, 169, 239, 0.6)"
+                            : "gray.100",
+                          _dark: { bg: "whiteAlpha.100" },
+                        }}
+                        outline="none"
+                        _focus={{ outline: "none", boxShadow: "none" }}
+                        _focusVisible={{
+                          outline: "none",
+                          boxShadow:
+                            "inset 0 0 0 1px var(--chakra-colors-primary-400)",
+                        }}
+                        onClick={() => toggleValue(option.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleValue(option.value);
+                          }
+                        }}
+                      >
+                        <Text fontSize="sm" fontWeight={isSelected ? "medium" : "normal"}>
+                          {option.label}
+                        </Text>
+                        <Box
+                          boxSize={5}
+                          rounded="md"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          borderWidth="1px"
+                          borderColor={isSelected ? "primary.400" : "gray.300"}
+                          bg={isSelected ? "primary.400" : "transparent"}
+                          color="white"
+                          _dark={{
+                            borderColor: isSelected ? "primary.300" : "gray.500",
+                            bg: isSelected ? "primary.400" : "transparent",
+                          }}
+                        >
+                          {isSelected && <CheckIcon boxSize={3} />}
+                        </Box>
+                      </HStack>
+                    );
+                  })}
+                </VStack>
+              </PopoverBody>
+            </PopoverContent>
+          </Portal>
+        </>
+      )}
+    </Popover>
+  );
+};
 
 const ModalIcon = chakra(LinkIcon, {
   baseStyle: {
@@ -198,8 +411,18 @@ const AccordionInbound: FC<AccordionInboundType> = ({
   });
   const { errors } = form.formState;
   const { t } = useTranslation();
-  const { inboundNodes, toggleInboundNode } = useHosts();
+  const {
+    inboundNodes,
+    nodeCertificates,
+    inboundCertificates,
+    setInboundNodes,
+    setInboundCertificates,
+  } = useHosts();
   const assignedNodeIds = inboundNodes[hostKey] || [];
+  const availableCertificates = nodeCertificates.filter((certificate) =>
+    assignedNodeIds.includes(certificate.node_id)
+  );
+  const assignedCertificateIds = inboundCertificates[hostKey] || [];
   const accordionErrors = errors[hostKey];
   const handleAddHost = () => {
     addHost({
@@ -270,31 +493,54 @@ const AccordionInbound: FC<AccordionInboundType> = ({
               {t("hostsDialog.assignedNodes")}
             </FormLabel>
             {nodes.length ? (
-              <VStack alignItems="flex-start" gap={1}>
-                {nodes.map((node) => (
-                  <Checkbox
-                    key={node.id}
-                    isChecked={
-                      node.id !== null &&
-                      node.id !== undefined &&
-                      assignedNodeIds.includes(node.id)
-                    }
-                    onChange={() => {
-                      if (node.id !== null && node.id !== undefined) {
-                        toggleInboundNode(hostKey, node.id);
-                      }
-                    }}
-                  >
-                    {node.name}
-                  </Checkbox>
-                ))}
-              </VStack>
+              <MultiSelect
+                options={nodes
+                  .filter(
+                    (node) => node.id !== null && node.id !== undefined
+                  )
+                  .map((node) => ({
+                    value: node.id as number,
+                    label: node.name,
+                  }))}
+                value={assignedNodeIds}
+                placeholder={t("hostsDialog.selectNodes")}
+                onChange={(nodeIds) => setInboundNodes(hostKey, nodeIds)}
+              />
             ) : (
               <Text fontSize="sm" color="gray.500">
                 {t("hostsDialog.noNodes")}
               </Text>
             )}
           </Box>
+          {inbound?.tls === "tls" && assignedNodeIds.length > 0 && (
+            <Box w="full">
+              <FormLabel fontSize="sm" mb={2}>
+                {t("hostsDialog.assignedCertificates")}
+              </FormLabel>
+              {availableCertificates.length ? (
+                <MultiSelect
+                  options={availableCertificates.map((certificate) => {
+                    const node = nodes.find(
+                      (item) => item.id === certificate.node_id
+                    );
+                    return {
+                      value: certificate.id,
+                      label: `${certificate.domain} (${node?.name})`,
+                    };
+                  })}
+                  value={assignedCertificateIds}
+                  placeholder={t("hostsDialog.selectCertificates")}
+                  onChange={(certificateIds) =>
+                    setInboundCertificates(hostKey, certificateIds)
+                  }
+                />
+              ) : (
+                <Text fontSize="sm" color="gray.500">
+                  {t("hostsDialog.noCertificates")}
+                </Text>
+              )}
+            </Box>
+          )}
           {hosts.map((host, index) => {
             return (
               <motion.div
@@ -1240,6 +1486,7 @@ export const HostsDialog: FC = () => {
     isLoading,
     hosts,
     inboundNodes,
+    inboundCertificates,
     fetchHosts,
     isPostLoading,
     setHosts,
@@ -1267,7 +1514,7 @@ export const HostsDialog: FC = () => {
     onEditingHosts(false);
   };
   const handleFormSubmit = (hosts: z.infer<typeof hostsSchema>) => {
-    setHosts(hosts, inboundNodes)
+    setHosts(hosts, inboundNodes, inboundCertificates)
       .then(() => {
         toast({
           title: t("hostsDialog.savedSuccess"),

@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app import __version__, xray
 from app.db import Session, crud, get_db
 from app.models.admin import Admin
+from app.models.node import NodeCertificateResponse
 from app.models.proxy import ProxyHost, ProxyInbound, ProxyTypes
 from app.models.system import SystemStats
 from app.models.user import UserStatus
@@ -102,6 +103,72 @@ def modify_inbound_nodes(
 
     try:
         result = crud.update_inbound_nodes(db, inbound_nodes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    for node_id, node in list(xray.nodes.items()):
+        if node.connected:
+            bg.add_task(xray.operations.restart_node, node_id)
+
+    return result
+
+
+@router.get(
+    "/node-certificates",
+    response_model=List[NodeCertificateResponse],
+    responses={403: responses._403},
+)
+def get_node_certificates(
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+):
+    """Get certificate metadata for all nodes."""
+    return crud.get_all_node_certificates(db)
+
+
+@router.get(
+    "/inbounds/certificates",
+    response_model=Dict[str, List[int]],
+    responses={403: responses._403},
+)
+def get_inbound_certificates(
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+):
+    """Get certificate assignments for every managed inbound."""
+    return crud.get_inbound_certificates(db, list(xray.config.inbounds_by_tag))
+
+
+@router.put(
+    "/inbounds/certificates",
+    response_model=Dict[str, List[int]],
+    responses={400: responses._400, 403: responses._403},
+)
+def modify_inbound_certificates(
+    inbound_certificates: Dict[str, List[int]],
+    bg: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Assign node certificates to TLS inbounds and restart affected nodes."""
+    unknown_inbounds = set(inbound_certificates) - xray.config.inbounds_by_tag.keys()
+    if unknown_inbounds:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Inbounds {sorted(unknown_inbounds)} don't exist",
+        )
+
+    non_tls_inbounds = [
+        tag
+        for tag, certificate_ids in inbound_certificates.items()
+        if certificate_ids and xray.config.inbounds_by_tag[tag]["tls"] != "tls"
+    ]
+    if non_tls_inbounds:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Inbounds {sorted(non_tls_inbounds)} don't use TLS",
+        )
+
+    try:
+        result = crud.update_inbound_certificates(db, inbound_certificates)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
