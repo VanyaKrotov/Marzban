@@ -10,15 +10,17 @@ from fastapi.staticfiles import StaticFiles
 base_dir = Path(__file__).parent
 build_dir = base_dir / 'build'
 statics_dir = build_dir / 'statics'
+npm_command = 'npm.cmd' if os.name == 'nt' else 'npm'
 
 
 def build():
     proc = subprocess.Popen(
-        ['npm', 'run', 'build', '--',  '--outDir', build_dir, '--assetsDir', 'statics'],
+        [npm_command, 'run', 'build', '--', '--outDir', build_dir, '--assetsDir', 'statics'],
         env={**os.environ, 'VITE_BASE_API': VITE_BASE_API},
         cwd=base_dir
     )
-    proc.wait()
+    if proc.wait() != 0:
+        raise RuntimeError("Dashboard build failed")
     with open(build_dir / 'index.html', 'r') as file:
         html = file.read()
     with open(build_dir / '404.html', 'w') as file:
@@ -27,7 +29,10 @@ def build():
 
 def run_dev():
     proc = subprocess.Popen(
-        ['npm', 'run', 'dev', '--', '--host', '0.0.0.0', '--clearScreen', 'false', '--base', os.path.join(DASHBOARD_PATH, '')],
+        [
+            npm_command, 'run', 'dev', '--', '--host', '0.0.0.0',
+            '--clearScreen', 'false', '--base', os.path.join(DASHBOARD_PATH, '')
+        ],
         env={**os.environ, 'VITE_BASE_API': VITE_BASE_API},
         cwd=base_dir
     )

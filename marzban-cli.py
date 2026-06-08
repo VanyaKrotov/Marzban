@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import os  # noqa
-import readline  # noqa
 import sys  # noqa
+
+try:
+    import readline  # noqa
+except ImportError:
+    pass
 
 sys.path.insert(0, os.getcwd())  # noqa
 

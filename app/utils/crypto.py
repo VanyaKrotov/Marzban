@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from OpenSSL import crypto
@@ -19,8 +21,11 @@ def generate_certificate():
     k.generate_key(crypto.TYPE_RSA, 4096)
     cert = crypto.X509()
     cert.get_subject().CN = "Gozargah"
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(100*365*24*60*60)
+    now = datetime.now(timezone.utc)
+    cert.set_notBefore(now.strftime("%Y%m%d%H%M%SZ").encode("ascii"))
+    cert.set_notAfter(
+        (now + timedelta(days=100 * 365)).strftime("%Y%m%d%H%M%SZ").encode("ascii")
+    )
     cert.set_issuer(cert.get_subject())
     cert.set_pubkey(k)
     cert.sign(k, 'sha512')
