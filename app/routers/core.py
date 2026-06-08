@@ -87,13 +87,10 @@ def get_core_stats(admin: Admin = Depends(Admin.get_current)):
 
 @router.post("/core/restart", responses={403: responses._403})
 def restart_core(admin: Admin = Depends(Admin.check_sudo_admin)):
-    """Restart the core and all connected nodes."""
-    startup_config = xray.config.include_db_users()
-    xray.core.restart(startup_config)
-
+    """Restart all connected nodes."""
     for node_id, node in list(xray.nodes.items()):
         if node.connected:
-            xray.operations.restart_node(node_id, startup_config)
+            xray.operations.restart_node(node_id)
 
     return {}
 
@@ -121,11 +118,9 @@ def modify_core_config(
     with open(XRAY_JSON, "w") as f:
         f.write(json.dumps(payload, indent=4))
 
-    startup_config = xray.config.include_db_users()
-    xray.core.restart(startup_config)
     for node_id, node in list(xray.nodes.items()):
         if node.connected:
-            xray.operations.restart_node(node_id, startup_config)
+            xray.operations.restart_node(node_id)
 
     xray.hosts.update()
 

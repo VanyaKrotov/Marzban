@@ -128,8 +128,8 @@ def get_outbounds_stats(api: XRayAPI):
 
 
 def record_user_usages():
-    api_instances = {None: xray.api}
-    usage_coefficient = {None: 1}  # default usage coefficient for the main api instance
+    api_instances = {}
+    usage_coefficient = {}
 
     for node_id, node in list(xray.nodes.items()):
         if node.connected and node.started:
@@ -184,7 +184,7 @@ def record_user_usages():
 
 
 def record_node_usages():
-    api_instances = {None: xray.api}
+    api_instances = {}
     for node_id, node in list(xray.nodes.items()):
         if node.connected and node.started:
             api_instances[node_id] = node.api

@@ -72,12 +72,49 @@ def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
     """
     inbound = db.query(ProxyInbound).filter(ProxyInbound.tag == inbound_tag).first()
     if not inbound:
-        inbound = ProxyInbound(tag=inbound_tag)
+        inbound = ProxyInbound(tag=inbound_tag, nodes=db.query(Node).all())
         db.add(inbound)
         db.commit()
         add_default_host(db, inbound)
         db.refresh(inbound)
     return inbound
+
+
+def get_inbound_nodes(db: Session, inbound_tags: List[str]) -> Dict[str, List[int]]:
+    return {
+        inbound_tag: [node.id for node in get_or_create_inbound(db, inbound_tag).nodes]
+        for inbound_tag in inbound_tags
+    }
+
+
+def update_inbound_nodes(
+        db: Session, inbound_nodes: Dict[str, List[int]]
+) -> Dict[str, List[int]]:
+    node_ids = {node_id for ids in inbound_nodes.values() for node_id in ids}
+    nodes = {
+        node.id: node
+        for node in db.query(Node).filter(Node.id.in_(node_ids)).all()
+    } if node_ids else {}
+
+    missing_node_ids = node_ids - nodes.keys()
+    if missing_node_ids:
+        raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+
+    for inbound_tag, assigned_node_ids in inbound_nodes.items():
+        inbound = get_or_create_inbound(db, inbound_tag)
+        inbound.nodes = [
+            nodes[node_id] for node_id in dict.fromkeys(assigned_node_ids)
+        ]
+
+    db.commit()
+    return get_inbound_nodes(db, list(inbound_nodes))
+
+
+def get_inbound_node_ids_map(db: Session, inbound_tags: List[str]) -> Dict[str, set]:
+    return {
+        inbound_tag: {node.id for node in get_or_create_inbound(db, inbound_tag).nodes}
+        for inbound_tag in inbound_tags
+    }
 
 
 def get_hosts(db: Session, inbound_tag: str) -> List[ProxyHost]:
@@ -1266,12 +1303,7 @@ def get_nodes_usage(db: Session, start: datetime, end: datetime) -> List[NodeUsa
     Returns:
         List[NodeUsageResponse]: A list of NodeUsageResponse objects containing usage data.
     """
-    usages = {0: NodeUsageResponse(  # Main Core
-        node_id=None,
-        node_name="Master",
-        uplink=0,
-        downlink=0
-    )}
+    usages = {}
 
     for node in db.query(Node).all():
         usages[node.id] = NodeUsageResponse(
@@ -1307,7 +1339,8 @@ def create_node(db: Session, node: NodeCreate) -> Node:
     dbnode = Node(name=node.name,
                   address=node.address,
                   port=node.port,
-                  api_port=node.api_port)
+                  api_port=node.api_port,
+                  inbounds=db.query(ProxyInbound).all())
 
     db.add(dbnode)
     db.commit()

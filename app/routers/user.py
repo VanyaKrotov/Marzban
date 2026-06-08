@@ -245,11 +245,9 @@ def reset_users_data_usage(
     """Reset all users data usage"""
     dbadmin = crud.get_admin(db, admin.username)
     crud.reset_all_users_data_usage(db=db, admin=dbadmin)
-    startup_config = xray.config.include_db_users()
-    xray.core.restart(startup_config)
     for node_id, node in list(xray.nodes.items()):
         if node.connected:
-            xray.operations.restart_node(node_id, startup_config)
+            xray.operations.restart_node(node_id)
     return {"detail": "Users successfully reset."}
 
 

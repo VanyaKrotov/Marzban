@@ -159,6 +159,13 @@ template_inbounds_association = Table(
     Column("inbound_tag", ForeignKey("inbounds.tag")),
 )
 
+node_inbounds_association = Table(
+    "node_inbounds_association",
+    Base.metadata,
+    Column("node_id", ForeignKey("nodes.id"), primary_key=True),
+    Column("inbound_tag", ForeignKey("inbounds.tag"), primary_key=True),
+)
+
 
 class NextPlan(Base):
     __tablename__ = 'next_plans'
@@ -218,6 +225,9 @@ class ProxyInbound(Base):
     tag = Column(String(256), unique=True, nullable=False, index=True)
     hosts = relationship(
         "ProxyHost", back_populates="inbound", cascade="all, delete-orphan"
+    )
+    nodes = relationship(
+        "Node", secondary=node_inbounds_association, back_populates="inbounds"
     )
 
 
@@ -308,6 +318,9 @@ class Node(Base):
     downlink = Column(BigInteger, default=0)
     user_usages = relationship("NodeUserUsage", back_populates="node", cascade="all, delete-orphan")
     usages = relationship("NodeUsage", back_populates="node", cascade="all, delete-orphan")
+    inbounds = relationship(
+        "ProxyInbound", secondary=node_inbounds_association, back_populates="nodes"
+    )
     usage_coefficient = Column(Float, nullable=False, server_default=text("1.0"), default=1)
 
 

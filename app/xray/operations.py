@@ -17,6 +17,13 @@ if TYPE_CHECKING:
     from app.db.models import Node as DBNode
 
 
+def _get_inbound_node_ids():
+    with GetDB() as db:
+        return crud.get_inbound_node_ids_map(
+            db, list(xray.config.inbounds_by_tag)
+        )
+
+
 @lru_cache(maxsize=None)
 def get_tls():
     from app.db import GetDB, get_tls_certificate
@@ -59,6 +66,7 @@ def _alter_inbound_user(api: XRayAPI, inbound_tag: str, account: Account):
 def add_user(dbuser: "DBUser"):
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
+    inbound_node_ids = _get_inbound_node_ids()
 
     for proxy_type, inbound_tags in user.inbounds.items():
         for inbound_tag in inbound_tags:
@@ -84,25 +92,33 @@ def add_user(dbuser: "DBUser"):
             ):
                 account.flow = XTLSFlows.NONE
 
-            _add_user_to_inbound(xray.api, inbound_tag, account)  # main core
-            for node in list(xray.nodes.values()):
-                if node.connected and node.started:
+            for node_id, node in list(xray.nodes.items()):
+                if (
+                    node_id in inbound_node_ids.get(inbound_tag, set())
+                    and node.connected
+                    and node.started
+                ):
                     _add_user_to_inbound(node.api, inbound_tag, account)
 
 
 def remove_user(dbuser: "DBUser"):
     email = f"{dbuser.id}.{dbuser.username}"
+    inbound_node_ids = _get_inbound_node_ids()
 
     for inbound_tag in xray.config.inbounds_by_tag:
-        _remove_user_from_inbound(xray.api, inbound_tag, email)
-        for node in list(xray.nodes.values()):
-            if node.connected and node.started:
+        for node_id, node in list(xray.nodes.items()):
+            if (
+                node_id in inbound_node_ids.get(inbound_tag, set())
+                and node.connected
+                and node.started
+            ):
                 _remove_user_from_inbound(node.api, inbound_tag, email)
 
 
 def update_user(dbuser: "DBUser"):
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
+    inbound_node_ids = _get_inbound_node_ids()
 
     active_inbounds = []
     for proxy_type, inbound_tags in user.inbounds.items():
@@ -130,18 +146,24 @@ def update_user(dbuser: "DBUser"):
             ):
                 account.flow = XTLSFlows.NONE
 
-            _alter_inbound_user(xray.api, inbound_tag, account)  # main core
-            for node in list(xray.nodes.values()):
-                if node.connected and node.started:
+            for node_id, node in list(xray.nodes.items()):
+                if (
+                    node_id in inbound_node_ids.get(inbound_tag, set())
+                    and node.connected
+                    and node.started
+                ):
                     _alter_inbound_user(node.api, inbound_tag, account)
 
     for inbound_tag in xray.config.inbounds_by_tag:
         if inbound_tag in active_inbounds:
             continue
         # remove disabled inbounds
-        _remove_user_from_inbound(xray.api, inbound_tag, email)
-        for node in list(xray.nodes.values()):
-            if node.connected and node.started:
+        for node_id, node in list(xray.nodes.items()):
+            if (
+                node_id in inbound_node_ids.get(inbound_tag, set())
+                and node.connected
+                and node.started
+            ):
                 _remove_user_from_inbound(node.api, inbound_tag, email)
 
 
@@ -217,8 +239,7 @@ def connect_node(node_id, config=None):
         _change_node_status(node_id, NodeStatus.connecting)
         logger.info(f"Connecting to \"{dbnode.name}\" node")
 
-        if config is None:
-            config = xray.config.include_db_users()
+        config = xray.config.for_node(node_id).include_db_users()
 
         node.start(config)
         version = node.get_version()
@@ -255,8 +276,7 @@ def restart_node(node_id, config=None):
     try:
         logger.info(f"Restarting Xray core of \"{dbnode.name}\" node")
 
-        if config is None:
-            config = xray.config.include_db_users()
+        config = xray.config.for_node(node_id).include_db_users()
 
         node.restart(config)
         logger.info(f"Xray core of \"{dbnode.name}\" node restarted")

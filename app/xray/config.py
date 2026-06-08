@@ -358,6 +358,49 @@ class XRayConfig(dict):
     def copy(self):
         return deepcopy(self)
 
+    def for_node(self, node_id: int) -> XRayConfig:
+        config = self.copy()
+
+        with GetDB() as db:
+            from app.db import crud
+
+            assignments = crud.get_inbound_node_ids_map(
+                db, list(self.inbounds_by_tag)
+            )
+
+        allowed_tags = {
+            tag for tag, node_ids in assignments.items() if node_id in node_ids
+        }
+        managed_tags = set(self.inbounds_by_tag)
+
+        config["inbounds"] = [
+            inbound
+            for inbound in config.get("inbounds", [])
+            if inbound.get("tag") not in managed_tags
+            or inbound.get("tag") in allowed_tags
+        ]
+        config.inbounds = [
+            inbound for inbound in config.inbounds if inbound["tag"] in allowed_tags
+        ]
+        config.inbounds_by_tag = {
+            tag: inbound
+            for tag, inbound in config.inbounds_by_tag.items()
+            if tag in allowed_tags
+        }
+        config.inbounds_by_protocol = {
+            protocol: [
+                inbound for inbound in inbounds if inbound["tag"] in allowed_tags
+            ]
+            for protocol, inbounds in config.inbounds_by_protocol.items()
+        }
+        config.inbounds_by_protocol = {
+            protocol: inbounds
+            for protocol, inbounds in config.inbounds_by_protocol.items()
+            if inbounds
+        }
+
+        return config
+
     def include_db_users(self) -> XRayConfig:
         config = self.copy()
 

@@ -1,6 +1,6 @@
 from typing import Dict, List, Union
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app import __version__, xray
 from app.db import Session, crud, get_db
@@ -67,6 +67,49 @@ def get_system_stats(
 def get_inbounds(admin: Admin = Depends(Admin.get_current)):
     """Retrieve inbound configurations grouped by protocol."""
     return xray.config.inbounds_by_protocol
+
+
+@router.get(
+    "/inbounds/nodes",
+    response_model=Dict[str, List[int]],
+    responses={403: responses._403},
+)
+def get_inbound_nodes(
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+):
+    """Get node assignments for every managed inbound."""
+    return crud.get_inbound_nodes(db, list(xray.config.inbounds_by_tag))
+
+
+@router.put(
+    "/inbounds/nodes",
+    response_model=Dict[str, List[int]],
+    responses={400: responses._400, 403: responses._403},
+)
+def modify_inbound_nodes(
+    inbound_nodes: Dict[str, List[int]],
+    bg: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update node assignments and restart connected nodes."""
+    unknown_inbounds = set(inbound_nodes) - xray.config.inbounds_by_tag.keys()
+    if unknown_inbounds:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Inbounds {sorted(unknown_inbounds)} don't exist",
+        )
+
+    try:
+        result = crud.update_inbound_nodes(db, inbound_nodes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    for node_id, node in list(xray.nodes.items()):
+        if node.connected:
+            bg.add_task(xray.operations.restart_node, node_id)
+
+    return result
 
 
 @router.get(

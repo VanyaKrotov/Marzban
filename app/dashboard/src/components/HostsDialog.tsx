@@ -51,6 +51,7 @@ import {
   proxyHostSecurity,
 } from "constants/Proxies";
 import { useHosts } from "contexts/HostsContext";
+import { NodeType, useNodesQuery } from "contexts/NodesContext";
 import { motion } from "framer-motion";
 import { FC, useEffect, useState } from "react";
 import {
@@ -170,12 +171,14 @@ type AccordionInboundType = {
   hostKey: string;
   isOpen: boolean;
   toggleAccordion: () => void;
+  nodes: NodeType[];
 };
 
 const AccordionInbound: FC<AccordionInboundType> = ({
   hostKey,
   isOpen,
   toggleAccordion,
+  nodes,
 }) => {
   const { inbounds } = useDashboard();
   const inbound = [...inbounds.values()]
@@ -195,6 +198,8 @@ const AccordionInbound: FC<AccordionInboundType> = ({
   });
   const { errors } = form.formState;
   const { t } = useTranslation();
+  const { inboundNodes, toggleInboundNode } = useHosts();
+  const assignedNodeIds = inboundNodes[hostKey] || [];
   const accordionErrors = errors[hostKey];
   const handleAddHost = () => {
     addHost({
@@ -260,6 +265,36 @@ const AccordionInbound: FC<AccordionInboundType> = ({
       </AccordionButton>
       <AccordionPanel px={2} pb={2}>
         <VStack gap={3}>
+          <Box w="full">
+            <FormLabel fontSize="sm" mb={2}>
+              {t("hostsDialog.assignedNodes")}
+            </FormLabel>
+            {nodes.length ? (
+              <VStack alignItems="flex-start" gap={1}>
+                {nodes.map((node) => (
+                  <Checkbox
+                    key={node.id}
+                    isChecked={
+                      node.id !== null &&
+                      node.id !== undefined &&
+                      assignedNodeIds.includes(node.id)
+                    }
+                    onChange={() => {
+                      if (node.id !== null && node.id !== undefined) {
+                        toggleInboundNode(hostKey, node.id);
+                      }
+                    }}
+                  >
+                    {node.name}
+                  </Checkbox>
+                ))}
+              </VStack>
+            ) : (
+              <Text fontSize="sm" color="gray.500">
+                {t("hostsDialog.noNodes")}
+              </Text>
+            )}
+          </Box>
           {hosts.map((host, index) => {
             return (
               <motion.div
@@ -1201,7 +1236,15 @@ const AccordionInbound: FC<AccordionInboundType> = ({
 export const HostsDialog: FC = () => {
   const { isEditingHosts, onEditingHosts, refetchUsers, inbounds } =
     useDashboard();
-  const { isLoading, hosts, fetchHosts, isPostLoading, setHosts } = useHosts();
+  const {
+    isLoading,
+    hosts,
+    inboundNodes,
+    fetchHosts,
+    isPostLoading,
+    setHosts,
+  } = useHosts();
+  const { data: nodes = [] } = useNodesQuery();
   const toast = useToast();
   const { t } = useTranslation();
   const [openAccordions, setOpenAccordions] = useState<any>({});
@@ -1224,7 +1267,7 @@ export const HostsDialog: FC = () => {
     onEditingHosts(false);
   };
   const handleFormSubmit = (hosts: z.infer<typeof hostsSchema>) => {
-    setHosts(hosts)
+    setHosts(hosts, inboundNodes)
       .then(() => {
         toast({
           title: t("hostsDialog.savedSuccess"),
@@ -1301,6 +1344,7 @@ export const HostsDialog: FC = () => {
                             isOpen={openAccordions[String(index)]}
                             key={hostKey}
                             hostKey={hostKey}
+                            nodes={nodes}
                           />
                         );
                       })}
