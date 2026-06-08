@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os  # noqa
 import sys  # noqa
-import warnings
 
 try:
     import readline  # noqa
@@ -10,11 +9,6 @@ except ImportError:
 
 sys.path.insert(0, os.getcwd())  # noqa
 os.environ["MARZBAN_CLI"] = "1"
-warnings.filterwarnings(
-    "ignore",
-    message="pkg_resources is deprecated as an API.*",
-    module="apscheduler",
-)
 
 import typer
 from typer._completion_shared import Shells
