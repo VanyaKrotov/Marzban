@@ -143,16 +143,35 @@ detect_and_update_package_manager() {
 }
 
 
-detect_compose() {
-    # Check if docker compose command exists
-    if docker compose >/dev/null 2>&1; then
-        COMPOSE='docker compose'
-        elif docker-compose >/dev/null 2>&1; then
-        COMPOSE='docker-compose'
+install_compose_plugin() {
+    detect_os
+    colorized_echo blue "Installing Docker Compose plugin"
+
+    if [[ "$OS" == "Ubuntu"* ]] || [[ "$OS" == "Debian"* ]]; then
+        apt-get update -qq
+        apt-get install -y docker-compose-plugin \
+            || apt-get install -y docker-compose-v2
+    elif [[ "$OS" == "CentOS"* ]] || [[ "$OS" == "AlmaLinux"* ]]; then
+        yum install -y docker-compose-plugin
+    elif [[ "$OS" == "Fedora"* ]]; then
+        dnf install -y docker-compose-plugin
     else
-        colorized_echo red "docker compose not found"
+        colorized_echo red "Install Docker Compose v2 manually for this operating system."
+        return 1
+    fi
+}
+
+detect_compose() {
+    if ! docker compose version >/dev/null 2>&1; then
+        install_compose_plugin
+    fi
+
+    if ! docker compose version >/dev/null 2>&1; then
+        colorized_echo red "Docker Compose v2 is required. Legacy docker-compose v1 is not supported."
         exit 1
     fi
+
+    COMPOSE='docker compose'
 }
 
 install_package () {
