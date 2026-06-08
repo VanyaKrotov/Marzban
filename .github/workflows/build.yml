@@ -11,14 +11,16 @@ permissions:
 jobs:
   build-docker-image:
     name: Build ${{ matrix.arch }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - platform: linux/amd64
             arch: amd64
+            runner: ubuntu-latest
           - platform: linux/arm64
             arch: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -42,9 +44,6 @@ jobs:
       - name: Create 404.html
         working-directory: ./app/dashboard
         run: cp ./build/index.html ./build/404.html
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
