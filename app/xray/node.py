@@ -227,6 +227,11 @@ class ReSTXRayNode:
 
         return res
 
+    def issue_certificate(self, **params):
+        if not self.connected:
+            self.connect()
+        return self.make_request("/certificates/issue", timeout=180, **params)
+
     def _bg_fetch_logs(self):
         while self._logs_queues:
             try:
@@ -447,6 +452,9 @@ class RPyCXRayNode:
         json_config = config.to_json()
         self.remote.restart(json_config)
         self.started = True
+
+    def issue_certificate(self, **params):
+        return self.remote.issue_certificate(**params)
 
     @contextmanager
     def get_logs(self):

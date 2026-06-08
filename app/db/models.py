@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -166,6 +167,13 @@ node_inbounds_association = Table(
     Column("inbound_tag", ForeignKey("inbounds.tag"), primary_key=True),
 )
 
+node_certificate_inbounds_association = Table(
+    "node_certificate_inbounds_association",
+    Base.metadata,
+    Column("certificate_id", ForeignKey("node_certificates.id"), primary_key=True),
+    Column("inbound_tag", ForeignKey("inbounds.tag"), primary_key=True),
+)
+
 
 class NextPlan(Base):
     __tablename__ = 'next_plans'
@@ -228,6 +236,11 @@ class ProxyInbound(Base):
     )
     nodes = relationship(
         "Node", secondary=node_inbounds_association, back_populates="inbounds"
+    )
+    node_certificates = relationship(
+        "NodeCertificate",
+        secondary=node_certificate_inbounds_association,
+        back_populates="inbounds",
     )
 
 
@@ -321,7 +334,38 @@ class Node(Base):
     inbounds = relationship(
         "ProxyInbound", secondary=node_inbounds_association, back_populates="nodes"
     )
+    certificates = relationship(
+        "NodeCertificate", back_populates="node", cascade="all, delete-orphan"
+    )
     usage_coefficient = Column(Float, nullable=False, server_default=text("1.0"), default=1)
+
+
+class NodeCertificate(Base):
+    __tablename__ = "node_certificates"
+    __table_args__ = (UniqueConstraint("node_id", "domain"),)
+
+    id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
+    domain = Column(String(253), nullable=False)
+    certificate = Column(Text, nullable=False)
+    private_key = Column(Text, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    node = relationship("Node", back_populates="certificates")
+    inbounds = relationship(
+        "ProxyInbound",
+        secondary=node_certificate_inbounds_association,
+        back_populates="node_certificates",
+    )
+
+    @property
+    def inbound_tags(self):
+        return [inbound.tag for inbound in self.inbounds]
 
 
 class NodeUserUsage(Base):

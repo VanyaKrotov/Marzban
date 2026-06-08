@@ -17,6 +17,7 @@ from app.db.models import (
     AdminUsageLogs,
     NextPlan,
     Node,
+    NodeCertificate,
     NodeUsage,
     NodeUserUsage,
     NotificationReminder,
@@ -31,6 +32,7 @@ from app.db.models import (
 )
 from app.models.admin import AdminCreate, AdminModify, AdminPartialModify
 from app.models.node import NodeCreate, NodeModify, NodeStatus, NodeUsageResponse
+from app.models.node import NodeCertificateModify
 from app.models.proxy import ProxyHost as ProxyHostModify
 from app.models.user import (
     ReminderType,
@@ -1261,6 +1263,97 @@ def get_node_by_id(db: Session, node_id: int) -> Optional[Node]:
         Optional[Node]: The Node object if found, None otherwise.
     """
     return db.query(Node).filter(Node.id == node_id).first()
+
+
+def get_node_certificates(db: Session, node_id: int) -> List[NodeCertificate]:
+    return (
+        db.query(NodeCertificate)
+        .options(joinedload(NodeCertificate.inbounds))
+        .filter(NodeCertificate.node_id == node_id)
+        .order_by(NodeCertificate.domain)
+        .all()
+    )
+
+
+def get_node_certificate(
+    db: Session, node_id: int, certificate_id: int
+) -> Optional[NodeCertificate]:
+    return (
+        db.query(NodeCertificate)
+        .options(joinedload(NodeCertificate.inbounds))
+        .filter(
+            NodeCertificate.node_id == node_id,
+            NodeCertificate.id == certificate_id,
+        )
+        .first()
+    )
+
+
+def upsert_node_certificate(
+    db: Session,
+    node_id: int,
+    domain: str,
+    certificate: str,
+    private_key: str,
+    expires_at: Optional[datetime],
+) -> NodeCertificate:
+    dbcertificate = (
+        db.query(NodeCertificate)
+        .filter(
+            NodeCertificate.node_id == node_id,
+            NodeCertificate.domain == domain,
+        )
+        .first()
+    )
+    if dbcertificate:
+        dbcertificate.certificate = certificate
+        dbcertificate.private_key = private_key
+        dbcertificate.expires_at = expires_at
+        dbcertificate.updated_at = datetime.utcnow()
+    else:
+        dbcertificate = NodeCertificate(
+            node_id=node_id,
+            domain=domain,
+            certificate=certificate,
+            private_key=private_key,
+            expires_at=expires_at,
+        )
+        db.add(dbcertificate)
+
+    db.commit()
+    db.refresh(dbcertificate)
+    return dbcertificate
+
+
+def update_node_certificate(
+    db: Session,
+    dbcertificate: NodeCertificate,
+    modify: NodeCertificateModify,
+) -> NodeCertificate:
+    if modify.active is not None:
+        dbcertificate.active = modify.active
+    if modify.inbound_tags is not None:
+        unique_tags = list(dict.fromkeys(modify.inbound_tags))
+        inbounds = (
+            db.query(ProxyInbound).filter(ProxyInbound.tag.in_(unique_tags)).all()
+            if unique_tags
+            else []
+        )
+        if len(inbounds) != len(unique_tags):
+            found = {inbound.tag for inbound in inbounds}
+            raise ValueError(
+                f"Inbounds {sorted(set(unique_tags) - found)} don't exist"
+            )
+        dbcertificate.inbounds = inbounds
+    dbcertificate.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(dbcertificate)
+    return dbcertificate
+
+
+def remove_node_certificate(db: Session, dbcertificate: NodeCertificate) -> None:
+    db.delete(dbcertificate)
+    db.commit()
 
 
 def get_nodes(db: Session,

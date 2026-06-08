@@ -1,7 +1,9 @@
 from enum import Enum
+from datetime import datetime
+import re
 from typing import List, Optional
 
-from pydantic import ConfigDict, BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field, field_validator
 
 
 class NodeStatus(str, Enum):
@@ -74,3 +76,39 @@ class NodeUsageResponse(BaseModel):
 
 class NodesUsageResponse(BaseModel):
     usages: List[NodeUsageResponse]
+
+
+class NodeCertificateIssue(BaseModel):
+    domain: str = Field(min_length=1, max_length=253)
+    email: Optional[str] = Field(None, max_length=320)
+    staging: bool = False
+    force: bool = False
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, value: str) -> str:
+        value = value.strip().lower().rstrip(".")
+        if not re.fullmatch(
+            r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?",
+            value,
+        ):
+            raise ValueError("Invalid domain name")
+        return value
+
+
+class NodeCertificateModify(BaseModel):
+    active: Optional[bool] = None
+    inbound_tags: Optional[List[str]] = None
+
+
+class NodeCertificateResponse(BaseModel):
+    id: int
+    node_id: int
+    domain: str
+    certificate: str
+    expires_at: Optional[datetime] = None
+    active: bool
+    inbound_tags: List[str]
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)

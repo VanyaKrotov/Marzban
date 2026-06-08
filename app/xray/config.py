@@ -367,6 +367,7 @@ class XRayConfig(dict):
             assignments = crud.get_inbound_node_ids_map(
                 db, list(self.inbounds_by_tag)
             )
+            node_certificates = crud.get_node_certificates(db, node_id)
 
         allowed_tags = {
             tag for tag, node_ids in assignments.items() if node_id in node_ids
@@ -379,6 +380,29 @@ class XRayConfig(dict):
             if inbound.get("tag") not in managed_tags
             or inbound.get("tag") in allowed_tags
         ]
+
+        if node_certificates:
+            certificates_by_inbound = defaultdict(list)
+            for certificate in node_certificates:
+                if not certificate.active:
+                    continue
+                payload = {
+                    "certificate": certificate.certificate.splitlines(),
+                    "key": certificate.private_key.splitlines(),
+                }
+                for inbound in certificate.inbounds:
+                    certificates_by_inbound[inbound.tag].append(payload)
+
+            for inbound in config["inbounds"]:
+                tag = inbound.get("tag")
+                if tag not in managed_tags:
+                    continue
+                stream_settings = inbound.get("streamSettings") or {}
+                if stream_settings.get("security") != "tls":
+                    continue
+                tls_settings = stream_settings.setdefault("tlsSettings", {})
+                tls_settings["certificates"] = certificates_by_inbound.get(tag, [])
+
         config.inbounds = [
             inbound for inbound in config.inbounds if inbound["tag"] in allowed_tags
         ]

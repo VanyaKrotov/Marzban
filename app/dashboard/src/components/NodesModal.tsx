@@ -14,6 +14,7 @@ import {
   chakra,
   Checkbox,
   Collapse,
+  Divider,
   FormControl,
   FormLabel,
   HStack,
@@ -227,8 +228,202 @@ const NodeAccordion: FC<AccordionInboundType> = ({ toggleAccordion, node }) => {
             </Tooltip>
           }
         />
+        {node.id && <NodeCertificates node={node} />}
       </AccordionPanel>
     </AccordionItem>
+  );
+};
+
+type NodeCertificate = {
+  id: number;
+  node_id: number;
+  domain: string;
+  certificate: string;
+  expires_at?: string | null;
+  active: boolean;
+  inbound_tags: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { inbounds } = useDashboard();
+  const [domain, setDomain] = useState("");
+  const [email, setEmail] = useState("");
+  const queryKey = ["node-certificates", node.id];
+  const inboundList = [...inbounds.values()].flat();
+  const { data: certificates = [] } = useQuery<NodeCertificate[]>({
+    queryKey,
+    queryFn: () => fetch(`/node/${node.id}/certificates`),
+  });
+  const issue = useMutation(
+    ({ issuedDomain, force = false }: { issuedDomain: string; force?: boolean }) =>
+      fetch<NodeCertificate>(`/node/${node.id}/certificates/issue`, {
+        method: "POST",
+        body: { domain: issuedDomain, email: email || null, force },
+      }),
+    {
+      onSuccess: () => {
+        setDomain("");
+        queryClient.invalidateQueries(queryKey);
+        generateSuccessMessage(t("nodes.certificates.issueSuccess"), toast);
+      },
+      onError: (error) => {
+        generateErrorMessage(error, toast);
+      },
+    }
+  );
+  const update = useMutation(
+    ({
+      certificate,
+      body,
+    }: {
+      certificate: NodeCertificate;
+      body: Partial<Pick<NodeCertificate, "active" | "inbound_tags">>;
+    }) =>
+      fetch(`/node/${node.id}/certificates/${certificate.id}`, {
+        method: "PUT",
+        body,
+      }),
+    {
+      onSuccess: () => queryClient.invalidateQueries(queryKey),
+      onError: (error) => {
+        generateErrorMessage(error, toast);
+      },
+    }
+  );
+  const remove = useMutation(
+    (certificate: NodeCertificate) =>
+      fetch(`/node/${node.id}/certificates/${certificate.id}`, {
+        method: "DELETE",
+      }),
+    {
+      onSuccess: () => queryClient.invalidateQueries(queryKey),
+      onError: (error) => {
+        generateErrorMessage(error, toast);
+      },
+    }
+  );
+
+  return (
+    <VStack align="stretch" mt={5} spacing={3}>
+      <Divider />
+      <Text fontWeight="semibold" fontSize="sm">
+        {t("nodes.certificates.title")}
+      </Text>
+      <CustomInput
+        label={t("nodes.certificates.domain")}
+        size="sm"
+        placeholder="node.example.com"
+        value={domain}
+        onChange={(event) => setDomain(event.target.value)}
+      />
+      <CustomInput
+        label={t("nodes.certificates.email")}
+        size="sm"
+        placeholder="admin@example.com"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
+      <Button
+        size="sm"
+        colorScheme="primary"
+        isLoading={issue.isLoading}
+        isDisabled={!domain}
+        onClick={() => issue.mutate({ issuedDomain: domain })}
+      >
+        {t("nodes.certificates.issue")}
+      </Button>
+      {!certificates.length && (
+        <Text fontSize="xs" color="gray.500">
+          {t("nodes.certificates.empty")}
+        </Text>
+      )}
+      {certificates.map((certificate) => (
+        <Box
+          key={certificate.id}
+          borderWidth="1px"
+          borderRadius="md"
+          p={3}
+        >
+          <HStack justify="space-between">
+            <Box>
+              <Text fontSize="sm" fontWeight="medium">
+                {certificate.domain}
+              </Text>
+              {certificate.expires_at && (
+                <Text fontSize="xs" color="gray.500">
+                  {t("nodes.certificates.expires", {
+                    date: new Date(certificate.expires_at).toLocaleDateString(),
+                  })}
+                </Text>
+              )}
+            </Box>
+            <Switch
+              colorScheme="primary"
+              isChecked={certificate.active}
+              onChange={(event) =>
+                update.mutate({
+                  certificate,
+                  body: { active: event.target.checked },
+                })
+              }
+            />
+          </HStack>
+          <Text fontSize="xs" mt={3} mb={1} color="gray.500">
+            {t("nodes.certificates.inbounds")}
+          </Text>
+          <VStack align="stretch" spacing={1}>
+            {inboundList
+              .filter((inbound) => inbound.tls === "tls")
+              .map((inbound) => (
+                <Checkbox
+                  key={inbound.tag}
+                  size="sm"
+                  isChecked={certificate.inbound_tags.includes(inbound.tag)}
+                  onChange={(event) => {
+                    const tags = event.target.checked
+                      ? [...certificate.inbound_tags, inbound.tag]
+                      : certificate.inbound_tags.filter(
+                          (tag) => tag !== inbound.tag
+                        );
+                    update.mutate({
+                      certificate,
+                      body: { inbound_tags: tags },
+                    });
+                  }}
+                >
+                  {inbound.tag}
+                </Checkbox>
+              ))}
+          </VStack>
+          <HStack mt={3}>
+            <Button
+              size="xs"
+              variant="outline"
+              isLoading={issue.isLoading}
+              onClick={() =>
+                issue.mutate({ issuedDomain: certificate.domain, force: true })
+              }
+            >
+              {t("nodes.certificates.renew")}
+            </Button>
+            <Button
+              size="xs"
+              colorScheme="red"
+              variant="ghost"
+              isLoading={remove.isLoading}
+              onClick={() => remove.mutate(certificate)}
+            >
+              {t("delete")}
+            </Button>
+          </HStack>
+        </Box>
+      ))}
+    </VStack>
   );
 };
 

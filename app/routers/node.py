@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket
@@ -12,12 +13,16 @@ from app.dependencies import get_dbnode, validate_dates
 from app.models.admin import Admin
 from app.models.node import (
     NodeCreate,
+    NodeCertificateIssue,
+    NodeCertificateModify,
+    NodeCertificateResponse,
     NodeModify,
     NodeResponse,
     NodeSettings,
     NodeStatus,
     NodesUsageResponse,
 )
+from app.xray.node import NodeAPIError
 from app.models.proxy import ProxyHost
 from app.utils import responses
 
@@ -182,6 +187,122 @@ def reconnect_node(
     """Trigger a reconnection for the specified node. Only accessible to sudo admins."""
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     return {"detail": "Reconnection task scheduled"}
+
+
+@router.get(
+    "/node/{node_id}/certificates",
+    response_model=List[NodeCertificateResponse],
+)
+def get_node_certificates(
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    return crud.get_node_certificates(db, dbnode.id)
+
+
+@router.post(
+    "/node/{node_id}/certificates/issue",
+    response_model=NodeCertificateResponse,
+)
+def issue_node_certificate(
+    request: NodeCertificateIssue,
+    bg: BackgroundTasks,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        node = xray.nodes.get(dbnode.id) or xray.operations.add_node(dbnode)
+        result = node.issue_certificate(**request.model_dump())
+    except NodeAPIError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=f"Node certificate request failed: {exc.detail}",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Node certificate request failed: {exc}"
+        )
+
+    certificate = result.get("certificate") or result.get("fullchain")
+    private_key = result.get("private_key") or result.get("key")
+    if (
+        not isinstance(certificate, str)
+        or "BEGIN CERTIFICATE" not in certificate
+        or not isinstance(private_key, str)
+        or "BEGIN " not in private_key
+        or "PRIVATE KEY" not in private_key
+    ):
+        raise HTTPException(status_code=502, detail="Node returned invalid PEM data")
+
+    expires_at = result.get("expires_at")
+    if isinstance(expires_at, str):
+        try:
+            expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if expires_at.tzinfo:
+                expires_at = expires_at.astimezone(timezone.utc).replace(tzinfo=None)
+        except ValueError:
+            raise HTTPException(
+                status_code=502, detail="Node returned invalid certificate expiry"
+            )
+    elif expires_at is not None and not isinstance(expires_at, datetime):
+        raise HTTPException(
+            status_code=502, detail="Node returned invalid certificate expiry"
+        )
+
+    dbcertificate = crud.upsert_node_certificate(
+        db,
+        node_id=dbnode.id,
+        domain=request.domain,
+        certificate=certificate,
+        private_key=private_key,
+        expires_at=expires_at,
+    )
+    if dbnode.status != NodeStatus.disabled and dbcertificate.active:
+        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
+    return dbcertificate
+
+
+@router.put(
+    "/node/{node_id}/certificates/{certificate_id}",
+    response_model=NodeCertificateResponse,
+)
+def modify_node_certificate(
+    certificate_id: int,
+    modified: NodeCertificateModify,
+    bg: BackgroundTasks,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    dbcertificate = crud.get_node_certificate(db, dbnode.id, certificate_id)
+    if not dbcertificate:
+        raise HTTPException(status_code=404, detail="Node certificate not found")
+    try:
+        updated = crud.update_node_certificate(db, dbcertificate, modified)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if dbnode.status != NodeStatus.disabled:
+        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
+    return updated
+
+
+@router.delete("/node/{node_id}/certificates/{certificate_id}")
+def remove_node_certificate(
+    certificate_id: int,
+    bg: BackgroundTasks,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    dbcertificate = crud.get_node_certificate(db, dbnode.id, certificate_id)
+    if not dbcertificate:
+        raise HTTPException(status_code=404, detail="Node certificate not found")
+    crud.remove_node_certificate(db, dbcertificate)
+    if dbnode.status != NodeStatus.disabled:
+        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
+    return {}
 
 
 @router.delete("/node/{node_id}")

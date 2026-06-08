@@ -61,9 +61,8 @@ CERT_FILE="$DATA_DIR/cert.pem"
 PROJECT_REPO="VanyaKrotov/Marzban"
 PROJECT_BRANCH="master"
 SCRIPT_URL="https://raw.githubusercontent.com/$PROJECT_REPO/$PROJECT_BRANCH/scripts/marzban-node.sh"
-# The panel repository does not build Marzban-node. Override this variable
-# when a custom node image is published in another registry.
-MARZBAN_NODE_IMAGE="${MARZBAN_NODE_IMAGE:-gozargah/marzban-node:latest}"
+NODE_PROJECT_REPO="VanyaKrotov/Marzban-node"
+MARZBAN_NODE_IMAGE="${MARZBAN_NODE_IMAGE:-marzban-node-local:latest}"
 
 colorized_echo() {
     local color=$1
@@ -216,6 +215,122 @@ install_marzban_node_script() {
     colorized_echo green "Marzban-node script installed successfully at $TARGET_PATH"
 }
 
+get_node_release_architecture() {
+    case "$(uname -m)" in
+        amd64 | x86_64)
+            echo "amd64"
+            ;;
+        arm64 | aarch64)
+            echo "arm64"
+            ;;
+        *)
+            colorized_echo red "No Marzban-node Docker image is published for architecture $(uname -m)."
+            return 1
+            ;;
+    esac
+}
+
+get_node_release() {
+    local version=${1:-latest}
+    local api_url
+
+    if [ "$version" == "latest" ]; then
+        api_url="https://api.github.com/repos/$NODE_PROJECT_REPO/releases/latest"
+    else
+        api_url="https://api.github.com/repos/$NODE_PROJECT_REPO/releases/tags/$version"
+    fi
+
+    curl --fail --silent --show-error --location "$api_url"
+}
+
+install_marzban_node_image() {
+    local version=${1:-latest}
+    local architecture
+    local release
+    local release_tag
+    local asset_url
+    local temp_directory
+    local archive_path
+    local load_output
+    local loaded_image
+
+    if ! command -v gzip >/dev/null 2>&1; then
+        detect_os
+        install_package gzip
+    fi
+
+    architecture=$(get_node_release_architecture)
+    release=$(get_node_release "$version")
+    release_tag=$(echo "$release" | jq -r ".tag_name")
+
+    if [ -z "$release_tag" ] || [ "$release_tag" == "null" ]; then
+        colorized_echo red "Unable to determine the Marzban-node release tag."
+        return 1
+    fi
+
+    if [ "$architecture" == "amd64" ]; then
+        asset_url=$(echo "$release" | jq -r '
+            [.assets[]
+             | select(.name | test("\\.tar\\.gz$"; "i"))
+             | select(.name | test("amd64|x86_64"; "i"))
+             | .browser_download_url][0] // empty
+        ')
+    else
+        asset_url=$(echo "$release" | jq -r '
+            [.assets[]
+             | select(.name | test("\\.tar\\.gz$"; "i"))
+             | select(.name | test("arm64|aarch64"; "i"))
+             | .browser_download_url][0] // empty
+        ')
+    fi
+
+    if [ -z "$asset_url" ]; then
+        colorized_echo red "Release $release_tag does not contain a Docker image archive for $architecture."
+        colorized_echo yellow "Expected a .tar.gz release asset whose name contains the architecture."
+        return 1
+    fi
+
+    temp_directory=$(mktemp -d)
+    archive_path="$temp_directory/marzban-node-linux-$architecture.tar.gz"
+
+    colorized_echo blue "Downloading Marzban-node $release_tag image for $architecture"
+    if ! curl --fail --show-error --location --retry 3 "$asset_url" -o "$archive_path"; then
+        rm -rf "$temp_directory"
+        colorized_echo red "Unable to download Docker image from $asset_url"
+        return 1
+    fi
+
+    colorized_echo blue "Loading Marzban-node image into Docker"
+    if ! load_output=$(gzip -dc "$archive_path" | docker load); then
+        rm -rf "$temp_directory"
+        colorized_echo red "Unable to load the downloaded Docker image"
+        return 1
+    fi
+
+    loaded_image=$(echo "$load_output" | sed -n 's/^Loaded image: //p' | tail -n 1)
+    if [ -z "$loaded_image" ]; then
+        loaded_image=$(echo "$load_output" | sed -n 's/^Loaded image ID: //p' | tail -n 1)
+    fi
+    if [ -z "$loaded_image" ]; then
+        rm -rf "$temp_directory"
+        colorized_echo red "Docker loaded the archive but did not report an image reference."
+        return 1
+    fi
+
+    docker tag "$loaded_image" "$MARZBAN_NODE_IMAGE"
+    rm -rf "$temp_directory"
+    colorized_echo green "Marzban-node $release_tag Docker image loaded successfully"
+}
+
+set_compose_node_image() {
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        colorized_echo red "Compose file not found at $COMPOSE_FILE"
+        return 1
+    fi
+
+    sed -i "s|^[[:space:]]*image:.*|    image: $MARZBAN_NODE_IMAGE|" "$COMPOSE_FILE"
+}
+
 # Get a list of occupied ports
 get_occupied_ports() {
     if command -v ss &>/dev/null; then
@@ -245,7 +360,8 @@ is_port_occupied() {
 }
 
 install_marzban_node() {
-    # Fetch releases
+    install_marzban_node_image latest
+
     mkdir -p "$DATA_DIR"
     mkdir -p "$APP_DIR"
     mkdir -p "$DATA_MAIN_DIR"
@@ -407,10 +523,6 @@ update_marzban_node_script() {
     curl --fail --silent --show-error --location "$SCRIPT_URL" \
         | install -m 755 /dev/stdin "/usr/local/bin/$APP_NAME"
     colorized_echo green "marzban-node script updated successfully"
-}
-
-update_marzban_node() {
-    $COMPOSE -f $COMPOSE_FILE -p "$APP_NAME" pull
 }
 
 is_marzban_node_installed() {
@@ -686,10 +798,15 @@ update_command() {
     fi
     
     detect_compose
+
+    if ! command -v jq >/dev/null 2>&1; then
+        detect_os
+        install_package jq
+    fi
     
     update_marzban_node_script
-    colorized_echo blue "Pulling latest version"
-    update_marzban_node
+    install_marzban_node_image latest
+    set_compose_node_image
     
     colorized_echo blue "Restarting Marzban-node services"
     down_marzban_node
