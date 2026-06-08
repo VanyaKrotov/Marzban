@@ -1,0 +1,4 @@
+interface:
+  display_name: "Marzban Update Database"
+  short_description: "Change SQLAlchemy models and Alembic safely"
+  default_prompt: "Use $marzban-update-db to implement a Marzban database schema change and migration."

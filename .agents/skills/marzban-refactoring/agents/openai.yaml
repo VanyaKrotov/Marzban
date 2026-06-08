@@ -1,0 +1,4 @@
+interface:
+  display_name: "Marzban Refactoring"
+  short_description: "Refactor Marzban while preserving behavior"
+  default_prompt: "Use $marzban-refactoring to refactor this Marzban code without changing behavior."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Marzban Xray Change"
+  short_description: "Modify Xray config, core, nodes, and gRPC"
+  default_prompt: "Use $marzban-xray-change to make this Xray-related Marzban change."
