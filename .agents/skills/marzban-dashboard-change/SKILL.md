@@ -1,6 +1,6 @@
 ---
 name: marzban-dashboard-change
-description: Implement Marzban dashboard features and fixes using React 18, TypeScript, Chakra UI, Zustand, React Query, react-hook-form, Zod, i18next, and the shared ofetch client. Use for components, dialogs, forms, dashboard state, API calls, types, styling, routing, or translations under `app/dashboard`.
+description: Implement Marzban dashboard features and fixes using React 18, TypeScript, Chakra UI, Zustand, React Query, react-hook-form, Zod, i18next, and the shared Axios clients. Use for components, dialogs, forms, dashboard state, API calls, types, styling, routing, or translations under `app/dashboard`.
 ---
 
 # Marzban Dashboard Change
@@ -11,7 +11,8 @@ Read `app/dashboard/package.json`, the nearest component, its Zustand context, r
 
 - Use Chakra UI components and responsive props for layout and styling.
 - Use existing local components such as `Input`, `Icon`, `RadioGroup`, and modal patterns before adding wrappers.
-- Use `fetch` from `service/http.ts`; it supplies `VITE_BASE_API` and bearer authentication.
+- Use the Axios instances from `service/http.ts`: `api` supplies `VITE_BASE_API` and bearer authentication, while `publicApi` is reserved for unauthenticated requests such as login.
+- Axios response interceptors return response data directly. Handle server errors through `error.response.data`, not legacy `_data` fields.
 - Keep shared dashboard state in the appropriate Zustand context.
 - Use React Query and query invalidation where the neighboring feature already uses query keys.
 - Use `react-hook-form` and Zod for substantial forms; preserve API units and transformations such as bytes versus GB and timestamps versus dates.

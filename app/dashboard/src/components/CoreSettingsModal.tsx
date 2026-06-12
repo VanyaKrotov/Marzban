@@ -210,11 +210,11 @@ const CoreSettingModalContent: FC = () => {
       })
       .catch((e) => {
         let message = t("core.generalErrorMessage");
-        if (typeof e.response._data.detail === "object")
+        if (typeof e.response?.data?.detail === "object")
           message =
-            e.response._data.detail[Object.keys(e.response._data.detail)[0]];
-        if (typeof e.response._data.detail === "string")
-          message = e.response._data.detail;
+            e.response.data.detail[Object.keys(e.response.data.detail)[0]];
+        if (typeof e.response?.data?.detail === "string")
+          message = e.response.data.detail;
 
         toast({
           title: message,

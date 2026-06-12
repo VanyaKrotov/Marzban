@@ -6,20 +6,20 @@ export const generateErrorMessage = (
   toast: CreateToastFnReturn,
   form?: UseFormReturn<any>
 ) => {
-  if (e.response && e.response._data) {
-    if (typeof e.response._data.detail === "string")
+  if (e.response?.data) {
+    if (typeof e.response.data.detail === "string")
       return toast({
-        title: e.response._data.detail,
+        title: e.response.data.detail,
         status: "error",
         isClosable: true,
         position: "top",
         duration: 3000,
       });
-    if (typeof e.response._data.detail === "object")
+    if (typeof e.response.data.detail === "object")
       if (form) {
-        Object.keys(e.response._data.detail).forEach((errorKey) =>
+        Object.keys(e.response.data.detail).forEach((errorKey) =>
           form.setError(errorKey, {
-            message: e.response._data.detail[errorKey],
+            message: e.response.data.detail[errorKey],
           })
         );
         return;

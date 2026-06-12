@@ -1528,7 +1528,7 @@ export const HostsDialog: FC = () => {
       .catch((err) => {
         if (err?.response?.status === 409 || err?.response?.status === 400) {
           toast({
-            title: err.response?._data?.detail,
+            title: err.response?.data?.detail,
             status: "error",
             isClosable: true,
             position: "top",
@@ -1536,9 +1536,9 @@ export const HostsDialog: FC = () => {
           });
         }
         if (err?.response?.status === 422) {
-          Object.keys(err.response._data.detail).forEach((key) => {
+          Object.keys(err.response.data.detail).forEach((key) => {
             toast({
-              title: err.response._data.detail[key] + " (" + key + ")",
+              title: err.response.data.detail[key] + " (" + key + ")",
               status: "error",
               isClosable: true,
               position: "top",

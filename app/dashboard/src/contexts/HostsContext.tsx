@@ -1,4 +1,4 @@
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { create } from "zustand";
 
 export type HostsSchema = Record<
@@ -54,13 +54,13 @@ export const useHosts = create<HostsStore>((set) => ({
   inboundCertificates: {},
   fetchHosts: () => {
     set({ isLoading: true });
-    fetch<HostsSchema>("/hosts")
+    api.get<HostsSchema>("/hosts")
       .then((hosts) => {
         set({ hosts });
         return Promise.all([
-          fetch<InboundNodesSchema>("/inbounds/nodes").catch(() => ({})),
-          fetch<NodeCertificateSchema[]>("/node-certificates").catch(() => []),
-          fetch<InboundCertificatesSchema>("/inbounds/certificates").catch(
+          api.get<InboundNodesSchema>("/inbounds/nodes").catch(() => ({})),
+          api.get<NodeCertificateSchema[]>("/node-certificates").catch(() => []),
+          api.get<InboundCertificatesSchema>("/inbounds/certificates").catch(
             () => ({})
           ),
         ]).then(([inboundNodes, nodeCertificates, inboundCertificates]) =>
@@ -71,22 +71,23 @@ export const useHosts = create<HostsStore>((set) => ({
   },
   setHosts: (hosts, inboundNodes, inboundCertificates) => {
     set({ isPostLoading: true });
-    return fetch<HostsSchema>("/hosts", { method: "PUT", body: hosts })
+    return api.put<HostsSchema>("/hosts", hosts)
       .then((hosts) =>
-        fetch<InboundNodesSchema>("/inbounds/nodes", {
-          method: "PUT",
-          body: inboundNodes,
-        }).then((inboundNodes) => ({ hosts, inboundNodes }))
+        api
+          .put<InboundNodesSchema>("/inbounds/nodes", inboundNodes)
+          .then((inboundNodes) => ({ hosts, inboundNodes }))
       )
       .then(({ hosts, inboundNodes }) =>
-        fetch<InboundCertificatesSchema>("/inbounds/certificates", {
-          method: "PUT",
-          body: inboundCertificates,
-        }).then((inboundCertificates) => ({
-          hosts,
-          inboundNodes,
-          inboundCertificates,
-        }))
+        api
+          .put<InboundCertificatesSchema>(
+            "/inbounds/certificates",
+            inboundCertificates
+          )
+          .then((inboundCertificates) => ({
+            hosts,
+            inboundNodes,
+            inboundCertificates,
+          }))
       )
       .then(({ hosts, inboundNodes, inboundCertificates }) =>
         set({ hosts, inboundNodes, inboundCertificates })

@@ -324,15 +324,15 @@ export const UserDialog: FC<UserDialogProps> = () => {
       })
       .catch((err) => {
         if (err?.response?.status === 409 || err?.response?.status === 400)
-          setError(err?.response?._data?.detail);
+          setError(err?.response?.data?.detail);
         if (err?.response?.status === 422) {
-          Object.keys(err.response._data.detail).forEach((key) => {
-            setError(err?.response._data.detail[key] as string);
+          Object.keys(err.response.data.detail).forEach((key) => {
+            setError(err?.response.data.detail[key] as string);
             form.setError(
               key as "proxies" | "username" | "data_limit" | "expire",
               {
                 type: "custom",
-                message: err.response._data.detail[key],
+                message: err.response.data.detail[key],
               }
             );
           });

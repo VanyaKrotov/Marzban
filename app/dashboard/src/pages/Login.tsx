@@ -19,7 +19,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Footer } from "components/Footer";
 import { Input } from "components/Input";
-import { fetch } from "service/http";
+import { publicApi } from "service/http";
 import { removeAuthToken, setAuthToken } from "utils/authStorage";
 import Logo from "assets/logo.svg?react";
 import { useTranslation } from "react-i18next";
@@ -72,13 +72,13 @@ export const Login: FC = () => {
     formData.append("password", values.password);
     formData.append("grant_type", "password");
     setLoading(true);
-    fetch("/admin/token", { method: "post", body: formData })
+    publicApi.post<{ access_token: string }>("/admin/token", formData)
       .then(({ access_token: token }) => {
         setAuthToken(token);
         navigate("/");
       })
       .catch((err) => {
-        setError(err.response._data.detail);
+        setError(err.response?.data?.detail || t("core.generalErrorMessage"));
       })
       .finally(setLoading.bind(null, false));
   };

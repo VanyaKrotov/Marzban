@@ -8,7 +8,7 @@ import { useDashboard } from "contexts/DashboardContext";
 import { FC, PropsWithChildren, ReactElement, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "react-query";
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { formatBytes, numberWithCommas } from "utils/formatByte";
 
 const TotalUsersIcon = chakra(UsersIcon, {
@@ -42,6 +42,16 @@ type StatisticCardProps = {
   title: string;
   content: ReactNode;
   icon: ReactElement;
+};
+
+type SystemStats = {
+  version: string;
+  users_active: number;
+  total_user: number;
+  incoming_bandwidth: number;
+  outgoing_bandwidth: number;
+  mem_used: number;
+  mem_total: number;
 };
 
 const StatisticCard: FC<PropsWithChildren<StatisticCardProps>> = ({
@@ -121,7 +131,7 @@ export const Statistics: FC<BoxProps> = (props) => {
   const { version } = useDashboard();
   const { data: systemData } = useQuery({
     queryKey: StatisticsQueryKey,
-    queryFn: () => fetch("/system"),
+    queryFn: () => api.get<SystemStats>("/system"),
     refetchInterval: 5000,
     onSuccess: ({ version: currentVersion }) => {
       if (version !== currentVersion)

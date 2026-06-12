@@ -69,7 +69,7 @@ import { ReloadIcon } from "./Filters";
 import { Icon } from "./Icon";
 import { NodeModalStatusBadge } from "./NodeModalStatusBadge";
 
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { Input } from "./Input";
 
 const CustomInput = chakra(Input, {
@@ -255,13 +255,14 @@ const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
   const queryKey = ["node-certificates", node.id];
   const { data: certificates = [] } = useQuery<NodeCertificate[]>({
     queryKey,
-    queryFn: () => fetch(`/node/${node.id}/certificates`),
+    queryFn: () => api.get<NodeCertificate[]>(`/node/${node.id}/certificates`),
   });
   const issue = useMutation(
     ({ issuedDomain, force = false }: { issuedDomain: string; force?: boolean }) =>
-      fetch<NodeCertificate>(`/node/${node.id}/certificates/issue`, {
-        method: "POST",
-        body: { domain: issuedDomain, email: email || null, force },
+      api.post<NodeCertificate>(`/node/${node.id}/certificates/issue`, {
+        domain: issuedDomain,
+        email: email || null,
+        force,
       }),
     {
       onSuccess: () => {
@@ -276,9 +277,7 @@ const NodeCertificates: FC<{ node: NodeType }> = ({ node }) => {
   );
   const remove = useMutation(
     (certificate: NodeCertificate) =>
-      fetch(`/node/${node.id}/certificates/${certificate.id}`, {
-        method: "DELETE",
-      }),
+      api.delete(`/node/${node.id}/certificates/${certificate.id}`),
     {
       onSuccess: () => queryClient.invalidateQueries(queryKey),
       onError: (error) => {
@@ -462,7 +461,7 @@ const NodeForm: NodeFormType = ({
   const { data: nodeSettings, isLoading: nodeSettingsLoading } = useQuery({
     queryKey: "node-settings",
     queryFn: () =>
-      fetch<{
+      api.get<{
         min_node_version: string;
         certificate: string;
       }>("/node/settings"),

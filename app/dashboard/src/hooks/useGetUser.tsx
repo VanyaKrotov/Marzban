@@ -1,10 +1,9 @@
-import { getAuthToken } from "utils/authStorage";
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { UserApi, UseGetUserReturn } from "types/User";
 import { useQuery } from "react-query";
 
 const fetchUser = async () => {
-    return await fetch("/admin");
+    return await api.get<UserApi>("/admin");
 }
 
 const useGetUser = (): UseGetUserReturn => {

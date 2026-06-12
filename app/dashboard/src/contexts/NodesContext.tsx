@@ -1,5 +1,5 @@
 import { useQuery } from "react-query";
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { z } from "zod";
 import { create } from "zustand";
 import { FilterUsageType, useDashboard } from "./DashboardContext";
@@ -64,31 +64,24 @@ export const useNodesQuery = () => {
 export const useNodes = create<NodeStore>((set, get) => ({
   nodes: [],
   addNode(body) {
-    return fetch("/node", { method: "POST", body });
+    return api.post("/node", body);
   },
   fetchNodes() {
-    return fetch("/nodes");
+    return api.get<NodeType[]>("/nodes");
   },
   fetchNodesUsage(query: FilterUsageType) {
-    return fetch("/nodes/usage", { query });
+    return api.get("/nodes/usage", { params: query });
   },
   updateNode(body) {
-    return fetch(`/node/${body.id}`, {
-      method: "PUT",
-      body,
-    });
+    return api.put(`/node/${body.id}`, body);
   },
   setDeletingNode(node) {
     set({ deletingNode: node });
   },
   reconnectNode(body) {
-    return fetch(`/node/${body.id}/reconnect`, {
-      method: "POST",
-    });
+    return api.post(`/node/${body.id}/reconnect`);
   },
   deleteNode: () => {
-    return fetch(`/node/${get().deletingNode?.id}`, {
-      method: "DELETE",
-    });
+    return api.delete(`/node/${get().deletingNode?.id}`);
   },
 }));

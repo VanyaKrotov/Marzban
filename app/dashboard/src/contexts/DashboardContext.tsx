@@ -1,5 +1,5 @@
 import { StatisticsQueryKey } from "components/Statistics";
-import { fetch } from "service/http";
+import { api } from "service/http";
 import { User, UserCreate } from "types/User";
 import { queryClient } from "utils/react-query";
 import { getUsersPerPageLimitSize } from "utils/userPreferenceStorage";
@@ -28,6 +28,7 @@ export type InboundType = {
   port?: number;
 };
 export type Inbounds = Map<ProtocolType, InboundType[]>;
+type UsersResponse = DashboardStateType["users"];
 
 type DashboardStateType = {
   isCreatingNewUser: boolean;
@@ -70,12 +71,12 @@ type DashboardStateType = {
   revokeSubscription: (user: User) => Promise<void>;
 };
 
-const fetchUsers = (query: FilterType): Promise<User[]> => {
-  for (const key in query) {
-    if (!query[key as keyof FilterType]) delete query[key as keyof FilterType];
-  }
+const fetchUsers = (query: FilterType): Promise<UsersResponse> => {
+  const params = Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value)
+  );
   useDashboard.setState({ loading: true });
-  return fetch("/users", { query })
+  return api.get<UsersResponse>("/users", { params })
     .then((users) => {
       useDashboard.setState({ users });
       return users;
@@ -86,8 +87,8 @@ const fetchUsers = (query: FilterType): Promise<User[]> => {
 };
 
 export const fetchInbounds = () => {
-  return fetch("/inbounds")
-    .then((inbounds: Inbounds) => {
+  return api.get<Record<ProtocolType, InboundType[]>>("/inbounds")
+    .then((inbounds) => {
       useDashboard.setState({
         inbounds: new Map(Object.entries(inbounds)) as Inbounds,
       });
@@ -127,7 +128,7 @@ export const useDashboard = create(
       fetchUsers(get().filters);
     },
     resetAllUsage: () => {
-      return fetch(`/users/reset`, { method: "POST" }).then(() => {
+      return api.post<void>(`/users/reset`).then(() => {
         get().onResetAllUsage(false);
         get().refetchUsers();
       });
@@ -154,21 +155,21 @@ export const useDashboard = create(
     },
     deleteUser: (user: User) => {
       set({ editingUser: null });
-      return fetch(`/user/${user.username}`, { method: "DELETE" }).then(() => {
+      return api.delete<void>(`/user/${user.username}`).then(() => {
         set({ deletingUser: null });
         get().refetchUsers();
         queryClient.invalidateQueries(StatisticsQueryKey);
       });
     },
     createUser: (body: UserCreate) => {
-      return fetch(`/user`, { method: "POST", body }).then(() => {
+      return api.post<void>(`/user`, body).then(() => {
         set({ editingUser: null });
         get().refetchUsers();
         queryClient.invalidateQueries(StatisticsQueryKey);
       });
     },
     editUser: (body: UserCreate) => {
-      return fetch(`/user/${body.username}`, { method: "PUT", body }).then(
+      return api.put<void>(`/user/${body.username}`, body).then(
         () => {
           get().onEditingUser(null);
           get().refetchUsers();
@@ -176,11 +177,10 @@ export const useDashboard = create(
       );
     },
     fetchUserUsage: (body: User, query: FilterUsageType) => {
-      for (const key in query) {
-        if (!query[key as keyof FilterUsageType])
-          delete query[key as keyof FilterUsageType];
-      }
-      return fetch(`/user/${body.username}/usage`, { method: "GET", query });
+      const params = Object.fromEntries(
+        Object.entries(query).filter(([, value]) => value)
+      );
+      return api.get(`/user/${body.username}/usage`, { params });
     },
     onEditingHosts: (isEditingHosts: boolean) => {
       set({ isEditingHosts });
@@ -195,7 +195,7 @@ export const useDashboard = create(
       set({ subscribeUrl });
     },
     resetDataUsage: (user) => {
-      return fetch(`/user/${user.username}/reset`, { method: "POST" }).then(
+      return api.post<void>(`/user/${user.username}/reset`).then(
         () => {
           set({ resetUsageUser: null });
           get().refetchUsers();
@@ -203,9 +203,7 @@ export const useDashboard = create(
       );
     },
     revokeSubscription: (user) => {
-      return fetch(`/user/${user.username}/revoke_sub`, {
-        method: "POST",
-      }).then((user) => {
+      return api.post<User>(`/user/${user.username}/revoke_sub`).then((user) => {
         set({ revokeSubscriptionUser: null, editingUser: user });
         get().refetchUsers();
       });
