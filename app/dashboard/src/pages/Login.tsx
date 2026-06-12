@@ -21,7 +21,7 @@ import { Footer } from "components/Footer";
 import { Input } from "components/Input";
 import { fetch } from "service/http";
 import { removeAuthToken, setAuthToken } from "utils/authStorage";
-import { ReactComponent as Logo } from "assets/logo.svg";
+import Logo from "assets/logo.svg?react";
 import { useTranslation } from "react-i18next";
 import { Language } from "components/Language";
 

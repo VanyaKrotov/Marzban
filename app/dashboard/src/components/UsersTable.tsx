@@ -34,7 +34,7 @@ import {
   PencilIcon,
   QrCodeIcon,
 } from "@heroicons/react/24/outline";
-import { ReactComponent as AddFileIcon } from "assets/add_file.svg";
+import AddFileIcon from "assets/add_file.svg?react";
 import classNames from "classnames";
 import { resetStrategy, statusColors } from "constants/UserSettings";
 import { useDashboard } from "contexts/DashboardContext";
