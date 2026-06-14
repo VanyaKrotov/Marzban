@@ -36,7 +36,7 @@ const statusVariant = (readyState: ReadyState) => {
 export function LogsPage() {
   const { t } = useTranslation();
   const nodesQuery = useNodesPageQuery();
-  const [source, setSource] = useState<LogSource>("master");
+  const [source, setSource] = useState<LogSource | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [paused, setPaused] = useState(false);
   const [socketGeneration, setSocketGeneration] = useState(0);
@@ -45,6 +45,8 @@ export function LogsPage() {
   const pausedRef = useRef(false);
   const bufferedWhilePaused = useRef<string[]>([]);
   const socketUrl = useMemo(() => {
+    if (!source) return null;
+
     const url = getLogsWebSocketUrl(source);
     if (!url) return null;
 
@@ -52,6 +54,17 @@ export function LogsPage() {
     websocketUrl.searchParams.set("generation", String(socketGeneration));
     return websocketUrl.toString();
   }, [source, socketGeneration]);
+
+  useEffect(() => {
+    const nodes = nodesQuery.data ?? [];
+    const sourceNodeId = source ? Number(source.replace("node:", "")) : null;
+    const sourceExists = nodes.some((node) => node.id === sourceNodeId);
+
+    if (!sourceExists) {
+      const firstNode = nodes.find((node) => node.id != null);
+      setSource(firstNode?.id != null ? `node:${firstNode.id}` : null);
+    }
+  }, [nodesQuery.data, source]);
 
   const appendLogs = useCallback((message: string) => {
     const lines = message
@@ -155,6 +168,7 @@ export function LogsPage() {
               type="button"
               variant="outline"
               size="sm"
+              disabled={!source}
               onClick={() => setSocketGeneration((current) => current + 1)}
             >
               <RefreshCw />
@@ -178,7 +192,7 @@ export function LogsPage() {
           <Skeleton className="h-9 w-64" />
         ) : (
           <Select
-            value={source}
+            value={source ?? undefined}
             onValueChange={(value) => setSource(value as LogSource)}
           >
             <SelectTrigger className="w-full sm:w-72">
@@ -186,7 +200,6 @@ export function LogsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="master">{t("logsPage.master")}</SelectItem>
                 {(nodesQuery.data ?? []).map((node) =>
                   node.id == null ? null : (
                     <SelectItem key={node.id} value={`node:${node.id}`}>
@@ -203,7 +216,9 @@ export function LogsPage() {
           {paused && (
             <Badge variant="outline">{t("logsPage.status.paused")}</Badge>
           )}
-          <Badge variant={statusVariant(readyState)}>{t(statusKey)}</Badge>
+          {source && (
+            <Badge variant={statusVariant(readyState)}>{t(statusKey)}</Badge>
+          )}
           <span className="text-xs text-muted-foreground">
             {t("logsPage.lineCount", { count: logs.length })}
           </span>
@@ -213,7 +228,7 @@ export function LogsPage() {
       <div
         ref={viewportRef}
         onScroll={handleScroll}
-        className="h-[calc(100svh-11.5rem)] min-h-112 overflow-auto rounded-xl border bg-[#0d1117] p-4 font-mono text-xs leading-5 text-[#d1d7e0] shadow-inner"
+        className="h-[calc(100svh-11.5rem)] min-h-112 overflow-auto rounded-xl border bg-card p-4 font-mono text-xs leading-5 text-card-foreground shadow-sm"
       >
         {logs.length ? (
           logs.map((line, index) => (
@@ -221,14 +236,14 @@ export function LogsPage() {
               key={`${index}-${line.slice(0, 24)}`}
               className="whitespace-pre-wrap break-all"
             >
-              <span className="mr-3 inline-block w-9 select-none text-right text-[#586069]">
+              <span className="mr-3 inline-block w-9 select-none text-right text-muted-foreground">
                 {index + 1}
               </span>
               {line}
             </div>
           ))
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-[#8b949e]">
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <ScrollText className="size-8" />
             <div>
               <p className="font-sans text-sm font-medium">

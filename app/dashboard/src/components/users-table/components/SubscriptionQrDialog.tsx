@@ -1,7 +1,9 @@
-import { QrCode } from "lucide-react";
+import { ChevronLeft, ChevronRight, QrCode } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -64,53 +66,88 @@ function SubscriptionQrDialogContent({
   subscribeUrl,
 }: Pick<SubscriptionQrDialogProps, "links" | "subscribeUrl">) {
   const { t } = useTranslation();
+  const [configIndex, setConfigIndex] = useState(0);
   const subscriptionLink = subscribeUrl?.startsWith("/")
     ? window.location.origin + subscribeUrl
     : subscribeUrl;
-  const defaultTab = subscriptionLink ? "subscription" : "config-0";
+  const currentConfig = links[configIndex];
+  const defaultTab = subscriptionLink ? "subscription" : "configurations";
 
   return (
     <>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="size-5" />
-            {t("qrcodeDialog.title")}
-          </DialogTitle>
-          <DialogDescription>
-            {t("qrcodeDialog.description")}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <QrCode className="size-5" />
+          {t("qrcodeDialog.title")}
+        </DialogTitle>
+        <DialogDescription>
+          {t("qrcodeDialog.description")}
+        </DialogDescription>
+      </DialogHeader>
 
-      <Tabs key={defaultTab} defaultValue={defaultTab}>
-            <TabsList className="h-auto max-w-full flex-wrap justify-start overflow-visible">
-              {subscriptionLink && (
-                <TabsTrigger value="subscription">
-                  {t("qrcodeDialog.sublink")}
-                </TabsTrigger>
-              )}
-              {links.map((_, index) => (
-                <TabsTrigger value={`config-${index}`} key={index}>
-                  {t("qrcodeDialog.config", { index: index + 1 })}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+      <Tabs defaultValue={defaultTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="subscription" disabled={!subscriptionLink}>
+            {t("qrcodeDialog.subscription")}
+          </TabsTrigger>
+          <TabsTrigger value="configurations" disabled={!links.length}>
+            {t("qrcodeDialog.configurations")}
+          </TabsTrigger>
+        </TabsList>
 
-            {subscriptionLink && (
-              <TabsContent value="subscription">
-                <QrCodePanel
-                  value={subscriptionLink}
-                  label={t("qrcodeDialog.sublink")}
-                />
-              </TabsContent>
-            )}
-            {links.map((link, index) => (
-              <TabsContent value={`config-${index}`} key={index}>
-                <QrCodePanel
-                  value={link}
-                  label={t("qrcodeDialog.config", { index: index + 1 })}
-                />
-              </TabsContent>
-            ))}
+        <TabsContent value="subscription">
+          {subscriptionLink && (
+            <QrCodePanel
+              value={subscriptionLink}
+              label={t("qrcodeDialog.sublink")}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="configurations">
+          {currentConfig && (
+            <>
+              <QrCodePanel
+                value={currentConfig}
+                label={t("qrcodeDialog.config", { index: configIndex + 1 })}
+              />
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  disabled={configIndex === 0}
+                  aria-label={t("qrcodeDialog.previous")}
+                  onClick={() =>
+                    setConfigIndex((current) => Math.max(0, current - 1))
+                  }
+                >
+                  <ChevronLeft />
+                </Button>
+                <span className="min-w-16 text-center text-sm tabular-nums text-muted-foreground">
+                  {t("qrcodeDialog.counter", {
+                    current: configIndex + 1,
+                    total: links.length,
+                  })}
+                </span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  disabled={configIndex === links.length - 1}
+                  aria-label={t("qrcodeDialog.next")}
+                  onClick={() =>
+                    setConfigIndex((current) =>
+                      Math.min(links.length - 1, current + 1),
+                    )
+                  }
+                >
+                  <ChevronRight />
+                </Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
       </Tabs>
     </>
   );

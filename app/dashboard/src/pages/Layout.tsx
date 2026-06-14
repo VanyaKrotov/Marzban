@@ -45,12 +45,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DOCUMENTATION_URL, DONATION_URL, REPO_URL } from "@/constants/Project";
+import { DOCUMENTATION_URL, REPO_URL } from "@/constants/Project";
 import { LANGUAGES } from "@/lib/languages";
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorFallback } from "@/components/ErrorFallback";
+import { DonationDialog } from "@/components/DonationDialog";
 
 const NAVIGATION = [
   {
@@ -126,11 +127,6 @@ const GLOBAL_NAVIGATION = [
     labelKey: "navigation.documentation",
     href: DOCUMENTATION_URL,
   },
-  {
-    icon: HeartHandshake,
-    labelKey: "navigation.donation",
-    href: DONATION_URL,
-  },
 ] as const;
 
 const Layout: FC = () => {
@@ -153,7 +149,7 @@ const Layout: FC = () => {
       <Sidebar>
         <SidebarHeader className="flex flex-row items-center gap-x-3 p-4 pt-6">
           <Logo className="size-6" />
-          <span className="font-medium">Marzban V2</span>
+          <span className="font-medium">Marzban</span>
         </SidebarHeader>
         <SidebarContent>
           {NAVIGATION.map(({ children, title }) => (
@@ -187,6 +183,16 @@ const Layout: FC = () => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <DonationDialog
+                  trigger={
+                    <SidebarMenuButton>
+                      <HeartHandshake />
+                      {t("navigation.donation")}
+                    </SidebarMenuButton>
+                  }
+                />
+              </SidebarMenuItem>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>

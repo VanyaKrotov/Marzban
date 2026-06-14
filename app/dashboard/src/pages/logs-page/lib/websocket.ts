@@ -1,6 +1,6 @@
 import { getAuthToken } from "utils/authStorage";
 
-export type LogSource = "master" | `node:${number}`;
+export type LogSource = `node:${number}`;
 
 export function getLogsWebSocketUrl(source: LogSource): string | null {
   const token = getAuthToken();
@@ -14,10 +14,7 @@ export function getLogsWebSocketUrl(source: LogSource): string | null {
     const basePath = baseApi.pathname.endsWith("/")
       ? baseApi.pathname
       : `${baseApi.pathname}/`;
-    const logPath =
-      source === "master"
-        ? "core/logs"
-        : `node/${source.replace("node:", "")}/logs`;
+    const logPath = `node/${source.replace("node:", "")}/logs`;
     const url = new URL(`${basePath}${logPath}`, baseApi.origin);
 
     url.protocol = baseApi.protocol === "https:" ? "wss:" : "ws:";
