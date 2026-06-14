@@ -2,7 +2,7 @@
 Functions for managing proxy hosts, users, user templates, nodes, and administrative tasks.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -24,16 +24,34 @@ from app.db.models import (
     Proxy,
     ProxyHost,
     ProxyInbound,
+    ProxyOutbound,
     ProxyTypes,
+    RoutingRule,
     System,
     User,
     UserTemplate,
     UserUsageResetLogs,
+    excluded_inbounds_association,
+    template_inbounds_association,
 )
 from app.models.admin import AdminCreate, AdminModify, AdminPartialModify
 from app.models.node import NodeCreate, NodeModify, NodeStatus, NodeUsageResponse
 from app.models.node import NodeCertificateModify
 from app.models.proxy import ProxyHost as ProxyHostModify
+from app.models.proxy import (
+    InboundCreate,
+    InboundModify,
+    OutboundCreate,
+    OutboundModify,
+)
+from app.models.routing import RoutingRuleCreate, RoutingRuleModify
+from app.models.stats import (
+    NodeTrafficPoint,
+    NodeTrafficSeries,
+    StatsGranularity,
+    StatsHistoryResponse,
+    UserGrowthPoint,
+)
 from app.models.user import (
     ReminderType,
     UserCreate,
@@ -45,7 +63,12 @@ from app.models.user import (
 )
 from app.models.user_template import UserTemplateCreate, UserTemplateModify
 from app.utils.helpers import calculate_expiration_days, calculate_usage_percent
-from config import NOTIFY_DAYS_LEFT, NOTIFY_REACHED_USAGE_PERCENT, USERS_AUTODELETE_DAYS
+from config import (
+    NOTIFY_DAYS_LEFT,
+    NOTIFY_REACHED_USAGE_PERCENT,
+    USERS_AUTODELETE_DAYS,
+    XRAY_EXCLUDE_INBOUND_TAGS,
+)
 
 
 def add_default_host(db: Session, inbound: ProxyInbound):
@@ -74,12 +97,107 @@ def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
     """
     inbound = db.query(ProxyInbound).filter(ProxyInbound.tag == inbound_tag).first()
     if not inbound:
-        inbound = ProxyInbound(tag=inbound_tag)
+        from app import xray
+
+        content = xray.config.get_inbound(inbound_tag) or {
+            "tag": inbound_tag,
+            "protocol": "dokodemo-door",
+            "settings": {},
+        }
+        inbound = ProxyInbound(tag=inbound_tag, content=content, enabled=True)
         db.add(inbound)
         db.commit()
         add_default_host(db, inbound)
         db.refresh(inbound)
     return inbound
+
+
+def get_inbounds(db: Session) -> List[ProxyInbound]:
+    return (
+        db.query(ProxyInbound)
+        .options(joinedload(ProxyInbound.nodes))
+        .order_by(ProxyInbound.tag)
+        .all()
+    )
+
+
+def get_inbound(db: Session, inbound_tag: str) -> Optional[ProxyInbound]:
+    return (
+        db.query(ProxyInbound)
+        .options(joinedload(ProxyInbound.nodes))
+        .filter(ProxyInbound.tag == inbound_tag)
+        .first()
+    )
+
+
+def create_inbound(db: Session, inbound: InboundCreate) -> ProxyInbound:
+    content = dict(inbound.content)
+    content["tag"] = inbound.tag
+    nodes = {
+        node.id: node
+        for node in db.query(Node).filter(Node.id.in_(inbound.node_ids)).all()
+    } if inbound.node_ids else {}
+    missing_node_ids = set(inbound.node_ids) - nodes.keys()
+    if missing_node_ids:
+        raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+    dbinbound = ProxyInbound(
+        tag=inbound.tag,
+        content=content,
+        enabled=inbound.enabled,
+        nodes=[nodes[node_id] for node_id in dict.fromkeys(inbound.node_ids)],
+    )
+    db.add(dbinbound)
+    db.commit()
+    add_default_host(db, dbinbound)
+    db.refresh(dbinbound)
+    return get_inbound(db, dbinbound.tag)
+
+
+def update_inbound(
+    db: Session,
+    dbinbound: ProxyInbound,
+    modified: InboundModify,
+) -> ProxyInbound:
+    if modified.content is not None:
+        if dbinbound.readonly:
+            raise ValueError("Content of read-only inbounds cannot be changed")
+        content = dict(modified.content)
+        content["tag"] = dbinbound.tag
+        dbinbound.content = content
+    if modified.enabled is not None:
+        dbinbound.enabled = modified.enabled
+    if modified.node_ids is not None:
+        nodes = {
+            node.id: node
+            for node in db.query(Node)
+            .filter(Node.id.in_(modified.node_ids))
+            .all()
+        } if modified.node_ids else {}
+        missing_node_ids = set(modified.node_ids) - nodes.keys()
+        if missing_node_ids:
+            raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+        dbinbound.nodes = [
+            nodes[node_id] for node_id in dict.fromkeys(modified.node_ids)
+        ]
+    db.commit()
+    db.refresh(dbinbound)
+    return get_inbound(db, dbinbound.tag)
+
+
+def remove_inbound(db: Session, dbinbound: ProxyInbound) -> None:
+    tag = dbinbound.tag
+    dbinbound.nodes = []
+    dbinbound.node_certificates = []
+    db.flush()
+    for association in (
+        excluded_inbounds_association,
+        template_inbounds_association,
+    ):
+        db.execute(
+            delete(association).where(association.c.inbound_tag == tag)
+        )
+    db.delete(dbinbound)
+    db.commit()
 
 
 def get_inbound_nodes(db: Session, inbound_tags: List[str]) -> Dict[str, List[int]]:
@@ -117,6 +235,360 @@ def get_inbound_node_ids_map(db: Session, inbound_tags: List[str]) -> Dict[str, 
         inbound_tag: {node.id for node in get_or_create_inbound(db, inbound_tag).nodes}
         for inbound_tag in inbound_tags
     }
+
+
+def get_outbounds(db: Session) -> List[ProxyOutbound]:
+    return (
+        db.query(ProxyOutbound)
+        .options(joinedload(ProxyOutbound.nodes))
+        .order_by(ProxyOutbound.tag)
+        .all()
+    )
+
+
+def get_outbound(db: Session, outbound_tag: str) -> Optional[ProxyOutbound]:
+    return (
+        db.query(ProxyOutbound)
+        .options(joinedload(ProxyOutbound.nodes))
+        .filter(ProxyOutbound.tag == outbound_tag)
+        .first()
+    )
+
+
+def create_outbound(db: Session, outbound: OutboundCreate) -> ProxyOutbound:
+    content = dict(outbound.content)
+    content["tag"] = outbound.tag
+    nodes = {
+        node.id: node
+        for node in db.query(Node).filter(Node.id.in_(outbound.node_ids)).all()
+    } if outbound.node_ids else {}
+    missing_node_ids = set(outbound.node_ids) - nodes.keys()
+    if missing_node_ids:
+        raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+    dboutbound = ProxyOutbound(
+        tag=outbound.tag,
+        content=content,
+        enabled=outbound.enabled,
+        nodes=[nodes[node_id] for node_id in dict.fromkeys(outbound.node_ids)],
+    )
+    db.add(dboutbound)
+    db.commit()
+    db.refresh(dboutbound)
+    return get_outbound(db, dboutbound.tag)
+
+
+def update_outbound(
+    db: Session,
+    dboutbound: ProxyOutbound,
+    modified: OutboundModify,
+) -> ProxyOutbound:
+    if modified.content is not None:
+        if dboutbound.readonly:
+            raise ValueError("Content of read-only outbounds cannot be changed")
+        content = dict(modified.content)
+        content["tag"] = dboutbound.tag
+        dboutbound.content = content
+    if modified.enabled is not None:
+        dboutbound.enabled = modified.enabled
+    if modified.node_ids is not None:
+        nodes = {
+            node.id: node
+            for node in db.query(Node)
+            .filter(Node.id.in_(modified.node_ids))
+            .all()
+        } if modified.node_ids else {}
+        missing_node_ids = set(modified.node_ids) - nodes.keys()
+        if missing_node_ids:
+            raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+        dboutbound.nodes = [
+            nodes[node_id] for node_id in dict.fromkeys(modified.node_ids)
+        ]
+    db.commit()
+    db.refresh(dboutbound)
+    return get_outbound(db, dboutbound.tag)
+
+
+def remove_outbound(db: Session, dboutbound: ProxyOutbound) -> None:
+    dboutbound.nodes = []
+    db.flush()
+    db.delete(dboutbound)
+    db.commit()
+
+
+def get_outbound_node_ids_map(
+    db: Session, outbound_tags: List[str]
+) -> Dict[str, set]:
+    if not outbound_tags:
+        return {}
+    outbounds = (
+        db.query(ProxyOutbound)
+        .options(joinedload(ProxyOutbound.nodes))
+        .filter(ProxyOutbound.tag.in_(outbound_tags))
+        .all()
+    )
+    return {
+        outbound.tag: {node.id for node in outbound.nodes}
+        for outbound in outbounds
+    }
+
+
+def get_routing_rules(db: Session) -> List[RoutingRule]:
+    return (
+        db.query(RoutingRule)
+        .options(joinedload(RoutingRule.nodes))
+        .order_by(RoutingRule.position, RoutingRule.id)
+        .all()
+    )
+
+
+def get_routing_rule(db: Session, rule_id: int) -> Optional[RoutingRule]:
+    return (
+        db.query(RoutingRule)
+        .options(joinedload(RoutingRule.nodes))
+        .filter(RoutingRule.id == rule_id)
+        .first()
+    )
+
+
+def create_routing_rule(
+    db: Session,
+    rule: RoutingRuleCreate,
+) -> RoutingRule:
+    nodes = {
+        node.id: node
+        for node in db.query(Node).filter(Node.id.in_(rule.node_ids)).all()
+    } if rule.node_ids else {}
+    missing_node_ids = set(rule.node_ids) - nodes.keys()
+    if missing_node_ids:
+        raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+
+    position = rule.position
+    if position is None:
+        max_position = db.query(func.max(RoutingRule.position)).scalar()
+        position = (max_position if max_position is not None else -1) + 1
+
+    dbrule = RoutingRule(
+        name=rule.name,
+        content=dict(rule.content),
+        enabled=rule.enabled,
+        position=position,
+        nodes=[nodes[node_id] for node_id in dict.fromkeys(rule.node_ids)],
+    )
+    db.add(dbrule)
+    db.commit()
+    db.refresh(dbrule)
+    return get_routing_rule(db, dbrule.id)
+
+
+def update_routing_rule(
+    db: Session,
+    dbrule: RoutingRule,
+    modified: RoutingRuleModify,
+) -> RoutingRule:
+    if modified.name is not None:
+        dbrule.name = modified.name
+    if modified.content is not None:
+        if dbrule.readonly:
+            raise ValueError("Content of read-only routing rules cannot be changed")
+        dbrule.content = dict(modified.content)
+    if modified.enabled is not None:
+        dbrule.enabled = modified.enabled
+    if modified.position is not None:
+        dbrule.position = modified.position
+    if modified.node_ids is not None:
+        nodes = {
+            node.id: node
+            for node in db.query(Node)
+            .filter(Node.id.in_(modified.node_ids))
+            .all()
+        } if modified.node_ids else {}
+        missing_node_ids = set(modified.node_ids) - nodes.keys()
+        if missing_node_ids:
+            raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
+        dbrule.nodes = [
+            nodes[node_id] for node_id in dict.fromkeys(modified.node_ids)
+        ]
+
+    db.commit()
+    db.refresh(dbrule)
+    return get_routing_rule(db, dbrule.id)
+
+
+def reorder_routing_rules(
+    db: Session,
+    rule_ids: List[int],
+) -> List[RoutingRule]:
+    rules = get_routing_rules(db)
+    existing_ids = {rule.id for rule in rules}
+    if len(rule_ids) != len(set(rule_ids)) or set(rule_ids) != existing_ids:
+        raise ValueError("Routing rule order must contain every rule exactly once")
+
+    rules_by_id = {rule.id: rule for rule in rules}
+    for position, rule_id in enumerate(rule_ids):
+        rules_by_id[rule_id].position = position
+
+    db.commit()
+    return get_routing_rules(db)
+
+
+def remove_routing_rule(db: Session, dbrule: RoutingRule) -> None:
+    dbrule.nodes = []
+    db.flush()
+    db.delete(dbrule)
+    db.commit()
+
+
+def get_routing_rules_for_node(db: Session, node_id: int) -> List[dict]:
+    return [
+        dict(rule.content)
+        for rule in (
+            db.query(RoutingRule)
+            .join(RoutingRule.nodes)
+            .filter(
+                Node.id == node_id,
+                RoutingRule.enabled.is_(True),
+            )
+            .order_by(RoutingRule.position, RoutingRule.id)
+            .all()
+        )
+    ]
+
+
+def sync_readonly_xray_config(db: Session, payload: dict) -> None:
+    nodes = db.query(Node).all()
+    supported_protocols = set(ProxyTypes._value2member_map_)
+    inbound_contents = {
+        inbound["tag"]: inbound
+        for inbound in payload.get("inbounds", [])
+        if (
+            isinstance(inbound, dict)
+            and inbound.get("tag")
+            and inbound.get("protocol") in supported_protocols
+            and inbound["tag"] not in XRAY_EXCLUDE_INBOUND_TAGS
+        )
+    }
+    outbound_contents = {
+        outbound["tag"]: outbound
+        for outbound in payload.get("outbounds", [])
+        if isinstance(outbound, dict) and outbound.get("tag")
+    }
+
+    readonly_inbounds = (
+        db.query(ProxyInbound)
+        .options(joinedload(ProxyInbound.nodes))
+        .filter(ProxyInbound.readonly.is_(True))
+        .all()
+    )
+    for inbound in readonly_inbounds:
+        content = inbound_contents.get(inbound.tag)
+        if content is None:
+            tag = inbound.tag
+            inbound.nodes = []
+            inbound.node_certificates = []
+            for association in (
+                excluded_inbounds_association,
+                template_inbounds_association,
+            ):
+                db.execute(
+                    delete(association).where(association.c.inbound_tag == tag)
+                )
+            db.delete(inbound)
+            continue
+        inbound.content = content
+
+    existing_inbound_tags = {
+        row[0]
+        for row in db.query(ProxyInbound.tag)
+        .filter(ProxyInbound.tag.in_(inbound_contents))
+        .all()
+    } if inbound_contents else set()
+    for tag in inbound_contents.keys() - existing_inbound_tags:
+        inbound = ProxyInbound(
+            tag=tag,
+            content=inbound_contents[tag],
+            enabled=True,
+            readonly=True,
+            nodes=list(nodes),
+        )
+        inbound.hosts.append(
+            ProxyHost(
+                remark="Marz ({USERNAME}) [{PROTOCOL} - {TRANSPORT}]",
+                address="{SERVER_IP}",
+            )
+        )
+        db.add(inbound)
+
+    readonly_outbounds = (
+        db.query(ProxyOutbound)
+        .options(joinedload(ProxyOutbound.nodes))
+        .filter(ProxyOutbound.readonly.is_(True))
+        .all()
+    )
+    for outbound in readonly_outbounds:
+        content = outbound_contents.get(outbound.tag)
+        if content is None:
+            outbound.nodes = []
+            db.delete(outbound)
+            continue
+        outbound.content = content
+
+    existing_outbound_tags = {
+        row[0]
+        for row in db.query(ProxyOutbound.tag)
+        .filter(ProxyOutbound.tag.in_(outbound_contents))
+        .all()
+    } if outbound_contents else set()
+    for tag in outbound_contents.keys() - existing_outbound_tags:
+        db.add(
+            ProxyOutbound(
+                tag=tag,
+                content=outbound_contents[tag],
+                enabled=True,
+                readonly=True,
+                nodes=list(nodes),
+            )
+        )
+
+    readonly_rules = (
+        db.query(RoutingRule)
+        .options(joinedload(RoutingRule.nodes))
+        .filter(RoutingRule.readonly.is_(True))
+        .order_by(RoutingRule.position, RoutingRule.id)
+        .all()
+    )
+
+    routing = payload.get("routing")
+    routing_rules = routing.get("rules", []) if isinstance(routing, dict) else []
+    routing_rules = [
+        content for content in routing_rules if isinstance(content, dict)
+    ]
+    for rule, content in zip(readonly_rules, routing_rules):
+        rule.content = content
+
+    for rule in readonly_rules[len(routing_rules):]:
+        rule.nodes = []
+        db.delete(rule)
+
+    next_position = (
+        db.query(func.max(RoutingRule.position)).scalar()
+        if routing_rules[len(readonly_rules):]
+        else None
+    )
+    next_position = (next_position if next_position is not None else -1) + 1
+    for content in routing_rules[len(readonly_rules):]:
+        db.add(
+            RoutingRule(
+                name=f"Xray rule {next_position + 1}",
+                content=content,
+                enabled=True,
+                readonly=True,
+                position=next_position,
+                nodes=list(nodes),
+            )
+        )
+        next_position += 1
+
+    db.commit()
 
 
 def get_hosts(db: Session, inbound_tag: str) -> List[ProxyHost]:
@@ -1484,6 +1956,122 @@ def get_nodes_usage(db: Session, start: datetime, end: datetime) -> List[NodeUsa
     return list(usages.values())
 
 
+def _stats_bucket_start(value: datetime, granularity: StatsGranularity) -> datetime:
+    value = value.replace(tzinfo=None)
+    if granularity == StatsGranularity.week:
+        value -= timedelta(days=value.weekday())
+    if granularity == StatsGranularity.month:
+        return value.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return value.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_stats_bucket(value: datetime, granularity: StatsGranularity) -> datetime:
+    if granularity == StatsGranularity.day:
+        return value + timedelta(days=1)
+    if granularity == StatsGranularity.week:
+        return value + timedelta(weeks=1)
+    if value.month == 12:
+        return value.replace(year=value.year + 1, month=1)
+    return value.replace(month=value.month + 1)
+
+
+def get_stats_history(
+    db: Session,
+    start: datetime,
+    end: datetime,
+    granularity: StatsGranularity,
+) -> StatsHistoryResponse:
+    """Aggregate recorded traffic and user registrations into time buckets."""
+    query_start = start.astimezone(timezone.utc).replace(tzinfo=None)
+    query_end = end.astimezone(timezone.utc).replace(tzinfo=None)
+    first_bucket = _stats_bucket_start(query_start, granularity)
+
+    buckets = []
+    bucket = first_bucket
+    while bucket <= query_end:
+        buckets.append(bucket)
+        bucket = _next_stats_bucket(bucket, granularity)
+
+    nodes = db.query(Node).order_by(Node.name).all()
+    traffic_by_node = {
+        node.id: {period: [0, 0] for period in buckets}
+        for node in nodes
+    }
+    usage_rows = db.query(NodeUsage).filter(
+        NodeUsage.created_at >= query_start,
+        NodeUsage.created_at <= query_end,
+    )
+    for usage in usage_rows:
+        if usage.node_id not in traffic_by_node:
+            continue
+        period = _stats_bucket_start(usage.created_at, granularity)
+        values = traffic_by_node[usage.node_id].get(period)
+        if values is not None:
+            values[0] += usage.uplink or 0
+            values[1] += usage.downlink or 0
+
+    traffic = [
+        NodeTrafficSeries(
+            node_id=node.id,
+            node_name=node.name,
+            points=[
+                NodeTrafficPoint(
+                    period=period,
+                    uplink=values[0],
+                    downlink=values[1],
+                    total=values[0] + values[1],
+                )
+                for period, values in traffic_by_node[node.id].items()
+            ],
+        )
+        for node in nodes
+    ]
+
+    user_counts = {period: 0 for period in buckets}
+    created_rows = db.query(User.created_at).filter(
+        User.created_at >= query_start,
+        User.created_at <= query_end,
+    )
+    for (created_at,) in created_rows:
+        period = _stats_bucket_start(created_at, granularity)
+        if period in user_counts:
+            user_counts[period] += 1
+
+    running_total = db.query(func.count(User.id)).filter(
+        User.created_at < query_start
+    ).scalar() or 0
+    users = []
+    previous_count = None
+    for period, count in user_counts.items():
+        running_total += count
+        growth_percent = None
+        if previous_count is not None:
+            if previous_count:
+                growth_percent = round(
+                    ((count - previous_count) / previous_count) * 100,
+                    2,
+                )
+            else:
+                growth_percent = 100.0 if count else 0.0
+        users.append(
+            UserGrowthPoint(
+                period=period,
+                count=count,
+                total=running_total,
+                growth_percent=growth_percent,
+            )
+        )
+        previous_count = count
+
+    return StatsHistoryResponse(
+        start=start,
+        end=end,
+        granularity=granularity,
+        traffic=traffic,
+        users=users,
+    )
+
+
 def create_node(db: Session, node: NodeCreate) -> Node:
     """
     Creates a new node in the database.
@@ -1499,6 +2087,11 @@ def create_node(db: Session, node: NodeCreate) -> Node:
                   address=node.address,
                   port=node.port,
                   api_port=node.api_port)
+    dbnode.routing_rules = (
+        db.query(RoutingRule)
+        .filter(RoutingRule.readonly.is_(True))
+        .all()
+    )
 
     db.add(dbnode)
     db.commit()

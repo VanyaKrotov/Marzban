@@ -1,4 +1,4 @@
 interface:
   display_name: "Marzban Dashboard Change"
-  short_description: "Extend the React and Chakra UI dashboard"
+  short_description: "Extend the React and shadcn dashboard"
   default_prompt: "Use $marzban-dashboard-change to implement this Marzban dashboard feature."

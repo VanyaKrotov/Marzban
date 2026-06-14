@@ -1,7 +1,7 @@
 import json
 import re
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -205,3 +205,65 @@ class ProxyInbound(BaseModel):
     network: str
     tls: str
     port: Union[int, str]
+
+
+class InboundCreate(BaseModel):
+    tag: str = Field(min_length=1, max_length=256)
+    enabled: bool = True
+    content: Dict[str, Any]
+    node_ids: List[int] = Field(default_factory=list)
+
+    @field_validator("tag")
+    @classmethod
+    def validate_tag(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Inbound tag cannot be empty")
+        if "," in value:
+            raise ValueError("Character ',' is not allowed in inbound tag")
+        return value
+
+
+class InboundModify(BaseModel):
+    enabled: Optional[bool] = None
+    content: Optional[Dict[str, Any]] = None
+    node_ids: Optional[List[int]] = None
+
+
+class InboundResponse(BaseModel):
+    tag: str
+    enabled: bool
+    readonly: bool
+    content: Dict[str, Any]
+    node_ids: List[int]
+
+
+class OutboundCreate(BaseModel):
+    tag: str = Field(min_length=1, max_length=256)
+    enabled: bool = True
+    content: Dict[str, Any]
+    node_ids: List[int] = Field(default_factory=list)
+
+    @field_validator("tag")
+    @classmethod
+    def validate_tag(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Outbound tag cannot be empty")
+        if "," in value:
+            raise ValueError("Character ',' is not allowed in outbound tag")
+        return value
+
+
+class OutboundModify(BaseModel):
+    enabled: Optional[bool] = None
+    content: Optional[Dict[str, Any]] = None
+    node_ids: Optional[List[int]] = None
+
+
+class OutboundResponse(BaseModel):
+    tag: str
+    enabled: bool
+    readonly: bool
+    content: Dict[str, Any]
+    node_ids: List[int]

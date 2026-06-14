@@ -1,1 +1,60 @@
-Generic single-database configuration.
+# Database migrations
+
+Marzban uses Alembic for schema migrations. Migrations must remain compatible
+with SQLite, MySQL and MariaDB.
+
+The current schema includes users and administrators, remote nodes, managed
+inbounds and outbounds, ordered routing rules, host settings, node certificates
+and the many-to-many assignment tables used by node configuration generation.
+
+## Apply migrations
+
+Run from the repository root:
+
+```bash
+./.venv/bin/python -m alembic upgrade head
+```
+
+PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+The production Docker image runs `alembic upgrade head` before starting the
+application, so normal container updates apply migrations automatically.
+
+## Inspect migration state
+
+```bash
+python -m alembic current
+python -m alembic heads
+python -m alembic history
+```
+
+## Create a migration
+
+```bash
+python -m alembic revision -m "describe the schema change"
+```
+
+Use autogeneration only as a starting point:
+
+```bash
+python -m alembic revision --autogenerate -m "describe the schema change"
+```
+
+Review generated SQL, foreign keys, defaults, data backfills and downgrade
+behavior manually. Do not edit a migration that may already have been applied;
+create a new revision instead.
+
+## Safety rules
+
+- Back up the database and `/var/lib/marzban` before upgrading production.
+- Stop extra application replicas before a migration.
+- Do not run the same migration concurrently from multiple containers.
+- Test both a fresh database and an upgrade from the previous release.
+- Avoid database-specific SQL unless equivalent SQLite and MySQL/MariaDB paths
+  are implemented.
+- Keep the Alembic graph at one head unless a deliberate merge migration is
+  being added.

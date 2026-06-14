@@ -167,6 +167,20 @@ node_inbounds_association = Table(
     Column("inbound_tag", ForeignKey("inbounds.tag"), primary_key=True),
 )
 
+node_outbounds_association = Table(
+    "node_outbounds_association",
+    Base.metadata,
+    Column("node_id", ForeignKey("nodes.id"), primary_key=True),
+    Column("outbound_tag", ForeignKey("outbounds.tag"), primary_key=True),
+)
+
+node_routing_rules_association = Table(
+    "node_routing_rules_association",
+    Base.metadata,
+    Column("node_id", ForeignKey("nodes.id"), primary_key=True),
+    Column("routing_rule_id", ForeignKey("routing_rules.id"), primary_key=True),
+)
+
 node_certificate_inbounds_association = Table(
     "node_certificate_inbounds_association",
     Base.metadata,
@@ -231,6 +245,9 @@ class ProxyInbound(Base):
 
     id = Column(Integer, primary_key=True)
     tag = Column(String(256), unique=True, nullable=False, index=True)
+    content = Column(JSON, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+    readonly = Column(Boolean, nullable=False, default=False, server_default="0")
     hosts = relationship(
         "ProxyHost", back_populates="inbound", cascade="all, delete-orphan"
     )
@@ -241,6 +258,42 @@ class ProxyInbound(Base):
         "NodeCertificate",
         secondary=node_certificate_inbounds_association,
         back_populates="inbounds",
+    )
+
+
+class ProxyOutbound(Base):
+    __tablename__ = "outbounds"
+
+    id = Column(Integer, primary_key=True)
+    tag = Column(String(256), unique=True, nullable=False, index=True)
+    content = Column(JSON, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+    readonly = Column(Boolean, nullable=False, default=False, server_default="0")
+    nodes = relationship(
+        "Node", secondary=node_outbounds_association, back_populates="outbounds"
+    )
+
+
+class RoutingRule(Base):
+    __tablename__ = "routing_rules"
+
+    id = Column(Integer, primary_key=True)
+    create_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    name = Column(String(128), nullable=False)
+    content = Column(JSON, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+    readonly = Column(Boolean, nullable=False, default=False, server_default="0")
+    position = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+        index=True,
+    )
+    nodes = relationship(
+        "Node",
+        secondary=node_routing_rules_association,
+        back_populates="routing_rules",
     )
 
 
@@ -333,6 +386,14 @@ class Node(Base):
     usages = relationship("NodeUsage", back_populates="node", cascade="all, delete-orphan")
     inbounds = relationship(
         "ProxyInbound", secondary=node_inbounds_association, back_populates="nodes"
+    )
+    outbounds = relationship(
+        "ProxyOutbound", secondary=node_outbounds_association, back_populates="nodes"
+    )
+    routing_rules = relationship(
+        "RoutingRule",
+        secondary=node_routing_rules_association,
+        back_populates="nodes",
     )
     certificates = relationship(
         "NodeCertificate", back_populates="node", cascade="all, delete-orphan"

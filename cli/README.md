@@ -1,296 +1,126 @@
-# CLI
+# Marzban CLI
 
-**Usage**:
+The CLI manages administrators, users and generated subscription data without
+starting the regular web application or the master Xray process.
 
-```console
-$ [OPTIONS] COMMAND [ARGS]...
+## Invocation
+
+Installed Docker deployment:
+
+```bash
+marzban cli --help
+marzban cli admin create --sudo
 ```
 
-**Options**:
+From repository source on Linux:
 
-* `--help`: Show this message and exit.
-
-**Commands**:
-
-* `admin`
-* `completion`: Generate and install completion scripts.
-* `subscription`
-* `user`
-
-## `admin`
-
-**Usage**:
-
-```console
-$ admin [OPTIONS] COMMAND [ARGS]...
+```bash
+./.venv/bin/python marzban-cli.py --help
+./.venv/bin/python marzban-cli.py admin create --sudo
 ```
 
-**Options**:
+From PowerShell on Windows:
 
-* `--help`: Show this message and exit.
-
-**Commands**:
-
-* `create`: Creates an admin
-* `delete`: Deletes the specified admin
-* `import-from-env`: Imports the sudo admin from env
-* `list`: Displays a table of admins
-* `update`: Updates the specified admin
-
-### `admin create`
-
-Creates an admin
-
-Password can also be set using the `MARZBAN_ADMIN_PASSWORD` environment variable for non-interactive usages.
-
-**Usage**:
-
-```console
-$ admin create [OPTIONS]
+```powershell
+.\.venv\Scripts\python.exe marzban-cli.py --help
+.\.venv\Scripts\python.exe marzban-cli.py admin create --sudo
 ```
 
-**Options**:
+The `readline` module is optional, so native Windows does not require
+`pyreadline`. Run commands from the repository root so imports and `.env`
+configuration resolve correctly.
 
-* `-u, --username TEXT`: [required]
-* `--sudo / --no-sudo`: [default: no-sudo]
-* `-tg, --telegram-id TEXT`
-* `-dc, --discord-webhook TEXT`
-* `--help`: Show this message and exit.
+## Command groups
 
-### `admin delete`
-
-Deletes the specified admin
-
-Confirmations can be skipped using `--yes/-y` option.
-
-**Usage**:
-
-```console
-$ admin delete [OPTIONS]
+```text
+admin         Manage panel administrators
+user          Manage panel users
+subscription  Print subscription URLs or generated configurations
+completion    Generate shell completion
 ```
 
-**Options**:
+Use `--help` at any level for the authoritative option list:
 
-* `-u, --username TEXT`: [required]
-* `-y, --yes`: Skips confirmations
-* `--help`: Show this message and exit.
-
-### `admin import-from-env`
-
-Imports the sudo admin from env
-
-Confirmations can be skipped using `--yes/-y` option.
-
-What does it do?
-  - Creates a sudo admin according to `SUDO_USERNAME` and `SUDO_PASSWORD`.
-  - Links any user which doesn't have an `admin_id` to the imported sudo admin.
-
-**Usage**:
-
-```console
-$ admin import-from-env [OPTIONS]
+```bash
+marzban cli admin --help
+marzban cli admin create --help
+marzban cli user --help
+marzban cli subscription get-config --help
 ```
 
-**Options**:
+## Administrators
 
-* `-y, --yes`: Skips confirmations
-* `--help`: Show this message and exit.
+Create a sudo administrator interactively:
 
-### `admin list`
-
-Displays a table of admins
-
-**Usage**:
-
-```console
-$ admin list [OPTIONS]
+```bash
+marzban cli admin create --sudo
 ```
 
-**Options**:
+Create one non-interactively:
 
-* `-o, --offset INTEGER`
-* `-l, --limit INTEGER`
-* `-u, --username TEXT`: Search by username
-* `--help`: Show this message and exit.
-
-### `admin update`
-
-Updates the specified admin
-
-NOTE: This command CAN NOT be used non-interactively.
-
-**Usage**:
-
-```console
-$ admin update [OPTIONS]
+```bash
+MARZBAN_ADMIN_PASSWORD='strong-password' \
+  marzban cli admin create --username admin --sudo
 ```
 
-**Options**:
+Other commands:
 
-* `-u, --username TEXT`: [required]
-* `--help`: Show this message and exit.
-
-## `completion`
-
-Generate and install completion scripts.
-
-**Usage**:
-
-```console
-$ completion [OPTIONS] COMMAND [ARGS]...
+```bash
+marzban cli admin list
+marzban cli admin update --username admin
+marzban cli admin delete --username admin
+marzban cli admin import-from-env
 ```
 
-**Options**:
+`admin import-from-env` reads `SUDO_USERNAME` and `SUDO_PASSWORD`, creates or
+updates the sudo administrator and assigns ownerless users to it. Remove those
+credentials from the environment after a successful import.
 
-* `--help`: Show this message and exit.
+## Users
 
-**Commands**:
+The `user` group supports listing, creating, updating and deleting users, plus
+traffic reset, subscription revoke, activation and ownership operations. Check
+the current options before automation:
 
-* `install`: Install completion for the specified shell.
-* `show`: Show completion for the specified shell,...
-
-### `completion install`
-
-Install completion for the specified shell.
-
-**Usage**:
-
-```console
-$ completion install [OPTIONS]
+```bash
+marzban cli user --help
+marzban cli user create --help
 ```
 
-**Options**:
+## Subscriptions
 
-* `--shell [bash|zsh|fish|powershell|pwsh]`: The shell to install completion for.
-* `--help`: Show this message and exit.
+Print a user's subscription URL:
 
-### `completion show`
-
-Show completion for the specified shell, to copy or customize it.
-
-**Usage**:
-
-```console
-$ completion show [OPTIONS]
+```bash
+marzban cli subscription get-link --username USERNAME
 ```
 
-**Options**:
+`XRAY_SUBSCRIPTION_URL_PREFIX` must be configured for a correct public URL.
 
-* `--shell [bash|zsh|fish|powershell|pwsh]`: The shell to install completion for.
-* `--help`: Show this message and exit.
+Generate V2Ray or Clash configuration:
 
-## `subscription`
+```bash
+marzban cli subscription get-config \
+  --username USERNAME \
+  --format v2ray \
+  --output-file subscription.json
 
-**Usage**:
-
-```console
-$ subscription [OPTIONS] COMMAND [ARGS]...
+marzban cli subscription get-config \
+  --username USERNAME \
+  --format clash \
+  --output-file subscription.yml
 ```
 
-**Options**:
+Add `--base64` when the consumer expects Base64 output.
 
-* `--help`: Show this message and exit.
+## Database and migrations
 
-**Commands**:
+The CLI uses the same `DATABASE_URL` and models as the application. Apply
+migrations before using a newly updated CLI:
 
-* `get-config`: Generates a subscription config.
-* `get-link`: Prints the given user's subscription link.
-
-### `subscription get-config`
-
-Generates a subscription config.
-
-Generates a subscription config for the given user in the given format.
-
-The output will be written in the output file when the `output-file` is present,
-  otherwise will be shown in the terminal.
-
-**Usage**:
-
-```console
-$ subscription get-config [OPTIONS]
+```bash
+python -m alembic upgrade head
 ```
 
-**Options**:
-
-* `-u, --username TEXT`: [required]
-* `-f, --format [v2ray|clash]`: [required]
-* `-o, --output TEXT`: Writes the generated config in the file if provided
-* `--base64`: Encodes output in base64 format if present
-* `--help`: Show this message and exit.
-
-### `subscription get-link`
-
-Prints the given user's subscription link.
-
-NOTE: This command needs `XRAY_SUBSCRIPTION_URL_PREFIX` environment variable to be set
-  in order to work correctly.
-
-**Usage**:
-
-```console
-$ subscription get-link [OPTIONS]
-```
-
-**Options**:
-
-* `-u, --username TEXT`: [required]
-* `--help`: Show this message and exit.
-
-## `user`
-
-**Usage**:
-
-```console
-$ user [OPTIONS] COMMAND [ARGS]...
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-**Commands**:
-
-* `list`: Displays a table of users
-* `set-owner`: Transfers user's ownership
-
-### `user list`
-
-Displays a table of users
-
-NOTE: Sorting is not currently available.
-
-**Usage**:
-
-```console
-$ user list [OPTIONS]
-```
-
-**Options**:
-
-* `-o, --offset INTEGER`
-* `-l, --limit INTEGER`
-* `-u, --username TEXT`: Search by username(s)
-* `-s, --search TEXT`: Search by username/note
-* `--status [active|disabled|limited|expired|on_hold]`
-* `--admin, --owner TEXT`: Search by owner admin's username(s)
-* `--help`: Show this message and exit.
-
-### `user set-owner`
-
-Transfers user's ownership
-
-NOTE: This command needs additional confirmation for users who already have an owner.
-
-**Usage**:
-
-```console
-$ user set-owner [OPTIONS]
-```
-
-**Options**:
-
-* `-u, --username TEXT`
-* `--admin, --owner TEXT`: Admin's username
-* `-y, --yes`: Skips confirmations
-* `--help`: Show this message and exit.
+See [../app/db/migrations/README](../app/db/migrations/README) for Linux,
+Windows and container migration notes.

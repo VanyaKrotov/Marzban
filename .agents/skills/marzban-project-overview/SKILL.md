@@ -20,7 +20,7 @@ Map the relevant flow:
 7. `app/xray/` owns Xray config parsing, process lifecycle, node lifecycle, and runtime user synchronization.
 8. `app/jobs/` is imported dynamically; module import registers startup hooks and scheduler jobs.
 9. `app/subscription/` and `app/templates/` generate client-specific subscriptions and share links.
-10. `app/dashboard/src/` is React 18 + TypeScript + Chakra UI. Zustand contexts own much of the client state; `service/http.ts` wraps `ofetch`.
+10. `app/dashboard/src/` is React 18 + TypeScript + Tailwind CSS with shadcn as the primary UI library. Zustand contexts own much of the client state; `service/http.ts` provides shared Axios clients.
 11. `cli/` is a Typer CLI using the same DB and CRUD layer.
 12. `xray_api/proto/` is generated protobuf code. Do not hand-edit it.
 
@@ -34,6 +34,8 @@ Map the relevant flow:
 - Remember that `app/jobs/__init__.py` imports every non-private `.py` file dynamically.
 - Do not change the Uvicorn worker count: scheduler and Xray state are process-local.
 - Do not manually edit `app/dashboard/build/`; rebuild it only when the task requires generated assets.
+- Use existing shadcn primitives from `app/dashboard/src/components/ui/` for dashboard UI. Add missing primitives with `npm.cmd run ui:add -- <component...>` from `app/dashboard`; do not introduce new Chakra UI usage.
+- Require the shadcn `AlertDialog` for all dashboard action confirmations, especially destructive or irreversible operations. Do not use browser `confirm()`, a regular `Dialog`, or custom confirmation modals.
 - Update all locale JSON files under `app/dashboard/public/statics/locales/` for new user-facing strings.
 - Keep secrets and deployment-specific paths in environment configuration, not source literals.
 

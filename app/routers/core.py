@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
 from app import xray
-from app.db import Session, get_db
+from app.db import Session, crud, get_db
 from app.models.admin import Admin
 from app.models.core import CoreStats
 from app.utils import responses
@@ -106,22 +106,24 @@ def get_core_config(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
 
 @router.put("/core/config", responses={403: responses._403})
 def modify_core_config(
-    payload: dict, admin: Admin = Depends(Admin.check_sudo_admin)
+    payload: dict,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
 ) -> dict:
     """Modify the core configuration and restart the core."""
     try:
-        config = XRayConfig(payload, api_port=xray.config.api_port)
-    except ValueError as err:
+        XRayConfig(payload, api_port=xray.config.api_port)
+    except (KeyError, TypeError, ValueError) as err:
         raise HTTPException(status_code=400, detail=str(err))
 
-    xray.config = config
-    with open(XRAY_JSON, "w") as f:
+    with open(XRAY_JSON, "w", encoding="utf-8") as f:
         f.write(json.dumps(payload, indent=4))
+
+    crud.sync_readonly_xray_config(db, payload)
+    xray.reload_config()
 
     for node_id, node in list(xray.nodes.items()):
         if node.connected:
             xray.operations.restart_node(node_id)
-
-    xray.hosts.update()
 
     return payload

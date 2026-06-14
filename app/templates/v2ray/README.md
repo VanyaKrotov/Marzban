@@ -1,15 +1,55 @@
-# V2ray Template
+# V2Ray subscription templates
 
-## Usage
-- Can be used to send completely prepared config to users and avoid application default values.
+V2Ray templates let Marzban generate a complete client configuration instead of
+using only built-in defaults. They can customize routing, DNS and transport
+settings that are not exposed by the dashboard.
 
-## Config Template
-- With the config template, you can change things like routing and rules.
+## Supported transports
 
-## Settings Template
-You can change some values in custom configs depending on the streamSettings type that is not accessible directly from the dashboard.
+| Transport | Support |
+| --- | --- |
+| WebSocket | Yes |
+| gRPC | Yes |
+| HTTP | Yes |
+| HTTP/2 | Yes |
+| KCP | Yes |
+| TCP | Yes |
+| HTTPUpgrade | Yes |
+| SplitHTTP | Yes |
 
-For example, you can change these values for gRPC configs (you can change anything that is part of netSettings except those accessible from the dashboard).
+## Configuration
+
+Set the common template directory:
+
+```env
+CUSTOM_TEMPLATES_DIRECTORY="/var/lib/marzban/templates/"
+```
+
+Create the V2Ray directory:
+
+```bash
+mkdir -p /var/lib/marzban/templates/v2ray
+```
+
+Place the files there and configure paths relative to
+`CUSTOM_TEMPLATES_DIRECTORY`:
+
+```env
+V2RAY_SUBSCRIPTION_TEMPLATE="v2ray/default.json"
+V2RAY_SETTINGS_TEMPLATE="v2ray/settings.json"
+```
+
+Restart Marzban after changing environment variables:
+
+```bash
+marzban restart
+```
+
+Editing an already configured template file does not normally require changing
+the environment again.
+
+Example transport settings:
+
 ```json
 {
   "grpcSettings": {
@@ -20,42 +60,8 @@ For example, you can change these values for gRPC configs (you can change anythi
   }
 }
 ```
-### supported network type
-| network     | support |
-|-------------|--------:|
-| WebSocket   |       ✅ |
-| gRPC        |       ✅ |
-| http        |       ✅ |
-| h2          |       ✅ |
-| kcp         |       ✅ |
-| tcp         |       ✅ |
-| httpupgrade |       ✅ |
-| splithttp   |       ✅ |
 
-## How To Use
-First of all, you need to set a directory for all of your templates (home, subscription page, etc.).
-```shell
-CUSTOM_TEMPLATES_DIRECTORY="/var/lib/marzban/templates/"
-```
-Make sure you put all of your templates in this folder.\
-If you are using Docker, make sure Docker has access to this folder.\
-Then, we need to make a directory for our V2ray template.
-```shell
-mkdir /var/lib/marzban/templates/v2ray
-```
-After that, put your templates (config and settings) in the directory.\
-Now, change these variables with your files' names.
-```shell
-V2RAY_SUBSCRIPTION_TEMPLATE="v2ray/default.json"
-V2RAY_SETTINGS_TEMPLATE="v2ray/settings.json"
-```
-Now, restart your Marzban and enjoy.
+References:
 
-If you have already changed your env variables, and you want to just update the template files, there is no need to restart Marzban.
-
-## Docs
-you can use these docs to find out how to modify template files
-
-[Xray Docs](https://xtls.github.io/en/) \
-[Xray Examples](https://github.com/XTLS/Xray-examples) \
-[Xray Examples](https://github.com/chika0801/Xray-examples) Unofficial 
+- [Xray configuration](https://xtls.github.io/en/config/)
+- [XTLS Xray examples](https://github.com/XTLS/Xray-examples)

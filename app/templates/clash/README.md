@@ -1,59 +1,57 @@
-# Clash Template
+# Clash/Mihomo subscription templates
 
-## Usage
-- Can be used to send completely prepared config to users depend on your usage.
+Clash templates let Marzban produce a complete YAML configuration with custom
+proxy groups, routing rules, DNS and transport options.
 
-## Config Template
-- With the config template, you can change things like routing and rules.
+## Supported transports
 
-## Settings Template
-You can change some values in custom configs depending on the streamSettings type that is not accessible directly from the dashboard.
+| Transport | Support |
+| --- | --- |
+| WebSocket | Yes |
+| gRPC | Yes |
+| HTTP | Yes |
+| HTTP/2 | Yes |
+| KCP | No |
+| TCP | Yes |
+| HTTPUpgrade | Partial, represented through WebSocket options |
+| SplitHTTP | No |
 
-For example, you can change these values for http configs (you can change anything that is part of netSettings except those accessible from the dashboard).
+## Configuration
+
+Set the common template directory:
+
+```env
+CUSTOM_TEMPLATES_DIRECTORY="/var/lib/marzban/templates/"
+```
+
+Create the Clash directory:
+
+```bash
+mkdir -p /var/lib/marzban/templates/clash
+```
+
+Place the YAML files there and configure paths relative to the common directory:
+
+```env
+CLASH_SUBSCRIPTION_TEMPLATE="clash/default.yml"
+CLASH_SETTINGS_TEMPLATE="clash/settings.yml"
+```
+
+Restart Marzban after changing environment variables:
+
+```bash
+marzban restart
+```
+
+Example HTTP transport options:
+
 ```yaml
 http-opts:
   - ip-version: dual
-    method: "GET"
+    method: GET
     headers:
       Connection:
         - keep-alive
 ```
-### supported network type
-| network     | support |
-|-------------|--------:|
-| WebSocket   |       ✅ |
-| gRPC        |       ✅ |
-| http        |       ✅ |
-| h2          |       ✅ |
-| kcp         |       ❌ |
-| tcp         |       ✅ |
-| httpupgrade |      ♻️ |
-| splithttp   |       ❌ |
 
-♻️ In clash httpupgrade it's part of WebSocket.
-
-## How To Use
-First of all, you need to set a directory for all of your templates (home, subscription page, etc.).
-```shell
-CUSTOM_TEMPLATES_DIRECTORY="/var/lib/marzban/templates/"
-```
-Make sure you put all of your templates in this folder.\
-If you are using Docker, make sure Docker has access to this folder.\
-Then, we need to make a directory for our Clash template.
-```shell
-mkdir /var/lib/marzban/templates/v2ray
-```
-After that, put your templates (config and settings) in the directory.\
-Now, change these variables with your files' names.
-```shell
-CLASH_SUBSCRIPTION_TEMPLATE = "clash/default.yml")
-CLASH_SETTINGS_TEMPLATE = "clash/settings.yml")
-```
-Now, restart your Marzban and enjoy.
-
-If you have already changed your env variables, and you want to just update the template files, there is no need to restart Marzban.
-
-## Docs
-you can use these docs to find out how to modify template files
-
-[Mihomo Docs](https://wiki.metacubex.one/en/) 
+Reference: [Mihomo documentation](https://wiki.metacubex.one/en/)

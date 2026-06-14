@@ -6,7 +6,7 @@ from app.models.proxy import ProxyHostSecurity
 from app.utils.store import DictStorage
 from app.utils.system import check_port
 from app.xray import operations
-from app.xray.config import XRayConfig
+from app.xray.config import XRayConfig, load_xray_config
 from app.xray.core import XRayCore
 from app.xray.node import XRayNode
 from config import XRAY_ASSETS_PATH, XRAY_EXECUTABLE_PATH, XRAY_JSON
@@ -26,12 +26,21 @@ try:
         if not check_port(api_port):
             break
 finally:
-    config = XRayConfig(XRAY_JSON, api_port=api_port)
+    config = load_xray_config(XRAY_JSON, api_port=api_port)
     del api_port
 
 api = XRayAPI(config.api_host, config.api_port)
 
 nodes: Dict[int, XRayNode] = {}
+
+
+def reload_config():
+    global config, api
+
+    config = load_xray_config(XRAY_JSON, api_port=config.api_port)
+    api = XRayAPI(config.api_host, config.api_port)
+    hosts.update()
+    return config
 
 
 if TYPE_CHECKING:
@@ -78,6 +87,7 @@ __all__ = [
     "core",
     "api",
     "nodes",
+    "reload_config",
     "operations",
     "exceptions",
     "exc",

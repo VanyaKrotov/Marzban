@@ -7,10 +7,11 @@ from pathlib import PosixPath
 from typing import Union
 
 import commentjson
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 
 from app.db import GetDB
 from app.db import models as db_models
+from app.db.base import engine
 from app.models.proxy import ProxyTypes
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
@@ -24,6 +25,109 @@ def merge_dicts(a, b):  # B will override A dictionary key and values
         else:
             a[key] = value
     return a
+
+
+def load_xray_config(
+    config: Union[dict, str, PosixPath],
+    api_host: str = "127.0.0.1",
+    api_port: int = 8080,
+) -> "XRayConfig":
+    if isinstance(config, dict):
+        payload = deepcopy(config)
+    else:
+        path = str(config)
+        try:
+            payload = commentjson.loads(path)
+        except (json.JSONDecodeError, ValueError):
+            with open(path, "r") as config_file:
+                payload = commentjson.loads(config_file.read())
+
+    inspector = inspect(engine)
+    inbound_columns = (
+        {column["name"] for column in inspector.get_columns("inbounds")}
+        if inspector.has_table("inbounds")
+        else set()
+    )
+    if {"content", "enabled"}.issubset(inbound_columns):
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text("SELECT content, enabled FROM inbounds ORDER BY id")
+            )
+            db_inbounds = []
+            for content, enabled in rows:
+                if not enabled:
+                    continue
+                if isinstance(content, str):
+                    content = json.loads(content)
+                if isinstance(content, dict):
+                    db_inbounds.append(content)
+
+        managed_protocols = set(ProxyTypes._value2member_map_)
+        payload["inbounds"] = [
+            inbound
+            for inbound in payload.get("inbounds", [])
+            if inbound.get("protocol") not in managed_protocols
+            or inbound.get("tag") in XRAY_EXCLUDE_INBOUND_TAGS
+        ]
+        payload["inbounds"].extend(db_inbounds)
+
+    outbound_columns = (
+        {column["name"] for column in inspector.get_columns("outbounds")}
+        if inspector.has_table("outbounds")
+        else set()
+    )
+    if {"content", "enabled"}.issubset(outbound_columns):
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text("SELECT tag, content, enabled FROM outbounds ORDER BY id")
+            )
+            managed_outbound_tags = set()
+            db_outbounds = []
+            for tag, content, enabled in rows:
+                managed_outbound_tags.add(tag)
+                if not enabled:
+                    continue
+                if isinstance(content, str):
+                    content = json.loads(content)
+                if isinstance(content, dict):
+                    db_outbounds.append(content)
+
+        payload["outbounds"] = [
+            outbound
+            for outbound in payload.get("outbounds", [])
+            if outbound.get("tag") not in managed_outbound_tags
+        ]
+        payload["outbounds"].extend(db_outbounds)
+
+    routing_rule_columns = (
+        {column["name"] for column in inspector.get_columns("routing_rules")}
+        if inspector.has_table("routing_rules")
+        else set()
+    )
+    if {"content", "enabled", "position"}.issubset(routing_rule_columns):
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT content, enabled FROM routing_rules "
+                    "ORDER BY position, id"
+                )
+            )
+            routing_rules = []
+            for content, enabled in rows:
+                if not enabled:
+                    continue
+                if isinstance(content, str):
+                    content = json.loads(content)
+                if isinstance(content, dict):
+                    routing_rules.append(content)
+
+        routing = payload.get("routing")
+        if not isinstance(routing, dict):
+            routing = {}
+            payload["routing"] = routing
+        routing["rules"] = routing_rules
+
+    return XRayConfig(payload, api_host=api_host, api_port=api_port)
 
 
 class XRayConfig(dict):
@@ -367,12 +471,27 @@ class XRayConfig(dict):
             assignments = crud.get_inbound_node_ids_map(
                 db, list(self.inbounds_by_tag)
             )
+            outbound_assignments = crud.get_outbound_node_ids_map(
+                db,
+                [
+                    outbound.get("tag")
+                    for outbound in config.get("outbounds", [])
+                    if outbound.get("tag")
+                ],
+            )
+            routing_rules = crud.get_routing_rules_for_node(db, node_id)
             node_certificates = crud.get_node_certificates(db, node_id)
 
         allowed_tags = {
             tag for tag, node_ids in assignments.items() if node_id in node_ids
         }
         managed_tags = set(self.inbounds_by_tag)
+        allowed_outbound_tags = {
+            tag
+            for tag, node_ids in outbound_assignments.items()
+            if node_id in node_ids
+        }
+        managed_outbound_tags = set(outbound_assignments)
 
         config["inbounds"] = [
             inbound
@@ -380,6 +499,19 @@ class XRayConfig(dict):
             if inbound.get("tag") not in managed_tags
             or inbound.get("tag") in allowed_tags
         ]
+        config["outbounds"] = [
+            outbound
+            for outbound in config.get("outbounds", [])
+            if outbound.get("tag") not in managed_outbound_tags
+            or outbound.get("tag") in allowed_outbound_tags
+        ]
+        api_rules = [
+            rule
+            for rule in config.get("routing", {}).get("rules", [])
+            if "API_INBOUND" in rule.get("inboundTag", [])
+            and rule.get("outboundTag") == "API"
+        ]
+        config.setdefault("routing", {})["rules"] = api_rules + routing_rules
 
         if node_certificates:
             certificates_by_inbound = defaultdict(list)

@@ -1,0 +1,36 @@
+import type { StatsGranularity } from "./query";
+
+export const CHART_COLORS = [
+  "var(--chart-2)",
+  "var(--chart-4)",
+  "var(--chart-1)",
+  "var(--chart-3)",
+  "var(--chart-5)",
+  "#14b8a6",
+  "#f59e0b",
+  "#e11d48",
+];
+
+export function formatPeriod(
+  value: string,
+  granularity: StatsGranularity,
+  locale: string,
+) {
+  const date = new Date(value);
+  const options: Intl.DateTimeFormatOptions =
+    granularity === "month"
+      ? { month: "short", year: "numeric" }
+      : { day: "numeric", month: "short" };
+  return new Intl.DateTimeFormat(locale, options).format(date);
+}
+
+export function formatCompactBytes(value: number) {
+  if (!value) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  const index = Math.min(
+    Math.floor(Math.log(value) / Math.log(1024)),
+    units.length - 1,
+  );
+  const amount = value / 1024 ** index;
+  return `${amount >= 10 ? amount.toFixed(0) : amount.toFixed(1)} ${units[index]}`;
+}
