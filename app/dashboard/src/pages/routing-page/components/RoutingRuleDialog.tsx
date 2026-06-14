@@ -28,6 +28,8 @@ import type { NodeType } from "types/Node";
 import {
   type RoutingRule,
   type RoutingRulePayload,
+  useRoutingInboundsQuery,
+  useRoutingOutboundsQuery,
 } from "../lib/query";
 import { createXrayRoutingRuleSchema } from "../lib/xray-routing-rule-schema";
 
@@ -55,8 +57,6 @@ type FormValues = z.infer<typeof formSchema>;
 type RoutingRuleDialogProps = {
   rule: RoutingRule | null;
   nodes: NodeType[];
-  inboundTags: string[];
-  outboundTags: string[];
   open: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
@@ -66,14 +66,36 @@ type RoutingRuleDialogProps = {
 export function RoutingRuleDialog({
   rule,
   nodes,
-  inboundTags,
-  outboundTags,
   open,
   pending,
   onOpenChange,
   onSubmit,
 }: RoutingRuleDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+        <RoutingRuleDialogContent
+          rule={rule}
+          nodes={nodes}
+          pending={pending}
+          onSubmit={onSubmit}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RoutingRuleDialogContent({
+  rule,
+  nodes,
+  pending,
+  onSubmit,
+}: Pick<RoutingRuleDialogProps, "rule" | "nodes" | "pending" | "onSubmit">) {
   const { t } = useTranslation();
+  const inboundsQuery = useRoutingInboundsQuery();
+  const outboundsQuery = useRoutingOutboundsQuery();
+  const inboundTags = (inboundsQuery.data ?? []).map((item) => item.tag);
+  const outboundTags = (outboundsQuery.data ?? []).map((item) => item.tag);
   const readonly = rule?.readonly ?? false;
   const schema = useMemo(
     () => createXrayRoutingRuleSchema(inboundTags, outboundTags),
@@ -107,8 +129,7 @@ export function RoutingRuleDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+    <>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Braces className="size-5 text-primary" />
@@ -261,7 +282,6 @@ export function RoutingRuleDialog({
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

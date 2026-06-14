@@ -52,21 +52,6 @@ export function NodeCertificatesDialog({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [domain, setDomain] = useState("");
-  const [email, setEmail] = useState("");
-  const { data: certificates = [], isLoading } = useNodeCertificatesQuery(
-    nodeId,
-    open,
-  );
-  const issue = useIssueCertificateMutation(nodeId);
-  const remove = useDeleteCertificateMutation(nodeId);
-
-  const issueCertificate = () => {
-    issue.mutate(
-      { domain: domain.trim(), email: email.trim() },
-      { onSuccess: () => setDomain("") },
-    );
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -79,14 +64,44 @@ export function NodeCertificatesDialog({
         )}
       </DialogTrigger>
       <DialogContent className="w-[calc(100%-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden sm:max-h-[calc(100svh-2rem)] sm:max-w-2xl">
-        <DialogHeader>
+        <NodeCertificatesContent nodeId={nodeId} nodeName={nodeName} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NodeCertificatesContent({
+  nodeId,
+  nodeName,
+}: {
+  nodeId: number;
+  nodeName: string;
+}) {
+  const { t } = useTranslation();
+  const [domain, setDomain] = useState("");
+  const [email, setEmail] = useState("");
+  const { data: certificates = [], isLoading } =
+    useNodeCertificatesQuery(nodeId);
+  const issue = useIssueCertificateMutation(nodeId);
+  const remove = useDeleteCertificateMutation(nodeId);
+
+  const issueCertificate = () => {
+    issue.mutate(
+      { domain: domain.trim(), email: email.trim() },
+      { onSuccess: () => setDomain("") },
+    );
+  };
+
+  return (
+    <>
+      <DialogHeader>
           <DialogTitle>{t("nodes.certificates.title")}</DialogTitle>
           <DialogDescription>
             {nodeName}. {t("nodesPage.certificatesDescription")}
           </DialogDescription>
-        </DialogHeader>
+      </DialogHeader>
 
-        <section className="space-y-4">
+      <section className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="certificate-domain">
@@ -154,9 +169,8 @@ export function NodeCertificatesDialog({
               {t("nodes.certificates.empty")}
             </p>
           )}
-        </section>
-      </DialogContent>
-    </Dialog>
+      </section>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { LoaderCircle, Pencil, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -49,10 +49,45 @@ export function UserEditDialog({
   onEditingUserChange,
   onCreatingUserChange,
 }: UserEditDialogProps) {
+  const isOpen = creatingUser || Boolean(editingUser);
+  const [closeDisabled, setCloseDisabled] = useState(false);
+
+  const close = () => {
+    onCreatingUserChange(false);
+    onEditingUserChange(null);
+  };
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && !closeDisabled && close()}
+    >
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+        <UserEditDialogContent
+          editingUser={editingUser}
+          onClose={close}
+          onEditingUserChange={onEditingUserChange}
+          onPendingChange={setCloseDisabled}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UserEditDialogContent({
+  editingUser,
+  onClose,
+  onEditingUserChange,
+  onPendingChange,
+}: {
+  editingUser: User | null;
+  onClose: () => void;
+  onEditingUserChange: (user: User | null) => void;
+  onPendingChange: (pending: boolean) => void;
+}) {
   const { t } = useTranslation();
   const isEditing = Boolean(editingUser);
-  const isOpen = creatingUser || isEditing;
-  const inboundsQuery = useInboundsByProtocolQuery(isOpen);
+  const inboundsQuery = useInboundsByProtocolQuery(true);
   const availableInbounds = inboundsQuery.data ?? emptyInbounds;
   const form = useUserEditForm(editingUser, availableInbounds);
   const usage = useUserUsage(editingUser);
@@ -69,11 +104,15 @@ export function UserEditDialog({
 
   const close = () => {
     form.reset(getDefaultUserFormValues(availableInbounds));
-    onCreatingUserChange(false);
-    onEditingUserChange(null);
     setServerError(null);
     usage.reset();
+    onClose();
   };
+
+  useEffect(() => {
+    onPendingChange(disabled);
+    return () => onPendingChange(false);
+  }, [disabled, onPendingChange]);
 
   const submit = (values: UserFormValues) => {
     setServerError(null);
@@ -95,12 +134,7 @@ export function UserEditDialog({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => !open && !disabled && close()}
-    >
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
-        <FormProvider {...form}>
+    <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(submit)} className="space-y-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
@@ -162,8 +196,6 @@ export function UserEditDialog({
               </Button>
             </DialogFooter>
           </form>
-        </FormProvider>
-      </DialogContent>
-    </Dialog>
+    </FormProvider>
   );
 }

@@ -53,9 +53,7 @@ import {
   type RoutingRulePayload,
   useCreateRoutingRuleMutation,
   useDeleteRoutingRuleMutation,
-  useRoutingInboundsQuery,
   useRoutingNodesQuery,
-  useRoutingOutboundsQuery,
   useRoutingRulesQuery,
   useReorderRoutingRulesMutation,
   useUpdateRoutingRuleMutation,
@@ -65,8 +63,6 @@ export function RoutingPage() {
   const { t } = useTranslation();
   const rulesQuery = useRoutingRulesQuery();
   const nodesQuery = useRoutingNodesQuery();
-  const inboundsQuery = useRoutingInboundsQuery();
-  const outboundsQuery = useRoutingOutboundsQuery();
   const create = useCreateRoutingRuleMutation();
   const update = useUpdateRoutingRuleMutation();
   const reorder = useReorderRoutingRulesMutation();
@@ -352,10 +348,6 @@ export function RoutingPage() {
         key={`${editingRule?.id ?? "create"}-${dialogOpen}`}
         rule={editingRule}
         nodes={nodesQuery.data ?? []}
-        inboundTags={(inboundsQuery.data ?? []).map((inbound) => inbound.tag)}
-        outboundTags={(outboundsQuery.data ?? []).map(
-          (outbound) => outbound.tag,
-        )}
         open={dialogOpen}
         pending={pending}
         onOpenChange={setDialogOpen}

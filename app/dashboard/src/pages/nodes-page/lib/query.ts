@@ -22,6 +22,8 @@ export type NodeCertificate = {
 
 export const nodeSettingsQueryKey = ["node-settings"] as const;
 export const nodesQueryKey = ["nodes"] as const;
+export const nodeQueryKey = (nodeId: number) =>
+  [...nodesQueryKey, nodeId] as const;
 export const nodeCertificatesQueryKey = (nodeId: number) =>
   ["node-certificates", nodeId] as const;
 
@@ -30,6 +32,21 @@ export function useNodesPageQuery() {
     queryKey: nodesQueryKey,
     queryFn: () => api.get<NodeType[]>("/nodes"),
     refetchInterval: 3000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useNodeQuery(
+  nodeId?: number | null,
+  enabled = true,
+  placeholderData?: NodeType,
+) {
+  return useQuery({
+    queryKey: nodeQueryKey(nodeId ?? 0),
+    queryFn: () => api.get<NodeType>(`/node/${nodeId}`),
+    enabled: Boolean(nodeId) && enabled,
+    placeholderData,
+    refetchInterval: enabled ? 3000 : false,
     refetchOnWindowFocus: false,
   });
 }

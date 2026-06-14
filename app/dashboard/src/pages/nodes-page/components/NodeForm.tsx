@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -36,6 +36,12 @@ export function NodeForm({
       add_as_new_host: false,
     },
   });
+
+  useEffect(() => {
+    if (node && !form.formState.isDirty) {
+      form.reset(node);
+    }
+  }, [form, node]);
 
   return (
     <form

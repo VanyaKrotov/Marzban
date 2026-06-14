@@ -70,6 +70,26 @@ export function OutboundDialog({
   onOpenChange,
   onSubmit,
 }: OutboundDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+        <OutboundDialogContent
+          outbound={outbound}
+          nodes={nodes}
+          pending={pending}
+          onSubmit={onSubmit}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OutboundDialogContent({
+  outbound,
+  nodes,
+  pending,
+  onSubmit,
+}: Pick<OutboundDialogProps, "outbound" | "nodes" | "pending" | "onSubmit">) {
   const { t } = useTranslation();
   const readonly = outbound?.readonly ?? false;
   const form = useForm<OutboundFormValues>({
@@ -92,8 +112,7 @@ export function OutboundDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+    <>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Braces className="size-5 text-primary" />
@@ -240,7 +259,6 @@ export function OutboundDialog({
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

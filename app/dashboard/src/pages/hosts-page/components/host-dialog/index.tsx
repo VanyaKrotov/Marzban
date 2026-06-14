@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HostType } from "../../types";
-import type { InboundType } from "types/Inbound";
+import { useInboundsQuery } from "../../lib/query";
 
 import { AdvancedFields } from "./components/AdvancedFields";
 import { BasicFields } from "./components/BasicFields";
@@ -23,9 +23,6 @@ type HostDialogProps = {
   open: boolean;
   host: HostType | null;
   inboundTag: string | null;
-  inbounds: InboundType[];
-  inboundsLoading: boolean;
-  inboundsError: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: HostFormValues) => void;
@@ -35,14 +32,36 @@ export function HostDialog({
   open,
   host,
   inboundTag,
-  inbounds,
-  inboundsLoading,
-  inboundsError,
   pending,
   onOpenChange,
   onSubmit,
 }: HostDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
+        <HostDialogContent
+          host={host}
+          inboundTag={inboundTag}
+          pending={pending}
+          onSubmit={onSubmit}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HostDialogContent({
+  host,
+  inboundTag,
+  pending,
+  onSubmit,
+}: Omit<HostDialogProps, "open" | "onOpenChange">) {
   const { t } = useTranslation();
+  const {
+    data: inbounds = [],
+    isLoading: inboundsLoading,
+    isError: inboundsError,
+  } = useInboundsQuery(true);
   const initialInbound = inboundTag ?? inbounds[0]?.tag ?? "";
   const form = useForm<HostFormValues>({
     resolver: zodResolver(hostFormSchema),
@@ -57,8 +76,7 @@ export function HostDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
+    <>
         <HostDialogHeader isEditing={Boolean(host)} />
         {inboundsLoading ? (
           <div className="space-y-3">
@@ -88,7 +106,6 @@ export function HostDialog({
             />
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

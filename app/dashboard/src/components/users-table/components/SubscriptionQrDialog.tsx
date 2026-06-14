@@ -47,6 +47,22 @@ export function SubscriptionQrDialog({
   open,
   onOpenChange,
 }: SubscriptionQrDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <SubscriptionQrDialogContent
+          links={links}
+          subscribeUrl={subscribeUrl}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SubscriptionQrDialogContent({
+  links,
+  subscribeUrl,
+}: Pick<SubscriptionQrDialogProps, "links" | "subscribeUrl">) {
   const { t } = useTranslation();
   const subscriptionLink = subscribeUrl?.startsWith("/")
     ? window.location.origin + subscribeUrl
@@ -54,8 +70,7 @@ export function SubscriptionQrDialog({
   const defaultTab = subscriptionLink ? "subscription" : "config-0";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="size-5" />
@@ -66,8 +81,7 @@ export function SubscriptionQrDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {open && (
-          <Tabs key={defaultTab} defaultValue={defaultTab}>
+      <Tabs key={defaultTab} defaultValue={defaultTab}>
             <TabsList className="h-auto max-w-full flex-wrap justify-start overflow-visible">
               {subscriptionLink && (
                 <TabsTrigger value="subscription">
@@ -97,9 +111,7 @@ export function SubscriptionQrDialog({
                 />
               </TabsContent>
             ))}
-          </Tabs>
-        )}
-      </DialogContent>
-    </Dialog>
+      </Tabs>
+    </>
   );
 }

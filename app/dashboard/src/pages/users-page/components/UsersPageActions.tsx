@@ -35,20 +35,7 @@ const SYSTEM_STATS_QUERY_KEY = ["statistics-query-key"] as const;
 export function UsersPageActions() {
   const { t } = useTranslation();
   const admin = useRouteLoaderData("layout") as Admin | undefined;
-  const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const resetMutation = useMutation({
-    mutationFn: () => api.post<void>("/users/reset"),
-    onSuccess: async () => {
-      generateSuccessMessage(t("resetAllUsage.success"));
-      setConfirmOpen(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: SYSTEM_STATS_QUERY_KEY }),
-      ]);
-    },
-    onError: (error) => generateErrorMessage(error),
-  });
 
   if (!admin?.is_sudo) return null;
 
@@ -78,7 +65,34 @@ export function UsersPageActions() {
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
+          <ResetAllUsageDialogContent
+            onSuccess={() => setConfirmOpen(false)}
+          />
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function ResetAllUsageDialogContent({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const resetMutation = useMutation({
+    mutationFn: () => api.post<void>("/users/reset"),
+    onSuccess: async () => {
+      generateSuccessMessage(t("resetAllUsage.success"));
+      onSuccess();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: SYSTEM_STATS_QUERY_KEY }),
+      ]);
+    },
+    onError: (error) => generateErrorMessage(error),
+  });
+
+  return (
+    <>
+      <AlertDialogHeader>
             <AlertDialogMedia className="bg-destructive/10 text-destructive">
               <RotateCcw />
             </AlertDialogMedia>
@@ -86,8 +100,8 @@ export function UsersPageActions() {
             <AlertDialogDescription>
               {t("resetAllUsage.prompt")}
             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
             <AlertDialogCancel disabled={resetMutation.isPending}>
               {t("cancel")}
             </AlertDialogCancel>
@@ -106,9 +120,7 @@ export function UsersPageActions() {
               )}
               {t("reset")}
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialogFooter>
     </>
   );
 }

@@ -60,7 +60,6 @@ import {
 } from "./lib/model";
 import {
   useHostsQuery,
-  useInboundsQuery,
   useSaveHostsMutation,
 } from "./lib/query";
 import type { HostsSchema } from "./types";
@@ -82,11 +81,6 @@ export function HostsPage() {
     isError,
     refetch,
   } = useHostsQuery();
-  const {
-    data: inbounds = [],
-    isLoading: inboundsLoading,
-    isError: inboundsError,
-  } = useInboundsQuery(dialogOpen);
   const save = useSaveHostsMutation();
   const rows = useMemo(() => flattenHosts(hosts), [hosts]);
 
@@ -408,13 +402,10 @@ export function HostsPage() {
 
       {hostsData && (
         <HostDialog
-          key={`${editingRow?.id ?? "create"}-${dialogOpen}-${inbounds[0]?.tag ?? "loading"}`}
+          key={`${editingRow?.id ?? "create"}-${dialogOpen}`}
           open={dialogOpen}
           host={editingRow?.host ?? null}
           inboundTag={editingRow?.inboundTag ?? null}
-          inbounds={inbounds}
-          inboundsLoading={inboundsLoading}
-          inboundsError={inboundsError}
           pending={save.isPending}
           onOpenChange={setDialogOpen}
           onSubmit={submitHost}

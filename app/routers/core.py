@@ -127,3 +127,11 @@ def modify_core_config(
             xray.operations.restart_node(node_id)
 
     return payload
+
+@router.get("/core/x25519", responses={400: responses._400})
+def get_x25519_keys():
+    res = xray.core.get_x25519()
+    if res is None:
+        return HTTPException(status_code=400, detail="Invalid private key")
+
+    return res
