@@ -146,10 +146,28 @@ detect_compose() {
     COMPOSE='docker compose'
 }
 
+download_and_install_marzban_script() {
+    local temp_file
+
+    temp_file=$(mktemp)
+    if ! curl --fail --silent --show-error --location "$SCRIPT_URL" -o "$temp_file"; then
+        rm -f "$temp_file"
+        colorized_echo red "Unable to download marzban script from $SCRIPT_URL"
+        return 1
+    fi
+
+    if ! install -m 755 "$temp_file" /usr/local/bin/marzban; then
+        rm -f "$temp_file"
+        colorized_echo red "Unable to install marzban script to /usr/local/bin/marzban"
+        return 1
+    fi
+
+    rm -f "$temp_file"
+}
+
 install_marzban_script() {
     colorized_echo blue "Installing marzban script"
-    curl --fail --silent --show-error --location "$SCRIPT_URL" \
-        | install -m 755 /dev/stdin /usr/local/bin/marzban
+    download_and_install_marzban_script
     colorized_echo green "marzban script installed successfully"
 }
 
@@ -1568,8 +1586,7 @@ update_command() {
 
 update_marzban_script() {
     colorized_echo blue "Updating marzban script"
-    curl --fail --silent --show-error --location "$SCRIPT_URL" \
-        | install -m 755 /dev/stdin /usr/local/bin/marzban
+    download_and_install_marzban_script
     colorized_echo green "marzban script updated successfully"
 }
 
