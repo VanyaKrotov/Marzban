@@ -312,10 +312,12 @@ def remove_node(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Delete a node and remove it from xray in the background."""
+    node_id = dbnode.id
+    node_name = dbnode.name
     crud.remove_node(db, dbnode)
-    xray.operations.remove_node(dbnode.id)
+    xray.operations.remove_node(node_id)
 
-    logger.info(f'Node "{dbnode.name}" deleted')
+    logger.info(f'Node "{node_name}" deleted')
     return {}
 
 

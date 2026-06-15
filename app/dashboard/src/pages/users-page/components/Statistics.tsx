@@ -48,7 +48,7 @@ export const Statistics: FC = () => {
   const { data: systemData } = useQuery({
     queryKey: StatisticsQueryKey,
     queryFn: () => api.get<SystemStats>("/system"),
-    refetchInterval: 5000,
+    refetchInterval: 10_000,
   });
 
   return (

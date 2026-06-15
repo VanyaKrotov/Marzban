@@ -2101,7 +2101,10 @@ def create_node(db: Session, node: NodeCreate) -> Node:
 
 def remove_node(db: Session, dbnode: Node) -> Node:
     """
-    Removes a node from the database.
+    Removes a node and all data owned by it from the database.
+
+    Shared inbounds, outbounds, and routing rules are preserved. Only their
+    assignments to the deleted node are removed.
 
     Args:
         db (Session): The database session.
@@ -2110,6 +2113,20 @@ def remove_node(db: Session, dbnode: Node) -> Node:
     Returns:
         Node: The removed Node object.
     """
+    dbnode.inbounds.clear()
+    dbnode.outbounds.clear()
+    dbnode.routing_rules.clear()
+
+    for certificate in list(dbnode.certificates):
+        certificate.inbounds.clear()
+        db.delete(certificate)
+
+    db.query(NodeUserUsage).filter(NodeUserUsage.node_id == dbnode.id).delete(
+        synchronize_session=False
+    )
+    db.query(NodeUsage).filter(NodeUsage.node_id == dbnode.id).delete(
+        synchronize_session=False
+    )
     db.delete(dbnode)
     db.commit()
     return dbnode

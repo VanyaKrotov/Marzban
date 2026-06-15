@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { NodeType } from "types/Node";
 import { api } from "service/http";
 
 export type OutboundConfig = {
@@ -20,19 +19,11 @@ export type OutboundUpdate = Partial<
 >;
 
 export const outboundConfigsQueryKey = ["outbound-configs"] as const;
-export const outboundNodesQueryKey = ["outbound-page-nodes"] as const;
 
 export function useOutboundConfigsQuery() {
   return useQuery({
     queryKey: outboundConfigsQueryKey,
     queryFn: () => api.get<OutboundConfig[]>("/outbounds/configs"),
-  });
-}
-
-export function useOutboundNodesQuery() {
-  return useQuery({
-    queryKey: outboundNodesQueryKey,
-    queryFn: () => api.get<NodeType[]>("/nodes"),
   });
 }
 

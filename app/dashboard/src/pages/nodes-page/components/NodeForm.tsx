@@ -149,7 +149,7 @@ export function NodeForm({
         />
       )}
 
-      <div className="flex items-center gap-2 border-t pt-4">
+      <div className="flex items-center gap-2 pt-6">
         {actions}
         <Button className="flex-1" type="submit" disabled={pending}>
           {isEditing ? t("nodes.editNode") : t("nodes.addNode")}

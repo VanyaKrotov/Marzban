@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Braces, ChevronDown, LoaderCircle } from "lucide-react";
+import { Braces, LoaderCircle } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -13,24 +13,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import type { NodeType } from "types/Node";
 
-import type { OutboundConfig, OutboundPayload } from "../lib/query";
-import { xrayOutboundSchema } from "../lib/xray-outbound-schema";
+import { xrayOutboundSchema } from "@/lib/xray-schemas/outbound";
+import type {
+  OutboundConfig,
+  OutboundPayload,
+} from "../../lib/outbounds-query";
 
 const outboundFormSchema = z.object({
   tag: z.string().trim().min(1).max(256),
   enabled: z.boolean(),
-  node_ids: z.array(z.number()),
   content: z.string().superRefine((value, context) => {
     try {
       const parsed = JSON.parse(value);
@@ -50,7 +45,7 @@ type OutboundFormValues = z.infer<typeof outboundFormSchema>;
 
 type OutboundDialogProps = {
   outbound: OutboundConfig | null;
-  nodes: NodeType[];
+  nodeId: number;
   open: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
@@ -64,7 +59,7 @@ const defaultContent = {
 
 export function OutboundDialog({
   outbound,
-  nodes,
+  nodeId,
   open,
   pending,
   onOpenChange,
@@ -75,7 +70,7 @@ export function OutboundDialog({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
         <OutboundDialogContent
           outbound={outbound}
-          nodes={nodes}
+          nodeId={nodeId}
           pending={pending}
           onSubmit={onSubmit}
         />
@@ -86,10 +81,16 @@ export function OutboundDialog({
 
 function OutboundDialogContent({
   outbound,
-  nodes,
+  nodeId,
   pending,
   onSubmit,
-}: Pick<OutboundDialogProps, "outbound" | "nodes" | "pending" | "onSubmit">) {
+}: Pick<
+  OutboundDialogProps,
+  | "outbound"
+  | "nodeId"
+  | "pending"
+  | "onSubmit"
+>) {
   const { t } = useTranslation();
   const readonly = outbound?.readonly ?? false;
   const form = useForm<OutboundFormValues>({
@@ -97,7 +98,6 @@ function OutboundDialogContent({
     defaultValues: {
       tag: outbound?.tag ?? "",
       enabled: outbound?.enabled ?? true,
-      node_ids: outbound?.node_ids ?? [],
       content: JSON.stringify(outbound?.content ?? defaultContent, null, 2),
     },
   });
@@ -106,7 +106,7 @@ function OutboundDialogContent({
     onSubmit({
       tag: values.tag,
       enabled: values.enabled,
-      node_ids: values.node_ids,
+      node_ids: outbound?.node_ids ?? [nodeId],
       content: JSON.parse(values.content) as Record<string, unknown>,
     });
   };
@@ -169,65 +169,6 @@ function OutboundDialogContent({
               )}
             />
           </div>
-
-          <Controller
-            control={form.control}
-            name="node_ids"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel>{t("outboundsPage.assignedNodes")}</FieldLabel>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-between font-normal"
-                      disabled={pending}
-                    >
-                      <span className="truncate">
-                        {field.value.length
-                          ? nodes
-                              .filter(
-                                (node) =>
-                                  node.id != null &&
-                                  field.value.includes(node.id),
-                              )
-                              .map((node) => node.name)
-                              .join(", ")
-                          : t("outboundsPage.noNodes")}
-                      </span>
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    className="w-[var(--radix-dropdown-menu-trigger-width)]"
-                  >
-                    {nodes.map((node) =>
-                      node.id == null ? null : (
-                        <DropdownMenuCheckboxItem
-                          key={node.id}
-                          checked={field.value.includes(node.id)}
-                          onCheckedChange={(checked) =>
-                            field.onChange(
-                              checked
-                                ? [...field.value, node.id]
-                                : field.value.filter(
-                                    (nodeId) => nodeId !== node.id,
-                                  ),
-                            )
-                          }
-                          onSelect={(event) => event.preventDefault()}
-                        >
-                          {node.name}
-                        </DropdownMenuCheckboxItem>
-                      ),
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Field>
-            )}
-          />
 
           <Controller
             control={form.control}

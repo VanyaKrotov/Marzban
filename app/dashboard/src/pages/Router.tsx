@@ -3,12 +3,10 @@ import { AxiosError } from "axios";
 
 import { ErrorFallback } from "@/components/ErrorFallback";
 import HostsPage from "@/pages/hosts-page";
-import InboundsPage from "@/pages/inbounds-page";
 import ConfigPage from "@/pages/config-page";
 import LogsPage from "@/pages/logs-page";
 import NodesPage from "@/pages/nodes-page";
-import OutboundsPage from "@/pages/outbounds-page";
-import RoutingPage from "@/pages/routing-page";
+import NodeProfilePage from "@/pages/node-profile-page";
 import StatsPage from "@/pages/stats-page";
 import UsersPage from "@/pages/users-page";
 import LoginPage from "@/pages/login-page";
@@ -45,24 +43,16 @@ export const router = createHashRouter([
         element: <NodesPage />,
       },
       {
+        path: "nodes/:id",
+        element: <NodeProfilePage />,
+      },
+      {
         path: "hosts",
         element: <HostsPage />,
       },
       {
         path: "stats",
         element: <StatsPage />,
-      },
-      {
-        path: "inbounds",
-        element: <InboundsPage />,
-      },
-      {
-        path: "outbounds",
-        element: <OutboundsPage />,
-      },
-      {
-        path: "routing",
-        element: <RoutingPage />,
       },
       {
         path: "config",
@@ -77,5 +67,9 @@ export const router = createHashRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
   },
 ]);

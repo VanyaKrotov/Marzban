@@ -1,5 +1,4 @@
-import { Check, Clipboard, Link, QrCode } from "lucide-react";
-import { useEffect, useState } from "react";
+import { QrCode } from "lucide-react";
 import type { ReactNode } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
@@ -10,9 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCopy } from "@/hooks/use-copy";
 import { User } from "types/User";
-
-type CopiedValue = "subscription" | "configs" | null;
 
 export function UserActions({
   user,
@@ -22,15 +20,12 @@ export function UserActions({
   onShowQr: (user: User) => void;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState<CopiedValue>(null);
-
-  useEffect(() => {
-    if (!copied) return;
-
-    const timeout = window.setTimeout(() => setCopied(null), 1000);
-
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
+  const subscriptionUrl = user.subscription_url.startsWith("/")
+    ? window.location.origin + user.subscription_url
+    : user.subscription_url;
+  const configs = user.links.join("\r\n");
+  const subscriptionCopy = useCopy(subscriptionUrl);
+  const configsCopy = useCopy(configs);
 
   const action = (label: string, icon: ReactNode, onClick: () => void) => (
     <Tooltip>
@@ -54,12 +49,12 @@ export function UserActions({
 
   const copyAction = (
     value: string,
-    type: Exclude<CopiedValue, null>,
     label: string,
-    icon: ReactNode,
+    Icon: typeof subscriptionCopy.Icon,
+    onCopy: () => void,
   ) => (
     <Tooltip>
-      <CopyToClipboard text={value} onCopy={() => setCopied(type)}>
+      <CopyToClipboard text={value} onCopy={onCopy}>
         <TooltipTrigger asChild>
           <Button
             type="button"
@@ -68,17 +63,13 @@ export function UserActions({
             aria-label={label}
             onClick={(event) => event.stopPropagation()}
           >
-            {icon}
+            <Icon />
           </Button>
         </TooltipTrigger>
       </CopyToClipboard>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
-
-  const subscriptionUrl = user.subscription_url.startsWith("/")
-    ? window.location.origin + user.subscription_url
-    : user.subscription_url;
 
   return (
     <div
@@ -87,19 +78,19 @@ export function UserActions({
     >
       {copyAction(
         subscriptionUrl,
-        "subscription",
-        copied === "subscription"
-          ? t("usersTable.copied")
+        subscriptionCopy.copied
+          ? t("copied")
           : t("usersTable.copyLink"),
-        copied === "subscription" ? <Check /> : <Link />,
+        subscriptionCopy.Icon,
+        subscriptionCopy.onCopy,
       )}
       {copyAction(
-        user.links.join("\r\n"),
-        "configs",
-        copied === "configs"
-          ? t("usersTable.copied")
+        configs,
+        configsCopy.copied
+          ? t("copied")
           : t("usersTable.copyConfigs"),
-        copied === "configs" ? <Check /> : <Clipboard />,
+        configsCopy.Icon,
+        configsCopy.onCopy,
       )}
       {action("QR Code", <QrCode />, () => onShowQr(user))}
     </div>

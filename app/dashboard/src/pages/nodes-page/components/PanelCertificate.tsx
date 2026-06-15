@@ -1,4 +1,4 @@
-import { Copy, Download, Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { Download, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopy } from "@/hooks/use-copy";
 
 import { useNodeSettingsQuery } from "../lib/query";
 
@@ -21,6 +22,7 @@ export function PanelCertificate() {
   const [visible, setVisible] = useState(false);
   const { data, isLoading } = useNodeSettingsQuery(true);
   const certificate = data?.certificate ?? "";
+  const { copied, Icon, onCopy } = useCopy(certificate);
 
   const download = () => {
     const url = URL.createObjectURL(
@@ -51,15 +53,17 @@ export function PanelCertificate() {
           >
             {visible ? <EyeOff /> : <Eye />}
           </Button>
-          <CopyToClipboard text={certificate}>
+          <CopyToClipboard text={certificate} onCopy={onCopy}>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               disabled={!certificate}
-              aria-label={t("nodesPage.copyCertificate")}
+              aria-label={t(
+                copied ? "copied" : "nodesPage.copyCertificate",
+              )}
             >
-              <Copy />
+              <Icon />
             </Button>
           </CopyToClipboard>
           <Button

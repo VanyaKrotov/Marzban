@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { NodeType } from "types/Node";
 import { api } from "service/http";
 
 export type RoutingRule = {
@@ -24,21 +23,13 @@ type TaggedConfig = {
 };
 
 export const routingRulesQueryKey = ["routing-rules"] as const;
-const routingNodesQueryKey = ["routing-page-nodes"] as const;
-const routingInboundsQueryKey = ["routing-page-inbounds"] as const;
-const routingOutboundsQueryKey = ["routing-page-outbounds"] as const;
+const routingInboundsQueryKey = ["node-profile-routing-inbounds"] as const;
+const routingOutboundsQueryKey = ["node-profile-routing-outbounds"] as const;
 
 export function useRoutingRulesQuery() {
   return useQuery({
     queryKey: routingRulesQueryKey,
     queryFn: () => api.get<RoutingRule[]>("/routing/rules"),
-  });
-}
-
-export function useRoutingNodesQuery() {
-  return useQuery({
-    queryKey: routingNodesQueryKey,
-    queryFn: () => api.get<NodeType[]>("/nodes"),
   });
 }
 

@@ -31,7 +31,7 @@ export function useNodesPageQuery() {
   return useQuery({
     queryKey: nodesQueryKey,
     queryFn: () => api.get<NodeType[]>("/nodes"),
-    refetchInterval: 3000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
 }
@@ -46,7 +46,7 @@ export function useNodeQuery(
     queryFn: () => api.get<NodeType>(`/node/${nodeId}`),
     enabled: Boolean(nodeId) && enabled,
     placeholderData,
-    refetchInterval: enabled ? 3000 : false,
+    refetchInterval: enabled ? 10_000 : false,
     refetchOnWindowFocus: false,
   });
 }
@@ -66,16 +66,14 @@ export function useNodeCertificatesQuery(
 ) {
   return useQuery({
     queryKey: nodeCertificatesQueryKey(nodeId ?? 0),
-    queryFn: () =>
-      api.get<NodeCertificate[]>(`/node/${nodeId}/certificates`),
+    queryFn: () => api.get<NodeCertificate[]>(`/node/${nodeId}/certificates`),
     enabled: Boolean(nodeId) && enabled,
   });
 }
 
 function useInvalidateNodes() {
   const queryClient = useQueryClient();
-  return () =>
-    queryClient.invalidateQueries({ queryKey: nodesQueryKey });
+  return () => queryClient.invalidateQueries({ queryKey: nodesQueryKey });
 }
 
 export function useCreateNodeMutation() {
@@ -103,10 +101,19 @@ export function useReconnectNodeMutation() {
 }
 
 export function useDeleteNodeMutation() {
-  const invalidate = useInvalidateNodes();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (nodeId: number) => api.delete(`/node/${nodeId}`),
-    onSuccess: invalidate,
+    onSuccess: (_, nodeId) => {
+      queryClient.removeQueries({
+        queryKey: nodeQueryKey(nodeId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: nodesQueryKey,
+        exact: true,
+      });
+    },
   });
 }
 

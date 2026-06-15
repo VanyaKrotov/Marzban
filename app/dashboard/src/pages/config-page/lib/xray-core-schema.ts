@@ -1,6 +1,6 @@
 import type { MonacoJsonSchema } from "@/components/MonacoJsonEditor";
-import { xrayInboundSchema } from "@/pages/inbounds-page/lib/xray-inbound-schema";
-import { xrayOutboundSchema } from "@/pages/outbounds-page/lib/xray-outbound-schema";
+import { xrayInboundSchema } from "@/lib/xray-schemas/inbound";
+import { xrayOutboundSchema } from "@/lib/xray-schemas/outbound";
 
 const stringList = (
   description: string,

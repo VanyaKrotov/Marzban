@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Braces, ChevronDown, LoaderCircle } from "lucide-react";
+import { Braces, LoaderCircle } from "lucide-react";
 import { useMemo } from "react";
 import {
   Controller,
@@ -15,12 +15,6 @@ import set from "lodash/set";
 import { Button } from "@/components/ui/button";
 import { MonacoJsonEditor } from "@/components/MonacoJsonEditor";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,18 +24,19 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import type { NodeType } from "types/Node";
 
-import type { InboundConfig, InboundPayload } from "../lib/query";
-import { xrayInboundSchema } from "../lib/xray-inbound-schema";
-import { tryParseInbound } from "../lib/selectors";
+import { xrayInboundSchema } from "@/lib/xray-schemas/inbound";
+import type {
+  InboundConfig,
+  InboundPayload,
+} from "../../lib/inbounds-query";
+import { tryParseInbound } from "./selectors";
 import ShortIdsHelper from "./ShortIdsHelper";
 import X25519Helpers from "./X25519Helpers";
 
 const inboundFormSchema = z.object({
   tag: z.string().trim().min(1).max(256),
   enabled: z.boolean(),
-  node_ids: z.array(z.number()),
   content: z.string().superRefine((value, context) => {
     try {
       const parsed = JSON.parse(value);
@@ -61,7 +56,7 @@ type InboundFormValues = z.infer<typeof inboundFormSchema>;
 
 type InboundDialogProps = {
   inbound: InboundConfig | null;
-  nodes: NodeType[];
+  nodeId: number;
   open: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,7 +79,7 @@ const defaultContent = {
 
 export function InboundDialog({
   inbound,
-  nodes,
+  nodeId,
   open,
   pending,
   onOpenChange,
@@ -95,7 +90,7 @@ export function InboundDialog({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
         <InboundDialogContent
           inbound={inbound}
-          nodes={nodes}
+          nodeId={nodeId}
           pending={pending}
           onSubmit={onSubmit}
         />
@@ -106,10 +101,16 @@ export function InboundDialog({
 
 function InboundDialogContent({
   inbound,
-  nodes,
+  nodeId,
   pending,
   onSubmit,
-}: Pick<InboundDialogProps, "inbound" | "nodes" | "pending" | "onSubmit">) {
+}: Pick<
+  InboundDialogProps,
+  | "inbound"
+  | "nodeId"
+  | "pending"
+  | "onSubmit"
+>) {
   const { t } = useTranslation();
   const readonly = inbound?.readonly ?? false;
   const form = useForm<InboundFormValues>({
@@ -117,7 +118,6 @@ function InboundDialogContent({
     defaultValues: {
       tag: inbound?.tag ?? "",
       enabled: inbound?.enabled ?? true,
-      node_ids: inbound?.node_ids ?? [],
       content: JSON.stringify(inbound?.content ?? defaultContent, null, 2),
     },
   });
@@ -126,7 +126,7 @@ function InboundDialogContent({
     onSubmit({
       tag: values.tag,
       enabled: values.enabled,
-      node_ids: values.node_ids,
+      node_ids: inbound?.node_ids ?? [nodeId],
       content: JSON.parse(values.content) as Record<string, unknown>,
     });
   };
@@ -188,65 +188,6 @@ function InboundDialogContent({
                 )}
               />
             </div>
-
-            <Controller
-              control={form.control}
-              name="node_ids"
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>{t("inboundsPage.assignedNodes")}</FieldLabel>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-between font-normal"
-                        disabled={pending}
-                      >
-                        <span className="truncate">
-                          {field.value.length
-                            ? nodes
-                                .filter(
-                                  (node) =>
-                                    node.id != null &&
-                                    field.value.includes(node.id),
-                                )
-                                .map((node) => node.name)
-                                .join(", ")
-                            : t("inboundsPage.noNodes")}
-                        </span>
-                        <ChevronDown className="size-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="start"
-                      className="w-(--radix-dropdown-menu-trigger-width)"
-                    >
-                      {nodes.map((node) =>
-                        node.id == null ? null : (
-                          <DropdownMenuCheckboxItem
-                            key={node.id}
-                            checked={field.value.includes(node.id)}
-                            onCheckedChange={(checked) =>
-                              field.onChange(
-                                checked
-                                  ? [...field.value, node.id]
-                                  : field.value.filter(
-                                      (nodeId) => nodeId !== node.id,
-                                    ),
-                              )
-                            }
-                            onSelect={(event) => event.preventDefault()}
-                          >
-                            {node.name}
-                          </DropdownMenuCheckboxItem>
-                        ),
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Field>
-              )}
-            />
 
             <Controller
               control={form.control}

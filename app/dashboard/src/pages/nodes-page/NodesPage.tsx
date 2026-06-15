@@ -1,6 +1,7 @@
-import { Plus, RefreshCw, Server, ShieldPlus } from "lucide-react";
+import { Plus, RefreshCw, Server } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 import Page from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -24,25 +25,22 @@ import {
 import type { NodeType } from "types/Node";
 
 import { NodeDialog } from "./components/NodeDialog";
-import { NodeCertificatesDialog } from "./components/NodeCertificates";
 import { NodeStatusBadge } from "./components/NodeStatusBadge";
 import { useNodesPageQuery } from "./lib/query";
 
 export function NodesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data: nodes = [], isLoading, isFetching, isError, refetch } =
     useNodesPageQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<NodeType | null>(null);
 
   const openCreate = () => {
-    setSelectedNode(null);
     setDialogOpen(true);
   };
 
-  const openEdit = (node: NodeType) => {
-    setSelectedNode(node);
-    setDialogOpen(true);
+  const openProfile = (node: NodeType) => {
+    if (node.id) navigate(`/nodes/${node.id}`);
   };
 
   return (
@@ -114,7 +112,6 @@ export function NodesPage() {
                   <TableHead>{t("usersTable.status")}</TableHead>
                   <TableHead>{t("nodes.nodeAddress")}</TableHead>
                   <TableHead>{t("nodesPage.coreVersion")}</TableHead>
-                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -123,11 +120,11 @@ export function NodesPage() {
                     key={node.id ?? node.name}
                     tabIndex={0}
                     className="cursor-pointer"
-                    onClick={() => openEdit(node)}
+                    onClick={() => openProfile(node)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        openEdit(node);
+                        openProfile(node);
                       }
                     }}
                   >
@@ -147,24 +144,6 @@ export function NodesPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell onClick={(event) => event.stopPropagation()}>
-                      {node.id && (
-                        <NodeCertificatesDialog
-                          nodeId={node.id}
-                          nodeName={node.name}
-                          trigger={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={t("nodes.certificates.title")}
-                            >
-                              <ShieldPlus />
-                            </Button>
-                          }
-                        />
-                      )}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -178,11 +157,11 @@ export function NodesPage() {
                 role="button"
                 tabIndex={0}
                 className="cursor-pointer rounded-xl border bg-card p-4 text-start shadow-xs"
-                onClick={() => openEdit(node)}
+                onClick={() => openProfile(node)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    openEdit(node);
+                    openProfile(node);
                   }
                 }}
               >
@@ -200,24 +179,6 @@ export function NodesPage() {
                       : t("nodesPage.versionUnknown")}
                   </span>
                 </div>
-                {node.id && (
-                  <div
-                    className="mt-3 flex justify-end"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    <NodeCertificatesDialog
-                      nodeId={node.id}
-                      nodeName={node.name}
-                      trigger={
-                        <Button type="button" variant="outline" size="sm">
-                          <ShieldPlus />
-                          {t("nodes.certificates.title")}
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
               </article>
             ))}
           </div>
@@ -243,8 +204,7 @@ export function NodesPage() {
       )}
 
       <NodeDialog
-        key={selectedNode?.id ?? "create"}
-        node={selectedNode}
+        key={`create-${dialogOpen}`}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
       />

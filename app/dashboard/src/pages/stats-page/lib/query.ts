@@ -59,6 +59,6 @@ export function useSystemStatsQuery() {
   return useQuery({
     queryKey: systemStatsQueryKey,
     queryFn: () => api.get<SystemStats>("/system"),
-    refetchInterval: 5000,
+    refetchInterval: 10_000,
   });
 }

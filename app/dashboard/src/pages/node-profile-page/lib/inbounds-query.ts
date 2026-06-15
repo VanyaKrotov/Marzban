@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { NodeType } from "types/Node";
 import { api } from "service/http";
 
 export type InboundConfig = {
@@ -20,19 +19,11 @@ export type InboundUpdate = Partial<
 >;
 
 export const inboundConfigsQueryKey = ["inbound-configs"] as const;
-export const inboundNodesQueryKey = ["inbound-page-nodes"] as const;
 
 export function useInboundConfigsQuery() {
   return useQuery({
     queryKey: inboundConfigsQueryKey,
     queryFn: () => api.get<InboundConfig[]>("/inbounds/configs"),
-  });
-}
-
-export function useInboundNodesQuery() {
-  return useQuery({
-    queryKey: inboundNodesQueryKey,
-    queryFn: () => api.get<NodeType[]>("/nodes"),
   });
 }
 

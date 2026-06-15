@@ -11,10 +11,7 @@ import {
   Logs,
   LogOut,
   PieChart,
-  Send,
   Server,
-  Route,
-  GitBranch,
   Waypoints,
   Languages,
   ExternalLink,
@@ -86,21 +83,6 @@ const NAVIGATION = [
         icon: FileJson,
         labelKey: "navigation.config",
         to: "/config",
-      },
-      {
-        icon: Route,
-        labelKey: "navigation.inbounds",
-        to: "/inbounds",
-      },
-      {
-        icon: Send,
-        labelKey: "navigation.outbounds",
-        to: "/outbounds",
-      },
-      {
-        icon: GitBranch,
-        labelKey: "navigation.routing",
-        to: "/routing",
       },
       {
         icon: Logs,

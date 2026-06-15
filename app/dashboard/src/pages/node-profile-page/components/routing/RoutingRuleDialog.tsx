@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Braces, ChevronDown, LoaderCircle, LockKeyhole } from "lucide-react";
+import { Braces, LoaderCircle } from "lucide-react";
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -14,29 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import type { NodeType } from "types/Node";
 
 import {
   type RoutingRule,
   type RoutingRulePayload,
   useRoutingInboundsQuery,
   useRoutingOutboundsQuery,
-} from "../lib/query";
-import { createXrayRoutingRuleSchema } from "../lib/xray-routing-rule-schema";
+} from "../../lib/routing-query";
+import { createXrayRoutingRuleSchema } from "./xray-routing-rule-schema";
 
 const formSchema = z.object({
   name: z.string().trim().min(1).max(128),
   enabled: z.boolean(),
-  node_ids: z.array(z.number()),
   content: z.string().superRefine((value, context) => {
     try {
       const parsed = JSON.parse(value);
@@ -56,7 +48,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 type RoutingRuleDialogProps = {
   rule: RoutingRule | null;
-  nodes: NodeType[];
+  nodeId: number;
   open: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,7 +57,7 @@ type RoutingRuleDialogProps = {
 
 export function RoutingRuleDialog({
   rule,
-  nodes,
+  nodeId,
   open,
   pending,
   onOpenChange,
@@ -76,7 +68,7 @@ export function RoutingRuleDialog({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
         <RoutingRuleDialogContent
           rule={rule}
-          nodes={nodes}
+          nodeId={nodeId}
           pending={pending}
           onSubmit={onSubmit}
         />
@@ -87,10 +79,16 @@ export function RoutingRuleDialog({
 
 function RoutingRuleDialogContent({
   rule,
-  nodes,
+  nodeId,
   pending,
   onSubmit,
-}: Pick<RoutingRuleDialogProps, "rule" | "nodes" | "pending" | "onSubmit">) {
+}: Pick<
+  RoutingRuleDialogProps,
+  | "rule"
+  | "nodeId"
+  | "pending"
+  | "onSubmit"
+>) {
   const { t } = useTranslation();
   const inboundsQuery = useRoutingInboundsQuery();
   const outboundsQuery = useRoutingOutboundsQuery();
@@ -106,7 +104,6 @@ function RoutingRuleDialogContent({
     defaultValues: {
       name: rule?.name ?? "",
       enabled: rule?.enabled ?? true,
-      node_ids: rule?.node_ids ?? [],
       content: JSON.stringify(
         rule?.content ?? {
           type: "field",
@@ -123,7 +120,7 @@ function RoutingRuleDialogContent({
     onSubmit({
       name: values.name,
       enabled: values.enabled,
-      node_ids: values.node_ids,
+      node_ids: rule?.node_ids ?? [nodeId],
       content: JSON.parse(values.content) as Record<string, unknown>,
     });
   };
@@ -189,65 +186,6 @@ function RoutingRuleDialogContent({
 
           <Controller
             control={form.control}
-            name="node_ids"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel>{t("routingPage.assignedNodes")}</FieldLabel>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-between font-normal"
-                      disabled={pending}
-                    >
-                      <span className="truncate">
-                        {field.value.length
-                          ? nodes
-                              .filter(
-                                (node) =>
-                                  node.id != null &&
-                                  field.value.includes(node.id),
-                              )
-                              .map((node) => node.name)
-                              .join(", ")
-                          : t("routingPage.noNodes")}
-                      </span>
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    className="w-[var(--radix-dropdown-menu-trigger-width)]"
-                  >
-                    {nodes.map((node) =>
-                      node.id == null ? null : (
-                        <DropdownMenuCheckboxItem
-                          key={node.id}
-                          checked={field.value.includes(node.id)}
-                          onCheckedChange={(checked) =>
-                            field.onChange(
-                              checked
-                                ? [...field.value, node.id]
-                                : field.value.filter(
-                                    (nodeId) => nodeId !== node.id,
-                                  ),
-                            )
-                          }
-                          onSelect={(event) => event.preventDefault()}
-                        >
-                          {node.name}
-                        </DropdownMenuCheckboxItem>
-                      ),
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Field>
-            )}
-          />
-
-          <Controller
-            control={form.control}
             name="content"
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
@@ -269,12 +207,6 @@ function RoutingRuleDialogContent({
             )}
           />
 
-          {readonly && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <LockKeyhole className="size-4" />
-              {t("routingPage.readonly")}
-            </div>
-          )}
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending && <LoaderCircle className="animate-spin" />}
