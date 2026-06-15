@@ -1,4 +1,4 @@
-export const REPO_URL = "https://github.com/VanyaKrotov/Marzban";
+export const REPO_URL = "https://github.com/VanyaKrotov/MarzbanNext";
 export const ORGANIZATION_URL = "https://github.com/VanyaKrotov";
 export const DOCUMENTATION_URL = "https://gozargah.github.io/marzban";
 

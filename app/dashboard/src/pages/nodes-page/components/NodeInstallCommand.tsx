@@ -14,7 +14,7 @@ import {
 import { useCopy } from "@/hooks/use-copy";
 
 const INSTALL_COMMAND =
-  'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban-node.sh)" @ install';
+  'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban-node.sh)" @ install';
 
 export function NodeInstallCommand() {
   const { t } = useTranslation();
