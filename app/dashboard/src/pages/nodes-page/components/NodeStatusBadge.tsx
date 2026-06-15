@@ -1,25 +1,24 @@
 import { CircleAlert, CircleCheck, LoaderCircle, Power } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
 import type { NodeType } from "types/Node";
 
-export function NodeStatusBadge({
-  status,
-}: {
-  status: NodeType["status"];
-}) {
+import { Badge } from "@/components/ui/badge";
+
+const ICONS = {
+  connected: CircleCheck,
+  connecting: LoaderCircle,
+  disabled: Power,
+  error: CircleAlert,
+} as const;
+
+export function NodeStatusBadge({ status }: { status: NodeType["status"] }) {
   const { t } = useTranslation();
+
   const currentStatus = status ?? "error";
-  const Icon =
-    currentStatus === "connected"
-      ? CircleCheck
-      : currentStatus === "connecting"
-        ? LoaderCircle
-        : currentStatus === "disabled"
-          ? Power
-          : CircleAlert;
+  const Icon = ICONS[currentStatus];
 
   return (
     <Badge
@@ -32,9 +31,7 @@ export function NodeStatusBadge({
         currentStatus === "disabled" && "text-muted-foreground",
       )}
     >
-      <Icon
-        className={cn(currentStatus === "connecting" && "animate-spin")}
-      />
+      <Icon className={cn(currentStatus === "connecting" && "animate-spin")} />
       {t(`nodeModal.status.${currentStatus}`)}
     </Badge>
   );

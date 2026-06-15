@@ -1,10 +1,17 @@
-import { Plus, RefreshCw, Server } from "lucide-react";
+import { ChevronRight, Plus, RefreshCw, Server } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import Page from "@/components/page";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -14,34 +21,22 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type { NodeType } from "types/Node";
 
 import { NodeDialog } from "./components/NodeDialog";
 import { NodeStatusBadge } from "./components/NodeStatusBadge";
+
 import { useNodesPageQuery } from "./lib/query";
 
 export function NodesPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { data: nodes = [], isLoading, isFetching, isError, refetch } =
-    useNodesPageQuery();
+  const {
+    data: nodes = [],
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useNodesPageQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  const openCreate = () => {
-    setDialogOpen(true);
-  };
-
-  const openProfile = (node: NodeType) => {
-    if (node.id) navigate(`/nodes/${node.id}`);
-  };
 
   return (
     <Page>
@@ -60,7 +55,7 @@ export function NodesPage() {
               <RefreshCw className={isFetching ? "animate-spin" : undefined} />
               <span className="hidden sm:inline">{t("nodesPage.refresh")}</span>
             </Button>
-            <Button type="button" size="sm" onClick={openCreate}>
+            <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
               <Plus />
               {t("create")}
             </Button>
@@ -76,7 +71,7 @@ export function NodesPage() {
       </Page.Header>
 
       {isLoading ? (
-        <NodesTableSkeleton />
+        <NodesGridSkeleton />
       ) : isError ? (
         <Empty className="min-h-96 rounded-xl">
           <EmptyHeader>
@@ -103,86 +98,47 @@ export function NodesPage() {
           </EmptyContent>
         </Empty>
       ) : nodes.length ? (
-        <>
-          <div className="hidden overflow-hidden rounded-xl border md:block">
-            <Table>
-              <TableHeader className="bg-muted/40">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>{t("nodes.nodeName")}</TableHead>
-                  <TableHead>{t("usersTable.status")}</TableHead>
-                  <TableHead>{t("nodes.nodeAddress")}</TableHead>
-                  <TableHead>{t("nodesPage.coreVersion")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {nodes.map((node) => (
-                  <TableRow
-                    key={node.id ?? node.name}
-                    tabIndex={0}
-                    className="cursor-pointer"
-                    onClick={() => openProfile(node)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openProfile(node);
-                      }
-                    }}
-                  >
-                    <TableCell className="font-medium">{node.name}</TableCell>
-                    <TableCell>
-                      <NodeStatusBadge status={node.status} />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {node.address}:{node.port}
-                    </TableCell>
-                    <TableCell>
-                      {node.xray_version ? (
-                        <span className="font-mono text-xs">
-                          Xray {node.xray_version}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="grid gap-3 md:hidden">
-            {nodes.map((node) => (
-              <article
-                key={node.id ?? node.name}
-                role="button"
-                tabIndex={0}
-                className="cursor-pointer rounded-xl border bg-card p-4 text-start shadow-xs"
-                onClick={() => openProfile(node)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    openProfile(node);
-                  }
-                }}
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
+          {nodes.map((node) =>
+            node.id ? (
+              <Link
+                key={node.id}
+                to={`/nodes/${node.id}`}
+                className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="font-medium">{node.name}</span>
-                  <NodeStatusBadge status={node.status} />
-                </div>
-                <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
-                  <span>
-                    {node.address}:{node.port}
-                  </span>
-                  <span>
-                    {node.xray_version
-                      ? `Xray ${node.xray_version}`
-                      : t("nodesPage.versionUnknown")}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
+                <Card className="h-full transition-colors group-hover:bg-muted/30">
+                  <CardHeader className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Server className="size-5" />
+                    </div>
+                    <CardTitle className="truncate">{node.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="mt-auto space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <NodeCardValue
+                        label={t("nodes.nodeAddress")}
+                        value={`${node.address}:${node.port}`}
+                        mono
+                      />
+                      <NodeCardValue
+                        label={t("nodesPage.coreVersion")}
+                        value={
+                          node.xray_version
+                            ? `Xray ${node.xray_version}`
+                            : t("nodesPage.versionUnknown")
+                        }
+                      />
+                    </div>
+                    <div className="flex justify-between gap-x-6 pt-3 text-muted-foreground">
+                      <NodeStatusBadge status={node.status} />{" "}
+                      <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ) : null,
+          )}
+        </div>
       ) : (
         <Empty className="min-h-96 rounded-xl">
           <EmptyHeader>
@@ -195,7 +151,7 @@ export function NodesPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button type="button" onClick={openCreate}>
+            <Button type="button" onClick={() => setDialogOpen(true)}>
               <Plus />
               {t("create")}
             </Button>
@@ -212,14 +168,33 @@ export function NodesPage() {
   );
 }
 
-function NodesTableSkeleton() {
+function NodeCardValue({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="overflow-hidden rounded-xl border">
-      <div className="space-y-3 p-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton className="h-12 w-full" key={index} />
-        ))}
-      </div>
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p
+        className={mono ? "truncate font-mono text-xs" : "truncate font-medium"}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function NodesGridSkeleton() {
+  return (
+    <div className="grid gap-4 min-[480px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <Skeleton className="h-52 rounded-xl" key={index} />
+      ))}
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { AxiosError } from "axios";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import HostsPage from "@/pages/hosts-page";
 import ConfigPage from "@/pages/config-page";
-import LogsPage from "@/pages/logs-page";
 import NodesPage from "@/pages/nodes-page";
 import NodeProfilePage from "@/pages/node-profile-page";
 import StatsPage from "@/pages/stats-page";
@@ -57,10 +56,6 @@ export const router = createHashRouter([
       {
         path: "config",
         element: <ConfigPage />,
-      },
-      {
-        path: "logs",
-        element: <LogsPage />,
       },
     ],
   },

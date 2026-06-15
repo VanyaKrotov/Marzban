@@ -1,8 +1,6 @@
 import { getAuthToken } from "utils/authStorage";
 
-export type LogSource = `node:${number}`;
-
-export function getLogsWebSocketUrl(source: LogSource): string | null {
+export function getNodeLogsWebSocketUrl(nodeId: number): string | null {
   const token = getAuthToken();
   if (!token) return null;
 
@@ -14,8 +12,7 @@ export function getLogsWebSocketUrl(source: LogSource): string | null {
     const basePath = baseApi.pathname.endsWith("/")
       ? baseApi.pathname
       : `${baseApi.pathname}/`;
-    const logPath = `node/${source.replace("node:", "")}/logs`;
-    const url = new URL(`${basePath}${logPath}`, baseApi.origin);
+    const url = new URL(`${basePath}node/${nodeId}/logs`, baseApi.origin);
 
     url.protocol = baseApi.protocol === "https:" ? "wss:" : "ws:";
     url.searchParams.set("interval", "0.5");

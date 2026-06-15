@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { RuntimeLogsCard } from "@/components/runtime-logs/RuntimeLogsCard";
 import {
   Empty,
   EmptyContent,
@@ -154,6 +155,7 @@ export function NodeProfilePage() {
         <NodeOutboundsCard node={profileNode} />
         <NodeRoutingCard node={profileNode} />
       </div>
+      <RuntimeLogsCard nodeId={profileNode.id} />
     </Page>
   );
 }

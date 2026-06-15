@@ -81,13 +81,12 @@ configuration and import aliases. The `@/*` alias maps to `src/*`.
 | Route | Feature |
 | --- | --- |
 | `/` | Users table, URL filters, create/edit dialog and usage actions |
-| `/nodes` | Node connection, editing and certificate management |
+| `/nodes` | Node connection and profiles with configuration, certificates and runtime logs |
 | `/hosts` | Host CRUD, copying, enabling and drag-and-drop ordering |
 | `/inbounds` | Managed inbound JSON and node assignment |
 | `/outbounds` | Managed outbound JSON and node assignment |
 | `/routing` | Routing rule JSON, assignments and ordering |
 | `/config` | Complete Xray JSON configuration |
-| `/logs` | Runtime node logs over WebSocket |
 | `/stats` | Traffic and user charts |
 | `/login` | Administrator authentication |
 

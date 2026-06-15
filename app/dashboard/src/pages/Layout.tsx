@@ -8,7 +8,6 @@ import {
   FileJson,
   FolderGit2,
   HeartHandshake,
-  Logs,
   LogOut,
   PieChart,
   Server,
@@ -74,20 +73,10 @@ const NAVIGATION = [
         labelKey: "navigation.hosts",
         to: "/hosts",
       },
-    ],
-  },
-  {
-    title: "Core options",
-    children: [
       {
         icon: FileJson,
         labelKey: "navigation.config",
         to: "/config",
-      },
-      {
-        icon: Logs,
-        labelKey: "navigation.logs",
-        to: "/logs",
       },
     ],
   },
