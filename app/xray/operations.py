@@ -279,6 +279,8 @@ def restart_node(node_id, config=None):
         config = xray.config.for_node(node_id).include_db_users()
 
         node.restart(config)
+        version = node.get_version()
+        _change_node_status(node_id, NodeStatus.connected, version=version)
         logger.info(f"Xray core of \"{dbnode.name}\" node restarted")
     except Exception as e:
         _change_node_status(node_id, NodeStatus.error, message=str(e))

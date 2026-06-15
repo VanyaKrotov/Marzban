@@ -1,5 +1,6 @@
-import socket
+import base64
 import re
+import socket
 import ssl
 import tempfile
 import threading
@@ -232,6 +233,55 @@ class ReSTXRayNode:
             self.connect()
         return self.make_request("/certificates/issue", timeout=180, **params)
 
+    def list_geo_resources(self):
+        if not self.connected:
+            self.connect()
+        return self.make_request("/geo-resources", timeout=15).get("files", [])
+
+    def upload_geo_resource(
+        self, filename: str, content: bytes, overwrite: bool = False
+    ):
+        if not self.connected:
+            self.connect()
+        return self.make_request(
+            "/geo-resources/upload",
+            timeout=60,
+            filename=filename,
+            content=base64.b64encode(content).decode("ascii"),
+            overwrite=overwrite,
+        )
+
+    def download_geo_resource(self, filename: str) -> bytes:
+        if not self.connected:
+            self.connect()
+        result = self.make_request(
+            "/geo-resources/download", timeout=60, filename=filename
+        )
+        try:
+            return base64.b64decode(result["content"], validate=True)
+        except (KeyError, ValueError) as exc:
+            raise NodeAPIError(502, "Node returned invalid file content") from exc
+
+    def rename_geo_resource(
+        self, filename: str, new_filename: str, overwrite: bool = False
+    ):
+        if not self.connected:
+            self.connect()
+        return self.make_request(
+            "/geo-resources/rename",
+            timeout=15,
+            filename=filename,
+            new_filename=new_filename,
+            overwrite=overwrite,
+        )
+
+    def delete_geo_resources(self, filenames: List[str]):
+        if not self.connected:
+            self.connect()
+        return self.make_request(
+            "/geo-resources/delete", timeout=30, filenames=filenames
+        )
+
     def _bg_fetch_logs(self):
         while self._logs_queues:
             try:
@@ -455,6 +505,25 @@ class RPyCXRayNode:
 
     def issue_certificate(self, **params):
         return self.remote.issue_certificate(**params)
+
+    def list_geo_resources(self):
+        return self.remote.list_geo_resources()
+
+    def upload_geo_resource(
+        self, filename: str, content: bytes, overwrite: bool = False
+    ):
+        return self.remote.upload_geo_resource(filename, content, overwrite)
+
+    def download_geo_resource(self, filename: str) -> bytes:
+        return self.remote.download_geo_resource(filename)
+
+    def rename_geo_resource(
+        self, filename: str, new_filename: str, overwrite: bool = False
+    ):
+        return self.remote.rename_geo_resource(filename, new_filename, overwrite)
+
+    def delete_geo_resources(self, filenames: List[str]):
+        return self.remote.delete_geo_resources(filenames)
 
     @contextmanager
     def get_logs(self):

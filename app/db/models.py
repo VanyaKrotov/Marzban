@@ -398,6 +398,11 @@ class Node(Base):
     certificates = relationship(
         "NodeCertificate", back_populates="node", cascade="all, delete-orphan"
     )
+    geo_resource_updates = relationship(
+        "NodeGeoResourceUpdate",
+        back_populates="node",
+        cascade="all, delete-orphan",
+    )
     usage_coefficient = Column(Float, nullable=False, server_default=text("1.0"), default=1)
 
 
@@ -406,7 +411,9 @@ class NodeCertificate(Base):
     __table_args__ = (UniqueConstraint("node_id", "domain"),)
 
     id = Column(Integer, primary_key=True)
-    node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
+    node_id = Column(
+        Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False
+    )
     domain = Column(String(253), nullable=False)
     certificate = Column(Text, nullable=False)
     private_key = Column(Text, nullable=False)
@@ -427,6 +434,27 @@ class NodeCertificate(Base):
     @property
     def inbound_tags(self):
         return [inbound.tag for inbound in self.inbounds]
+
+
+class NodeGeoResourceUpdate(Base):
+    __tablename__ = "node_geo_resource_updates"
+    __table_args__ = (UniqueConstraint("node_id", "filename"),)
+
+    id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    url = Column(String(2048), nullable=False)
+    cron = Column(String(128), nullable=False)
+    last_updated_at = Column(DateTime, nullable=True)
+    next_run_at = Column(DateTime, nullable=False, index=True)
+    last_error = Column(Text, nullable=True)
+    last_error_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    node = relationship("Node", back_populates="geo_resource_updates")
 
 
 class NodeUserUsage(Base):

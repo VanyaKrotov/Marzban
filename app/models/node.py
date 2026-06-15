@@ -2,7 +2,9 @@ from enum import Enum
 from datetime import datetime
 import re
 from typing import List, Optional
+from urllib.parse import urlparse
 
+from apscheduler.triggers.cron import CronTrigger
 from pydantic import ConfigDict, BaseModel, Field, field_validator
 
 
@@ -112,3 +114,96 @@ class NodeCertificateResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+def validate_geo_resource_filename(value: str) -> str:
+    value = value.strip()
+    if (
+        not value
+        or value in {".", ".."}
+        or not re.fullmatch(r'[^<>:"/\\|?*\x00-\x1f]+\.dat', value, re.IGNORECASE)
+    ):
+        raise ValueError("Filename must be a plain .dat filename")
+    return value
+
+
+class NodeGeoResourceRemoteCreate(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    url: str = Field(min_length=1, max_length=2048)
+    cron: str = Field(min_length=1, max_length=128)
+    overwrite: bool = False
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        return validate_geo_resource_filename(value)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        value = value.strip()
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("URL must use HTTP or HTTPS")
+        return value
+
+    @field_validator("cron")
+    @classmethod
+    def validate_cron(cls, value: str) -> str:
+        value = " ".join(value.split())
+        try:
+            CronTrigger.from_crontab(value, timezone="UTC")
+        except ValueError as exc:
+            raise ValueError("Invalid five-field cron expression") from exc
+        return value
+
+
+class NodeGeoResourceScheduleModify(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    cron: str = Field(min_length=1, max_length=128)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return NodeGeoResourceRemoteCreate.validate_url(value)
+
+    @field_validator("cron")
+    @classmethod
+    def validate_cron(cls, value: str) -> str:
+        return NodeGeoResourceRemoteCreate.validate_cron(value)
+
+
+class NodeGeoResourceRename(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    overwrite: bool = False
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        return validate_geo_resource_filename(value)
+
+
+class NodeGeoResourceBulkDelete(BaseModel):
+    filenames: List[str] = Field(min_length=1)
+
+    @field_validator("filenames")
+    @classmethod
+    def validate_filenames(cls, values: List[str]) -> List[str]:
+        return list(
+            dict.fromkeys(
+                validate_geo_resource_filename(value) for value in values
+            )
+        )
+
+
+class NodeGeoResourceResponse(BaseModel):
+    filename: str
+    size: int = 0
+    modified_at: Optional[datetime] = None
+    auto_update: bool = False
+    url: Optional[str] = None
+    cron: Optional[str] = None
+    last_updated_at: Optional[datetime] = None
+    next_run_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    last_error_at: Optional[datetime] = None

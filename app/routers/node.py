@@ -3,7 +3,18 @@ import time
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket
+import requests
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    WebSocket,
+)
 from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect
 
@@ -16,15 +27,28 @@ from app.models.node import (
     NodeCertificateIssue,
     NodeCertificateModify,
     NodeCertificateResponse,
+    NodeGeoResourceBulkDelete,
+    NodeGeoResourceRemoteCreate,
+    NodeGeoResourceRename,
+    NodeGeoResourceResponse,
+    NodeGeoResourceScheduleModify,
     NodeModify,
     NodeResponse,
     NodeSettings,
     NodeStatus,
     NodesUsageResponse,
+    validate_geo_resource_filename,
 )
 from app.xray.node import NodeAPIError
 from app.models.proxy import ProxyHost
 from app.utils import responses
+from app.utils.node_geo_resources import (
+    MAX_GEO_RESOURCE_SIZE,
+    download_geo_resource,
+    get_next_run_at,
+    get_remote_node,
+    upload_remote_geo_resource,
+)
 
 router = APIRouter(
     tags=["Node"], prefix="/api", responses={401: responses._401, 403: responses._403}
@@ -187,6 +211,294 @@ def reconnect_node(
     """Trigger a reconnection for the specified node. Only accessible to sudo admins."""
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     return {"detail": "Reconnection task scheduled"}
+
+
+@router.post("/node/{node_id}/restart")
+def restart_node(
+    bg: BackgroundTasks,
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Restart Xray core on one remote node using its current generated config."""
+    bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
+    return {"detail": "Restart task scheduled"}
+
+
+def _raise_geo_resource_error(exc: Exception) -> None:
+    if isinstance(exc, NodeAPIError):
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=f"Node geo resource request failed: {exc.detail}",
+        )
+    if isinstance(exc, requests.RequestException):
+        raise HTTPException(status_code=502, detail=f"Resource download failed: {exc}")
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=422, detail=str(exc))
+    raise HTTPException(status_code=502, detail=f"Node geo resource request failed: {exc}")
+
+
+def _validate_geo_resource_path(filename: str) -> str:
+    try:
+        return validate_geo_resource_filename(filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.get(
+    "/node/{node_id}/geo-resources",
+    response_model=List[NodeGeoResourceResponse],
+)
+def get_node_geo_resources(
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        files = get_remote_node(dbnode).list_geo_resources()
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+
+    updates = {
+        resource.filename: resource
+        for resource in crud.get_node_geo_resource_updates(db, dbnode.id)
+    }
+    result = []
+    for file in files:
+        filename = file.get("filename")
+        if not isinstance(filename, str):
+            continue
+        update = updates.get(filename)
+        result.append(
+            NodeGeoResourceResponse(
+                filename=filename,
+                size=file.get("size", 0),
+                modified_at=file.get("modified_at"),
+                auto_update=update is not None,
+                url=update.url if update else None,
+                cron=update.cron if update else None,
+                last_updated_at=update.last_updated_at if update else None,
+                next_run_at=update.next_run_at if update else None,
+                last_error=update.last_error if update else None,
+                last_error_at=update.last_error_at if update else None,
+            )
+        )
+    return result
+
+
+@router.post("/node/{node_id}/geo-resources/upload")
+def upload_node_geo_resource(
+    file: UploadFile = File(...),
+    overwrite: bool = Query(False),
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    content = file.file.read(MAX_GEO_RESOURCE_SIZE + 1)
+    try:
+        upload_remote_geo_resource(
+            dbnode, file.filename or "", content, overwrite=overwrite
+        )
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return {}
+
+
+@router.post(
+    "/node/{node_id}/geo-resources/remote",
+    response_model=NodeGeoResourceResponse,
+)
+def create_remote_node_geo_resource(
+    request: NodeGeoResourceRemoteCreate,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        content = download_geo_resource(request.url)
+        upload_remote_geo_resource(
+            dbnode, request.filename, content, overwrite=request.overwrite
+        )
+        resource = crud.upsert_node_geo_resource_update(
+            db,
+            node_id=dbnode.id,
+            filename=request.filename,
+            url=request.url,
+            cron=request.cron,
+            next_run_at=get_next_run_at(request.cron),
+        )
+        resource = crud.update_node_geo_resource_result(
+            db, resource, next_run_at=resource.next_run_at
+        )
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Geo resource already exists")
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+
+    return NodeGeoResourceResponse(
+        filename=resource.filename,
+        auto_update=True,
+        url=resource.url,
+        cron=resource.cron,
+        last_updated_at=resource.last_updated_at,
+        next_run_at=resource.next_run_at,
+        last_error=resource.last_error,
+        last_error_at=resource.last_error_at,
+    )
+
+
+@router.put(
+    "/node/{node_id}/geo-resources/{filename}/schedule",
+    response_model=NodeGeoResourceResponse,
+)
+def modify_node_geo_resource_schedule(
+    filename: str,
+    request: NodeGeoResourceScheduleModify,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    filename = _validate_geo_resource_path(filename)
+    resource = crud.get_node_geo_resource_update(db, dbnode.id, filename)
+    if not resource:
+        raise HTTPException(status_code=404, detail="Auto-update configuration not found")
+    try:
+        resource = crud.upsert_node_geo_resource_update(
+            db,
+            node_id=dbnode.id,
+            filename=filename,
+            url=request.url,
+            cron=request.cron,
+            next_run_at=get_next_run_at(request.cron),
+        )
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return NodeGeoResourceResponse(
+        filename=resource.filename,
+        auto_update=True,
+        url=resource.url,
+        cron=resource.cron,
+        last_updated_at=resource.last_updated_at,
+        next_run_at=resource.next_run_at,
+        last_error=resource.last_error,
+        last_error_at=resource.last_error_at,
+    )
+
+
+@router.post("/node/{node_id}/geo-resources/{filename}/refresh")
+def refresh_node_geo_resource(
+    filename: str,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    filename = _validate_geo_resource_path(filename)
+    resource = crud.get_node_geo_resource_update(db, dbnode.id, filename)
+    if not resource:
+        raise HTTPException(status_code=404, detail="Auto-update configuration not found")
+    try:
+        content = download_geo_resource(resource.url)
+        upload_remote_geo_resource(dbnode, filename, content, overwrite=True)
+        crud.update_node_geo_resource_result(
+            db, resource, next_run_at=get_next_run_at(resource.cron)
+        )
+    except Exception as exc:
+        crud.update_node_geo_resource_result(
+            db,
+            resource,
+            next_run_at=get_next_run_at(resource.cron),
+            error=str(exc),
+        )
+        _raise_geo_resource_error(exc)
+    return {}
+
+
+@router.get("/node/{node_id}/geo-resources/{filename}/download")
+def download_node_geo_resource(
+    filename: str,
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    filename = _validate_geo_resource_path(filename)
+    try:
+        content = get_remote_node(dbnode).download_geo_resource(filename)
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/node/{node_id}/geo-resources/{filename}/rename")
+def rename_node_geo_resource(
+    filename: str,
+    request: NodeGeoResourceRename,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    filename = _validate_geo_resource_path(filename)
+    resource = crud.get_node_geo_resource_update(db, dbnode.id, filename)
+    target_resource = (
+        crud.get_node_geo_resource_update(db, dbnode.id, request.filename)
+        if filename != request.filename
+        else None
+    )
+    if target_resource and not request.overwrite:
+        raise HTTPException(
+            status_code=409, detail="Auto-update configuration already exists"
+        )
+    try:
+        get_remote_node(dbnode).rename_geo_resource(
+            filename, request.filename, request.overwrite
+        )
+        if target_resource:
+            crud.remove_node_geo_resource_update(db, target_resource)
+        if resource:
+            crud.rename_node_geo_resource_update(db, resource, request.filename)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Geo resource already exists")
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return {}
+
+
+@router.post("/node/{node_id}/geo-resources/bulk-delete")
+def bulk_delete_node_geo_resources(
+    request: NodeGeoResourceBulkDelete,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        get_remote_node(dbnode).delete_geo_resources(request.filenames)
+        for filename in request.filenames:
+            resource = crud.get_node_geo_resource_update(db, dbnode.id, filename)
+            if resource:
+                crud.remove_node_geo_resource_update(db, resource)
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return {}
+
+
+@router.delete("/node/{node_id}/geo-resources/{filename}")
+def delete_node_geo_resource(
+    filename: str,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    filename = _validate_geo_resource_path(filename)
+    try:
+        get_remote_node(dbnode).delete_geo_resources([filename])
+        resource = crud.get_node_geo_resource_update(db, dbnode.id, filename)
+        if resource:
+            crud.remove_node_geo_resource_update(db, resource)
+    except Exception as exc:
+        _raise_geo_resource_error(exc)
+    return {}
 
 
 @router.get(

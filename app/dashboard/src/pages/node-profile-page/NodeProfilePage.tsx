@@ -1,4 +1,10 @@
-import { ArrowLeft, LoaderCircle, Server, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  LoaderCircle,
+  RefreshCw,
+  Server,
+  Trash2,
+} from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -29,10 +35,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDeleteNodeMutation,
   useNodeQuery,
+  useRestartNodeMutation,
 } from "@/pages/nodes-page/lib/query";
 import { generateErrorMessage, generateSuccessMessage } from "utils/toastHandler";
 
 import { NodeCertificatesCard } from "./components/certificates/NodeCertificatesCard";
+import { NodeGeoResourcesCard } from "./components/geo-resources/NodeGeoResourcesCard";
 import { NodeInboundsCard } from "./components/NodeInboundsCard";
 import { NodeOutboundsCard } from "./components/NodeOutboundsCard";
 import { NodeOverviewCard } from "./components/NodeOverviewCard";
@@ -45,6 +53,7 @@ export function NodeProfilePage() {
   const nodeId = Number(params.id);
   const query = useNodeQuery(nodeId, Number.isInteger(nodeId) && nodeId > 0);
   const remove = useDeleteNodeMutation();
+  const restart = useRestartNodeMutation();
   const node = query.data;
 
   if (query.isLoading) {
@@ -90,11 +99,53 @@ export function NodeProfilePage() {
       <Page.Header className="mb-0">
         <div className="min-w-0">
           <h1 className="truncate font-semibold">{node.name}</h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            {t("nodeProfile.description")}
-          </p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <RefreshCw />
+                <span className="hidden sm:inline">
+                  {t("nodeProfile.restart")}
+                </span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogMedia>
+                  <RefreshCw />
+                </AlertDialogMedia>
+                <AlertDialogTitle>
+                  {t("nodeProfile.restartTitle")}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("nodeProfile.restartDescription", { name: node.name })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={restart.isPending}>
+                  {t("cancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={restart.isPending}
+                  onClick={() =>
+                    restart.mutate(node.id!, {
+                      onSuccess: () =>
+                        generateSuccessMessage(
+                          t("nodeProfile.restartSuccess"),
+                        ),
+                      onError: (error) => generateErrorMessage(error),
+                    })
+                  }
+                >
+                  {restart.isPending && (
+                    <LoaderCircle className="animate-spin" />
+                  )}
+                  {t("nodeProfile.restart")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="destructive" size="sm">
@@ -150,10 +201,11 @@ export function NodeProfilePage() {
 
       <NodeOverviewCard node={profileNode} />
       <div className="grid gap-4 2xl:grid-cols-2">
-        <NodeCertificatesCard nodeId={profileNode.id} nodeName={node.name} />
         <NodeInboundsCard node={profileNode} />
-        <NodeOutboundsCard node={profileNode} />
+        <NodeGeoResourcesCard nodeId={profileNode.id} />
         <NodeRoutingCard node={profileNode} />
+        <NodeOutboundsCard node={profileNode} />
+        <NodeCertificatesCard nodeId={profileNode.id} nodeName={node.name} />
       </div>
       <RuntimeLogsCard nodeId={profileNode.id} />
     </Page>

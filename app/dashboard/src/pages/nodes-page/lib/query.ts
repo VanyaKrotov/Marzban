@@ -100,6 +100,14 @@ export function useReconnectNodeMutation() {
   });
 }
 
+export function useRestartNodeMutation() {
+  const invalidate = useInvalidateNodes();
+  return useMutation({
+    mutationFn: (nodeId: number) => api.post(`/node/${nodeId}/restart`),
+    onSuccess: invalidate,
+  });
+}
+
 export function useDeleteNodeMutation() {
   const queryClient = useQueryClient();
   return useMutation({
