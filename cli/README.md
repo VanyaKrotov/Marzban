@@ -1,4 +1,4 @@
-# Marzban CLI
+# MarzbanNext CLI
 
 The CLI manages administrators, users and generated subscription data without
 starting the regular web application or the master Xray process.

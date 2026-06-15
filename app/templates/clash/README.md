@@ -1,6 +1,6 @@
 # Clash/Mihomo subscription templates
 
-Clash templates let Marzban produce a complete YAML configuration with custom
+Clash templates let MarzbanNext produce a complete YAML configuration with custom
 proxy groups, routing rules, DNS and transport options.
 
 ## Supported transports
@@ -37,7 +37,7 @@ CLASH_SUBSCRIPTION_TEMPLATE="clash/default.yml"
 CLASH_SETTINGS_TEMPLATE="clash/settings.yml"
 ```
 
-Restart Marzban after changing environment variables:
+Restart MarzbanNext after changing environment variables:
 
 ```bash
 marzban restart

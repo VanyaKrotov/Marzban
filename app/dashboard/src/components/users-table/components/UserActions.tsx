@@ -1,4 +1,4 @@
-import { QrCode } from "lucide-react";
+import { Clipboard, Link, QrCode } from "lucide-react";
 import type { ReactNode } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
@@ -24,8 +24,8 @@ export function UserActions({
     ? window.location.origin + user.subscription_url
     : user.subscription_url;
   const configs = user.links.join("\r\n");
-  const subscriptionCopy = useCopy(subscriptionUrl);
-  const configsCopy = useCopy(configs);
+  const subscriptionCopy = useCopy(subscriptionUrl, Link);
+  const configsCopy = useCopy(configs, Clipboard);
 
   const action = (label: string, icon: ReactNode, onClick: () => void) => (
     <Tooltip>

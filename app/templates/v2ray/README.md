@@ -1,6 +1,6 @@
 # V2Ray subscription templates
 
-V2Ray templates let Marzban generate a complete client configuration instead of
+V2Ray templates let MarzbanNext generate a complete client configuration instead of
 using only built-in defaults. They can customize routing, DNS and transport
 settings that are not exposed by the dashboard.
 
@@ -39,7 +39,7 @@ V2RAY_SUBSCRIPTION_TEMPLATE="v2ray/default.json"
 V2RAY_SETTINGS_TEMPLATE="v2ray/settings.json"
 ```
 
-Restart Marzban after changing environment variables:
+Restart MarzbanNext after changing environment variables:
 
 ```bash
 marzban restart

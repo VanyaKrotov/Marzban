@@ -1,6 +1,6 @@
 # sing-box subscription templates
 
-sing-box templates let Marzban generate a complete client configuration with
+sing-box templates let MarzbanNext generate a complete client configuration with
 custom routing, DNS and transport settings.
 
 ## Supported transports
@@ -37,7 +37,7 @@ SINGBOX_SUBSCRIPTION_TEMPLATE="singbox/default.json"
 SINGBOX_SETTINGS_TEMPLATE="singbox/settings.json"
 ```
 
-Restart Marzban after changing environment variables:
+Restart MarzbanNext after changing environment variables:
 
 ```bash
 marzban restart

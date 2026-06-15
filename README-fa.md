@@ -1,10 +1,10 @@
 <p align="center">
   <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="لوگوی Marzban">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="لوگوی MarzbanNext">
   </a>
 </p>
 
-<h1 align="center">Marzban</h1>
+<h1 align="center">MarzbanNext</h1>
 
 <p align="center">
   پنل توزیع‌شده مدیریت Xray، کاربران، اشتراک‌ها و پیکربندی نودها
@@ -47,7 +47,7 @@
 
 ## معرفی
 
-Marzban یک پنل وب برای مدیریت کاربران Xray، لینک‌های اشتراک، محدودیت ترافیک
+MarzbanNext یک پنل وب برای مدیریت کاربران Xray، لینک‌های اشتراک، محدودیت ترافیک
 و زیرساخت پراکسی توزیع‌شده است. این پروژه شامل REST API مبتنی بر FastAPI،
 داشبورد React، ابزار مدیریتی CLI و ارتباط با نودهای راه‌دور است.
 

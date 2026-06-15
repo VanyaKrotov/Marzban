@@ -1,6 +1,6 @@
 # Database migrations
 
-Marzban uses Alembic for schema migrations. Migrations must remain compatible
+MarzbanNext uses Alembic for schema migrations. Migrations must remain compatible
 with SQLite, MySQL and MariaDB.
 
 The current schema includes users and administrators, remote nodes, managed

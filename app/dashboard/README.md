@@ -1,12 +1,12 @@
-# Marzban Dashboard
+# MarzbanNext Dashboard
 
-The dashboard is the React frontend embedded into the Marzban backend.
+The dashboard is the React frontend embedded into the MarzbanNext backend.
 
 ## Requirements
 
 - Node.js `20.19.0` or newer.
 - npm.
-- A running Marzban backend for API integration.
+- A running MarzbanNext backend for API integration.
 
 ## Stack
 

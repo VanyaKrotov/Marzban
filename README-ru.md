@@ -1,10 +1,10 @@
 <p align="center">
   <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="Логотип Marzban">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="Логотип MarzbanNext">
   </a>
 </p>
 
-<h1 align="center">Marzban</h1>
+<h1 align="center">MarzbanNext</h1>
 
 <p align="center">
   Распределённая панель управления Xray, пользователями, подписками и конфигурацией узлов.
@@ -46,7 +46,7 @@
 
 ## Обзор
 
-Marzban — веб-панель для управления пользователями Xray, подписками, лимитами
+MarzbanNext — веб-панель для управления пользователями Xray, подписками, лимитами
 трафика и распределённой прокси-инфраструктурой. Проект включает REST API на
 FastAPI, React-dashboard, административный CLI и интеграцию с удалёнными узлами.
 

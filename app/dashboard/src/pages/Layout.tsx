@@ -131,7 +131,7 @@ const Layout: FC = () => {
       <Sidebar>
         <SidebarHeader className="flex flex-row items-center gap-x-3 p-4 pt-6">
           <Logo className="size-6" />
-          <span className="font-medium">Marzban</span>
+          <span className="font-medium">MarzbanNext</span>
         </SidebarHeader>
         <SidebarContent>
           {NAVIGATION.map(({ children, title }) => (

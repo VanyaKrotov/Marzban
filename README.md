@@ -1,10 +1,10 @@
 <p align="center">
   <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="Marzban logo">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext logo">
   </a>
 </p>
 
-<h1 align="center">Marzban</h1>
+<h1 align="center">MarzbanNext</h1>
 
 <p align="center">
   Distributed Xray management panel for users, nodes, subscriptions and runtime configuration.
@@ -46,7 +46,7 @@
 
 ## Overview
 
-Marzban is a web-based control plane for managing Xray users, subscriptions,
+MarzbanNext is a web-based control plane for managing Xray users, subscriptions,
 traffic limits and distributed proxy infrastructure. It provides a FastAPI REST
 backend, a React dashboard, an administrative CLI and integration with remote
 Xray nodes.

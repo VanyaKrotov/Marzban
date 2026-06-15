@@ -1,10 +1,10 @@
 <p align="center">
   <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="Marzban 标志">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext 标志">
   </a>
 </p>
 
-<h1 align="center">Marzban</h1>
+<h1 align="center">MarzbanNext</h1>
 
 <p align="center">
   用于管理 Xray、用户、订阅与节点配置的分布式控制面板
@@ -46,7 +46,7 @@
 
 ## 项目概述
 
-Marzban 是一个用于管理 Xray 用户、订阅、流量限制和分布式代理基础设施
+MarzbanNext 是一个用于管理 Xray 用户、订阅、流量限制和分布式代理基础设施
 的 Web 控制面板。项目包含 FastAPI REST 后端、React Dashboard、管理 CLI
 以及远程 Xray 节点集成。
 

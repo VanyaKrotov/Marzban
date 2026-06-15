@@ -1,6 +1,6 @@
 # Marzban Node: ACME certificate management
 
-Implement the node-side half of certificate management for this Marzban fork.
+Implement the node-side half of certificate management for MarzbanNext.
 
 ## Existing master contract
 

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 const COPIED_STATE_DURATION = 1500;
 
-export function useCopy(content: string) {
+export function useCopy(content: string, defaultIcon: LucideIcon = Copy) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function useCopy(content: string) {
     setCopied(true);
   }, []);
 
-  const Icon: LucideIcon = copied ? Check : Copy;
+  const Icon: LucideIcon = copied ? Check : defaultIcon;
 
   return { copied, Icon, onCopy };
 }
