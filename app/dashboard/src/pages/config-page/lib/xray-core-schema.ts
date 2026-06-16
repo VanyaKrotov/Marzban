@@ -14,6 +14,20 @@ const stringList = (
   },
 });
 
+const domainList = (): MonacoJsonSchema =>
+  stringList(
+    "Domain names and Xray domain match expressions. Supports domain, geosite, keyword, full, dotless, regexp, and ext schemes.",
+    [
+      "domain:example.com",
+      "geosite:category-ads-all",
+      "keyword:google",
+      "full:www.example.com",
+      "dotless:local",
+      "regexp:^.*\\.example\\.com$",
+      "ext:geosite.dat:category-ads-all",
+    ],
+  );
+
 const routingRuleSchema: MonacoJsonSchema = {
   type: "object",
   required: ["type"],
@@ -25,14 +39,11 @@ const routingRuleSchema: MonacoJsonSchema = {
       default: "field",
       description: "Routing rule type.",
     },
-    domain: stringList("Domain names and geosite expressions matched by the rule.", [
-      "geosite:category-ads-all",
-      "domain:example.com",
-    ]),
-    ip: stringList("IP addresses, CIDR ranges, and geoip expressions.", [
-      "geoip:private",
-      "10.0.0.0/8",
-    ]),
+    domain: domainList(),
+    ip: stringList(
+      "IP addresses, CIDR ranges, geoip expressions, and Xray ext resource expressions.",
+      ["geoip:private", "10.0.0.0/8", "ext:geoip.dat:private"],
+    ),
     port: {
       type: "string",
       description: "Destination ports or ranges.",

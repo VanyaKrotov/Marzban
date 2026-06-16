@@ -1,4 +1,4 @@
-import { Pencil, RefreshCw, Server } from "lucide-react";
+import { AlertTriangle, Pencil, RefreshCw, Server } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -24,7 +24,21 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
   return (
     <>
       <Card size="sm">
-        <CardContent className="flex flex-col gap-4 xl:flex-row xl:items-center">
+        <CardContent className="flex flex-col gap-4">
+          {node.restart_required && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <div className="min-w-0 space-y-1">
+                <p className="font-medium text-foreground">
+                  {t("nodeProfile.restartRequiredTitle")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("nodeProfile.restartRequiredDescription")}
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
           <div className="flex min-w-0 items-start gap-4 xl:flex-1 xl:items-center">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Server className="size-5" />
@@ -98,6 +112,7 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
               <Pencil />
               {t("nodeProfile.editSettings")}
             </Button>
+          </div>
           </div>
         </CardContent>
       </Card>

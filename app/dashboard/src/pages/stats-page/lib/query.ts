@@ -55,10 +55,10 @@ export function useStatsHistoryQuery(granularity: StatsGranularity) {
   });
 }
 
-export function useSystemStatsQuery() {
+export function useSystemStatsQuery(refetchInterval: number | false = 10_000) {
   return useQuery({
     queryKey: systemStatsQueryKey,
     queryFn: () => api.get<SystemStats>("/system"),
-    refetchInterval: 10_000,
+    refetchInterval,
   });
 }

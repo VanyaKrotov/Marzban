@@ -22,6 +22,7 @@ from app.models.proxy import (
 from app.models.system import SystemStats
 from app.models.user import UserStatus
 from app.utils import responses
+from app.utils.node_restart_state import mark_nodes_pending_restart
 from app.utils.system import cpu_usage, memory_usage, realtime_bandwidth
 
 router = APIRouter(tags=["System"], prefix="/api", responses={401: responses._401})
@@ -180,6 +181,7 @@ def create_inbound_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     xray.reload_config()
+    mark_nodes_pending_restart(node.id for node in created.nodes)
     return _inbound_response(created)
 
 
@@ -203,6 +205,7 @@ def modify_inbound_config(
             detail="Content of inbounds loaded from the Xray JSON config is read-only",
         )
 
+    affected_node_ids = {node.id for node in dbinbound.nodes}
     if modified.content is not None:
         modified.content = _validate_inbound_content(
             inbound_tag,
@@ -212,7 +215,9 @@ def modify_inbound_config(
         updated = crud.update_inbound(db, dbinbound, modified)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    affected_node_ids.update(node.id for node in updated.nodes)
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
     return _inbound_response(updated)
 
 
@@ -234,8 +239,10 @@ def delete_inbound_config(
             status_code=403,
             detail="Inbounds loaded from the Xray JSON config cannot be deleted",
         )
+    affected_node_ids = {node.id for node in dbinbound.nodes}
     crud.remove_inbound(db, dbinbound)
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
 
 
 @router.get(
@@ -270,6 +277,7 @@ def create_outbound_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     xray.reload_config()
+    mark_nodes_pending_restart(node.id for node in created.nodes)
     return _outbound_response(created)
 
 
@@ -293,6 +301,7 @@ def modify_outbound_config(
             detail="Content of outbounds loaded from the Xray JSON config is read-only",
         )
 
+    affected_node_ids = {node.id for node in dboutbound.nodes}
     if modified.content is not None:
         modified.content = _validate_outbound_content(
             outbound_tag,
@@ -302,7 +311,9 @@ def modify_outbound_config(
         updated = crud.update_outbound(db, dboutbound, modified)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    affected_node_ids.update(node.id for node in updated.nodes)
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
     return _outbound_response(updated)
 
 
@@ -324,8 +335,10 @@ def delete_outbound_config(
             status_code=403,
             detail="Outbounds loaded from the Xray JSON config cannot be deleted",
         )
+    affected_node_ids = {node.id for node in dboutbound.nodes}
     crud.remove_outbound(db, dboutbound)
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
 
 
 @router.get(
@@ -358,10 +371,23 @@ def modify_inbound_nodes(
             detail=f"Inbounds {sorted(unknown_inbounds)} don't exist",
         )
 
+    before = crud.get_inbound_node_ids_map(db, list(inbound_nodes))
     try:
         result = crud.update_inbound_nodes(db, inbound_nodes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    changed_tags = {
+        tag
+        for tag, node_ids in result.items()
+        if set(node_ids) != before.get(tag, set())
+    }
+    affected_node_ids = {
+        node_id
+        for tag in changed_tags
+        for node_id in before.get(tag, set()) | set(result[tag])
+    }
+    mark_nodes_pending_restart(affected_node_ids)
 
     return result
 
@@ -419,10 +445,24 @@ def modify_inbound_certificates(
             detail=f"Inbounds {sorted(non_tls_inbounds)} don't use TLS",
         )
 
+    before = crud.get_inbound_certificates(db, list(inbound_certificates))
     try:
         result = crud.update_inbound_certificates(db, inbound_certificates)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    changed_tags = {
+        tag
+        for tag, certificate_ids in result.items()
+        if set(certificate_ids) != set(before.get(tag, []))
+    }
+    assignments = crud.get_inbound_node_ids_map(db, list(changed_tags))
+    affected_node_ids = {
+        node_id
+        for node_ids in assignments.values()
+        for node_id in node_ids
+    }
+    mark_nodes_pending_restart(affected_node_ids)
 
     return result
 
@@ -459,3 +499,8 @@ def modify_hosts(
     xray.hosts.update()
 
     return {tag: crud.get_hosts(db, tag) for tag in xray.config.inbounds_by_tag}
+
+
+@router.get("/version", response_model=str)
+def get_version():
+    return __version__

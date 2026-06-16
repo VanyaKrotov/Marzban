@@ -30,7 +30,10 @@ export function useOutboundConfigsQuery() {
 function useInvalidateOutbounds() {
   const queryClient = useQueryClient();
   return () =>
-    queryClient.invalidateQueries({ queryKey: outboundConfigsQueryKey });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: outboundConfigsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ["nodes"] }),
+    ]);
 }
 
 export function useCreateOutboundMutation() {

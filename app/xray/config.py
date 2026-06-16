@@ -303,10 +303,10 @@ class XRayConfig(dict):
                     settings['tls'] = 'tls'
                     for certificate in tls_settings.get('certificates', []):
 
-                        if certificate.get("certificateFile", None):
-                            with open(certificate['certificateFile'], 'rb') as file:
-                                cert = file.read()
-                                settings['sni'].extend(get_cert_SANs(cert))
+                        # if certificate.get("certificateFile", None):
+                        #     with open(certificate['certificateFile'], 'rb') as file:
+                        #         cert = file.read()
+                        #         settings['sni'].extend(get_cert_SANs(cert))
 
                         if certificate.get("certificate", None):
                             cert = certificate['certificate']

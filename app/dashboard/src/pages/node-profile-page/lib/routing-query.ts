@@ -50,7 +50,10 @@ export function useRoutingOutboundsQuery() {
 function useInvalidateRoutingRules() {
   const queryClient = useQueryClient();
   return () =>
-    queryClient.invalidateQueries({ queryKey: routingRulesQueryKey });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: routingRulesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ["nodes"] }),
+    ]);
 }
 
 export function useCreateRoutingRuleMutation() {
@@ -106,7 +109,10 @@ export function useReorderRoutingRulesMutation() {
       }
     },
     onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: routingRulesQueryKey }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: routingRulesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["nodes"] }),
+      ]),
   });
 }
 

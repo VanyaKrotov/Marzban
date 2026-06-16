@@ -18,6 +18,7 @@ export const NodeSchema = z.object({
     .nullable()
     .optional(),
   message: z.string().nullable().optional(),
+  restart_required: z.boolean().optional(),
   add_as_new_host: z.boolean().optional(),
   usage_coefficient: z
     .number()

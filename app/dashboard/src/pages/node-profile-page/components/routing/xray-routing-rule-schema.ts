@@ -15,9 +15,61 @@ const stringArray = (
   },
 });
 
+const domainSchemeExamples = [
+  "domain:example.com",
+  "geosite:category-ads-all",
+  "keyword:google",
+  "full:www.example.com",
+  "dotless:local",
+  "regexp:^.*\\.example\\.com$",
+];
+
+const domainArray = (geoResourceFilenames: string[]): MonacoJsonSchema => {
+  const extSuggestions = geoResourceFilenames.map(
+    (filename) => `ext:${filename}:`,
+  );
+
+  return {
+    type: "array",
+    uniqueItems: true,
+    description:
+      "Domain names and Xray domain match expressions. Supports domain, geosite, keyword, full, dotless, regexp, and ext schemes.",
+    items: {
+      type: "string",
+      anyOf: [
+        ...(extSuggestions.length ? [{ enum: extSuggestions }] : []),
+        { type: "string" },
+      ],
+      examples: [...domainSchemeExamples, ...extSuggestions],
+    },
+  };
+};
+
+const ipArray = (geoResourceFilenames: string[]): MonacoJsonSchema => {
+  const extSuggestions = geoResourceFilenames.map(
+    (filename) => `ext:${filename}:`,
+  );
+
+  return {
+    type: "array",
+    uniqueItems: true,
+    description:
+      "IP addresses, CIDR ranges, geoip expressions, and Xray ext resource expressions.",
+    items: {
+      type: "string",
+      anyOf: [
+        ...(extSuggestions.length ? [{ enum: extSuggestions }] : []),
+        { type: "string" },
+      ],
+      examples: ["geoip:private", "10.0.0.0/8", ...extSuggestions],
+    },
+  };
+};
+
 export function createXrayRoutingRuleSchema(
   inboundTags: string[],
   outboundTags: string[],
+  geoResourceFilenames: string[] = [],
 ): MonacoJsonSchema {
   return {
     $schema: "http://json-schema.org/draft-07/schema#",
@@ -33,16 +85,8 @@ export function createXrayRoutingRuleSchema(
         default: "field",
         description: "Routing rule type.",
       },
-      domain: stringArray(
-        "Domain names and geosite expressions matched by the rule.",
-        undefined,
-        ["geosite:category-ads-all", "domain:example.com"],
-      ),
-      ip: stringArray(
-        "IP addresses, CIDR ranges, and geoip expressions.",
-        undefined,
-        ["geoip:private", "10.0.0.0/8"],
-      ),
+      domain: domainArray(geoResourceFilenames),
+      ip: ipArray(geoResourceFilenames),
       port: {
         type: "string",
         description: "Destination ports or ranges.",

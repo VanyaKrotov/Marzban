@@ -18,6 +18,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
+import { useNodeGeoResourcesQuery } from "../geo-resources/query";
 import {
   type RoutingRule,
   type RoutingRulePayload,
@@ -92,12 +93,21 @@ function RoutingRuleDialogContent({
   const { t } = useTranslation();
   const inboundsQuery = useRoutingInboundsQuery();
   const outboundsQuery = useRoutingOutboundsQuery();
+  const geoResourcesQuery = useNodeGeoResourcesQuery(nodeId);
   const inboundTags = (inboundsQuery.data ?? []).map((item) => item.tag);
   const outboundTags = (outboundsQuery.data ?? []).map((item) => item.tag);
+  const geoResourceFilenames = (geoResourcesQuery.data ?? []).map(
+    (item) => item.filename,
+  );
   const readonly = rule?.readonly ?? false;
   const schema = useMemo(
-    () => createXrayRoutingRuleSchema(inboundTags, outboundTags),
-    [inboundTags, outboundTags],
+    () =>
+      createXrayRoutingRuleSchema(
+        inboundTags,
+        outboundTags,
+        geoResourceFilenames,
+      ),
+    [geoResourceFilenames, inboundTags, outboundTags],
   );
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

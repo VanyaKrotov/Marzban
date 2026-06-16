@@ -7,6 +7,7 @@ from app.utils.node_geo_resources import (
     get_next_run_at,
     upload_remote_geo_resource,
 )
+from app.utils.node_restart_state import mark_nodes_pending_restart
 
 
 def update_due_node_geo_resources():
@@ -19,6 +20,7 @@ def update_due_node_geo_resources():
                 upload_remote_geo_resource(
                     resource.node, resource.filename, content, overwrite=True
                 )
+                mark_nodes_pending_restart([resource.node_id])
                 error = None
             except Exception as exc:
                 error = str(exc)

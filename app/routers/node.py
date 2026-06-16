@@ -49,6 +49,11 @@ from app.utils.node_geo_resources import (
     get_remote_node,
     upload_remote_geo_resource,
 )
+from app.utils.node_restart_state import (
+    clear_node_pending_restart,
+    is_node_pending_restart,
+    mark_nodes_pending_restart,
+)
 
 router = APIRouter(
     tags=["Node"], prefix="/api", responses={401: responses._401, 403: responses._403}
@@ -96,6 +101,7 @@ def add_node(
     bg.add_task(add_host_if_needed, new_node, db)
 
     logger.info(f'New node "{dbnode.name}" added')
+    dbnode.restart_required = False
     return dbnode
 
 
@@ -181,7 +187,10 @@ def get_nodes(
     db: Session = Depends(get_db), _: Admin = Depends(Admin.check_sudo_admin)
 ):
     """Retrieve a list of all nodes. Accessible only to sudo admins."""
-    return crud.get_nodes(db)
+    nodes = crud.get_nodes(db)
+    for node in nodes:
+        node.restart_required = is_node_pending_restart(node.id)
+    return nodes
 
 
 @router.put("/node/{node_id}", response_model=NodeResponse)
@@ -299,6 +308,7 @@ def upload_node_geo_resource(
         )
     except Exception as exc:
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -334,6 +344,7 @@ def create_remote_node_geo_resource(
     except Exception as exc:
         _raise_geo_resource_error(exc)
 
+    mark_nodes_pending_restart([dbnode.id])
     return NodeGeoResourceResponse(
         filename=resource.filename,
         auto_update=True,
@@ -372,6 +383,7 @@ def modify_node_geo_resource_schedule(
         )
     except Exception as exc:
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return NodeGeoResourceResponse(
         filename=resource.filename,
         auto_update=True,
@@ -409,6 +421,7 @@ def refresh_node_geo_resource(
             error=str(exc),
         )
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -462,6 +475,7 @@ def rename_node_geo_resource(
         raise HTTPException(status_code=409, detail="Geo resource already exists")
     except Exception as exc:
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -480,6 +494,7 @@ def bulk_delete_node_geo_resources(
                 crud.remove_node_geo_resource_update(db, resource)
     except Exception as exc:
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -498,6 +513,7 @@ def delete_node_geo_resource(
             crud.remove_node_geo_resource_update(db, resource)
     except Exception as exc:
         _raise_geo_resource_error(exc)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -570,6 +586,7 @@ def issue_node_certificate(
         private_key=private_key,
         expires_at=expires_at,
     )
+    mark_nodes_pending_restart([dbnode.id])
     return dbcertificate
 
 
@@ -591,6 +608,7 @@ def modify_node_certificate(
         updated = crud.update_node_certificate(db, dbcertificate, modified)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    mark_nodes_pending_restart([dbnode.id])
     return updated
 
 
@@ -605,6 +623,7 @@ def remove_node_certificate(
     if not dbcertificate:
         raise HTTPException(status_code=404, detail="Node certificate not found")
     crud.remove_node_certificate(db, dbcertificate)
+    mark_nodes_pending_restart([dbnode.id])
     return {}
 
 
@@ -619,6 +638,7 @@ def remove_node(
     node_name = dbnode.name
     crud.remove_node(db, dbnode)
     xray.operations.remove_node(node_id)
+    clear_node_pending_restart(node_id)
 
     logger.info(f'Node "{node_name}" deleted')
     return {}

@@ -103,10 +103,16 @@ export function NodeProfilePage() {
         <div className="ml-auto flex gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm">
+              <Button
+                type="button"
+                variant={node.restart_required ? "default" : "outline"}
+                size="sm"
+              >
                 <RefreshCw />
                 <span className="hidden sm:inline">
-                  {t("nodeProfile.restart")}
+                  {node.restart_required
+                    ? t("nodeProfile.applyChanges")
+                    : t("nodeProfile.restart")}
                 </span>
               </Button>
             </AlertDialogTrigger>

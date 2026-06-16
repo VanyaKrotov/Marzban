@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ChevronsUpDown,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import Logo from "assets/logo.svg?react";
 
@@ -48,6 +49,8 @@ import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import { DonationDialog } from "@/components/DonationDialog";
+import { Badge } from "@/components/ui/badge";
+import { api } from "@/service/http";
 
 const NAVIGATION = [
   {
@@ -104,6 +107,10 @@ const Layout: FC = () => {
   const { admin, error, isFetched, isPending } = useAdmin();
   const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
+  const { data: version } = useQuery({
+    queryKey: ["app-version"],
+    queryFn: () => api.get<string>("/version"),
+  });
 
   if (!admin && (!isFetched || isPending)) {
     return <LayoutSkeleton />;
@@ -121,6 +128,11 @@ const Layout: FC = () => {
         <SidebarHeader className="flex flex-row items-center gap-x-3 p-4 pt-6">
           <Logo className="size-6" />
           <span className="font-medium">MarzbanNext</span>
+          {version && (
+            <Badge variant="outline" className="-ml-1.5 px-1">
+              v{version}
+            </Badge>
+          )}
         </SidebarHeader>
         <SidebarContent>
           {NAVIGATION.map(({ children, title }) => (

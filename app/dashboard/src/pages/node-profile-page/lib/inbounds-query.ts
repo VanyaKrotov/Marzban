@@ -34,6 +34,7 @@ function useInvalidateInbounds() {
       queryClient.invalidateQueries({ queryKey: inboundConfigsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ["inbounds"] }),
       queryClient.invalidateQueries({ queryKey: ["hosts"] }),
+      queryClient.invalidateQueries({ queryKey: ["nodes"] }),
     ]);
 }
 

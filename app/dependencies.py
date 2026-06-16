@@ -6,6 +6,13 @@ from config import SUDOERS
 from fastapi import Depends, HTTPException
 from datetime import datetime, timezone, timedelta
 from app.utils.jwt import get_subscription_payload
+from app.utils.node_restart_state import is_node_pending_restart
+
+
+def serialize_node(dbnode):
+    node = dbnode
+    node.restart_required = is_node_pending_restart(dbnode.id)
+    return node
 
 
 def validate_admin(db: Session, username: str, password: str) -> Optional[AdminValidationResult]:
@@ -33,7 +40,7 @@ def get_dbnode(node_id: int, db: Session = Depends(get_db)):
     dbnode = crud.get_node_by_id(db, node_id)
     if not dbnode:
         raise HTTPException(status_code=404, detail="Node not found")
-    return dbnode
+    return serialize_node(dbnode)
 
 
 def validate_dates(start: Optional[Union[str, datetime]], end: Optional[Union[str, datetime]]) -> (datetime, datetime):

@@ -13,6 +13,7 @@ from app.models.routing import (
     RoutingRuleResponse,
 )
 from app.utils import responses
+from app.utils.node_restart_state import mark_nodes_pending_restart
 
 router = APIRouter(
     tags=["Routing"],
@@ -74,6 +75,7 @@ def create_routing_rule(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     xray.reload_config()
+    mark_nodes_pending_restart(node.id for node in created.nodes)
     return _response(created)
 
 
@@ -87,12 +89,24 @@ def reorder_routing_rules(
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
+    rules = crud.get_routing_rules(db)
+    requested_positions = {
+        rule_id: position
+        for position, rule_id in enumerate(order.rule_ids)
+    }
+    affected_node_ids = {
+        node.id
+        for rule in rules
+        if requested_positions.get(rule.id) != rule.position
+        for node in rule.nodes
+    }
     try:
         reordered = crud.reorder_routing_rules(db, order.rule_ids)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
     return [_response(rule) for rule in reordered]
 
 
@@ -116,6 +130,7 @@ def modify_routing_rule(
             detail="Content of routing rules loaded from the Xray JSON config is read-only",
         )
 
+    affected_node_ids = {node.id for node in dbrule.nodes}
     if modified.content is not None:
         modified.content = _validate_content(modified.content)
     try:
@@ -124,6 +139,8 @@ def modify_routing_rule(
         raise HTTPException(status_code=400, detail=str(exc))
 
     xray.reload_config()
+    affected_node_ids.update(node.id for node in updated.nodes)
+    mark_nodes_pending_restart(affected_node_ids)
     return _response(updated)
 
 
@@ -142,5 +159,7 @@ def delete_routing_rule(
             detail="Routing rules loaded from the Xray JSON config cannot be deleted",
         )
 
+    affected_node_ids = {node.id for node in dbrule.nodes}
     crud.remove_routing_rule(db, dbrule)
     xray.reload_config()
+    mark_nodes_pending_restart(affected_node_ids)
