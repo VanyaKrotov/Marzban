@@ -12,7 +12,7 @@ from sqlalchemy import func, inspect, text
 from app.db import GetDB
 from app.db import models as db_models
 from app.db.base import engine
-from app.models.proxy import ProxyTypes
+from app.models.proxy import ACCOUNT_PROTOCOLS, ProxyTypes, XRAY_INBOUND_PROTOCOLS
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
@@ -51,10 +51,12 @@ def load_xray_config(
     if {"content", "enabled"}.issubset(inbound_columns):
         with engine.connect() as connection:
             rows = connection.execute(
-                text("SELECT content, enabled FROM inbounds ORDER BY id")
+                text("SELECT tag, content, enabled FROM inbounds ORDER BY id")
             )
+            managed_inbound_tags = set()
             db_inbounds = []
-            for content, enabled in rows:
+            for tag, content, enabled in rows:
+                managed_inbound_tags.add(tag)
                 if not enabled:
                     continue
                 if isinstance(content, str):
@@ -62,11 +64,10 @@ def load_xray_config(
                 if isinstance(content, dict):
                     db_inbounds.append(content)
 
-        managed_protocols = set(ProxyTypes._value2member_map_)
         payload["inbounds"] = [
             inbound
             for inbound in payload.get("inbounds", [])
-            if inbound.get("protocol") not in managed_protocols
+            if inbound.get("tag") not in managed_inbound_tags
             or inbound.get("tag") in XRAY_EXCLUDE_INBOUND_TAGS
         ]
         payload["inbounds"].extend(db_inbounds)
@@ -248,7 +249,7 @@ class XRayConfig(dict):
 
     def _resolve_inbounds(self):
         for inbound in self['inbounds']:
-            if not inbound['protocol'] in ProxyTypes._value2member_map_:
+            if inbound.get('protocol') not in XRAY_INBOUND_PROTOCOLS:
                 continue
 
             if inbound['tag'] in XRAY_EXCLUDE_INBOUND_TAGS:
@@ -256,20 +257,23 @@ class XRayConfig(dict):
 
             if not inbound.get('settings'):
                 inbound['settings'] = {}
-            if not inbound['settings'].get('clients'):
-                inbound['settings']['clients'] = []
+            user_container = "users" if inbound["protocol"] == ProxyTypes.Hysteria.value else "clients"
+            is_account_protocol = inbound['protocol'] in ACCOUNT_PROTOCOLS
+            if is_account_protocol and not inbound['settings'].get(user_container):
+                inbound['settings'][user_container] = []
 
             settings = {
                 "tag": inbound["tag"],
                 "protocol": inbound["protocol"],
                 "port": None,
-                "network": "tcp",
+                "network": "hysteria" if inbound["protocol"] == ProxyTypes.Hysteria.value else "tcp",
                 "tls": 'none',
                 "sni": [],
                 "host": [],
                 "path": "",
                 "header_type": "",
-                "is_fallback": False
+                "is_fallback": False,
+                "user_container": user_container,
             }
 
             # port settings
@@ -286,7 +290,14 @@ class XRayConfig(dict):
             # stream settings
             if stream := inbound.get('streamSettings'):
                 net = stream.get('network', 'tcp')
+                settings['network_alias'] = net
+                if net == 'websocket':
+                    net = 'ws'
+                elif net == 'mkcp':
+                    net = 'kcp'
                 net_settings = stream.get(f"{net}Settings", {})
+                if not net_settings and settings.get('network_alias') != net:
+                    net_settings = stream.get(f"{settings['network_alias']}Settings", {})
                 security = stream.get("security")
                 tls_settings = stream.get(f"{security}Settings")
 
@@ -430,6 +441,11 @@ class XRayConfig(dict):
 
                     settings['host'] = net_settings.get('host') or net_settings.get('Host', '')
                     settings['path'] = net_settings.get('path', '')
+                elif net == 'hysteria':
+                    settings['path'] = net_settings.get('path', '')
+                    settings['host'] = [net_settings.get('host', '')] if net_settings.get('host') else []
+                    settings['header_type'] = ''
+                    settings['tls'] = security or settings['tls']
 
                 else:
                     settings['path'] = net_settings.get('path', '')
@@ -442,6 +458,9 @@ class XRayConfig(dict):
 
             self.inbounds.append(settings)
             self.inbounds_by_tag[inbound['tag']] = settings
+
+            if not is_account_protocol:
+                continue
 
             try:
                 self.inbounds_by_protocol[inbound['protocol']].append(settings)
@@ -599,7 +618,8 @@ class XRayConfig(dict):
                     continue
 
                 for inbound in inbounds:
-                    clients = config.get_inbound(inbound['tag'])['settings']['clients']
+                    user_container = inbound.get("user_container", "clients")
+                    clients = config.get_inbound(inbound['tag'])['settings'][user_container]
 
                     for row in rows:
                         user_id, username, settings, excluded_inbound_tags = row

@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from ..proto.common.serial.typed_message_pb2 import TypedMessage
 from ..proto.proxy.shadowsocks.config_pb2 import \
     Account as ShadowsocksAccountPb2
 from ..proto.proxy.shadowsocks.config_pb2 import \
@@ -60,9 +59,18 @@ class TrojanAccount(Account):
 
 
 class ShadowsocksMethods(Enum):
+    UNKNOWN = 'unknown'
     AES_128_GCM = 'aes-128-gcm'
     AES_256_GCM = 'aes-256-gcm'
+    CHACHA20_POLY1305_LEGACY = 'chacha20-poly1305'
     CHACHA20_POLY1305 = 'chacha20-ietf-poly1305'
+    XCHACHA20_POLY1305 = 'xchacha20-poly1305'
+    XCHACHA20_IETF_POLY1305 = 'xchacha20-ietf-poly1305'
+    BLAKE3_AES_128_GCM = '2022-blake3-aes-128-gcm'
+    BLAKE3_AES_256_GCM = '2022-blake3-aes-256-gcm'
+    BLAKE3_CHACHA20_POLY1305 = '2022-blake3-chacha20-poly1305'
+    NONE = 'none'
+    PLAIN = 'plain'
 
 
 class ShadowsocksAccount(Account):
@@ -76,3 +84,11 @@ class ShadowsocksAccount(Account):
     @property
     def message(self):
         return Message(ShadowsocksAccountPb2(password=self.password, cipher_type=self.cipher_type))
+
+
+class HysteriaAccount(Account):
+    auth: str
+
+    @property
+    def message(self):
+        raise NotImplementedError("Hysteria runtime AddUser is not supported by the bundled Xray protobufs")

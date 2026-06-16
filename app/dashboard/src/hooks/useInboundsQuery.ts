@@ -5,11 +5,14 @@ import type {
   InboundsMap,
   InboundsResponse,
   InboundType,
+  XrayCapabilities,
 } from "types/Inbound";
 
 export const inboundsQueryKey = ["inbounds"] as const;
 
 const fetchInbounds = () => api.get<InboundsResponse>("/inbounds");
+const fetchXrayCapabilities = () =>
+  api.get<XrayCapabilities>("/xray/capabilities");
 const selectInboundsMap = (inbounds: InboundsResponse): InboundsMap =>
   new Map(Object.entries(inbounds)) as InboundsMap;
 const selectInboundsList = (inbounds: InboundsResponse): InboundType[] =>
@@ -30,5 +33,13 @@ export function useInboundsListQuery(enabled = true) {
     queryFn: fetchInbounds,
     enabled,
     select: selectInboundsList,
+  });
+}
+
+export function useXrayCapabilitiesQuery(enabled = true) {
+  return useQuery({
+    queryKey: ["xray-capabilities"],
+    queryFn: fetchXrayCapabilities,
+    enabled,
   });
 }

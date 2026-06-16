@@ -133,9 +133,11 @@ const xrayCoreInboundSchema: MonacoJsonSchema = {
       enum: [
         "dokodemo-door",
         "http",
+        "hysteria",
         "shadowsocks",
         "socks",
         "trojan",
+        "tun",
         "vless",
         "vmess",
         "wireguard",

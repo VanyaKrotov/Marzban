@@ -44,6 +44,7 @@ from app.models.proxy import (
     InboundModify,
     OutboundCreate,
     OutboundModify,
+    XRAY_INBOUND_PROTOCOLS,
 )
 from app.models.routing import RoutingRuleCreate, RoutingRuleModify
 from app.models.stats import (
@@ -457,14 +458,13 @@ def get_routing_rules_for_node(db: Session, node_id: int) -> List[dict]:
 
 def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     nodes = db.query(Node).all()
-    supported_protocols = set(ProxyTypes._value2member_map_)
     inbound_contents = {
         inbound["tag"]: inbound
         for inbound in payload.get("inbounds", [])
         if (
             isinstance(inbound, dict)
             and inbound.get("tag")
-            and inbound.get("protocol") in supported_protocols
+            and inbound.get("protocol") in XRAY_INBOUND_PROTOCOLS
             and inbound["tag"] not in XRAY_EXCLUDE_INBOUND_TAGS
         )
     }

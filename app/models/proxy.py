@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.utils.system import random_password
 from xray_api.types.account import (
+    HysteriaAccount,
     ShadowsocksAccount,
     ShadowsocksMethods,
     TrojanAccount,
@@ -23,12 +24,13 @@ NOISE_PATTERN = re.compile(
 
 
 class ProxyTypes(str, Enum):
-    # proxy_type = protocol
+    # User-account proxy type. Values match Xray inbound protocols.
 
     VMess = "vmess"
     VLESS = "vless"
     Trojan = "trojan"
     Shadowsocks = "shadowsocks"
+    Hysteria = "hysteria"
 
     @property
     def account_model(self):
@@ -40,6 +42,8 @@ class ProxyTypes(str, Enum):
             return TrojanAccount
         if self == self.Shadowsocks:
             return ShadowsocksAccount
+        if self == self.Hysteria:
+            return HysteriaAccount
 
     @property
     def settings_model(self):
@@ -51,6 +55,80 @@ class ProxyTypes(str, Enum):
             return TrojanSettings
         if self == self.Shadowsocks:
             return ShadowsocksSettings
+        if self == self.Hysteria:
+            return HysteriaSettings
+
+    @property
+    def supports_runtime_api(self):
+        return self.value in {"vmess", "vless", "trojan", "shadowsocks"}
+
+
+class XrayInboundProtocol(str, Enum):
+    DokodemoDoor = "dokodemo-door"
+    HTTP = "http"
+    Shadowsocks = "shadowsocks"
+    Socks = "socks"
+    Trojan = "trojan"
+    VLESS = "vless"
+    VMess = "vmess"
+    WireGuard = "wireguard"
+    Hysteria = "hysteria"
+    TUN = "tun"
+
+
+class XrayOutboundProtocol(str, Enum):
+    Blackhole = "blackhole"
+    DNS = "dns"
+    Freedom = "freedom"
+    HTTP = "http"
+    Loopback = "loopback"
+    Shadowsocks = "shadowsocks"
+    Socks = "socks"
+    Trojan = "trojan"
+    VLESS = "vless"
+    VMess = "vmess"
+    WireGuard = "wireguard"
+    Hysteria = "hysteria"
+
+
+class XrayTransport(str, Enum):
+    RAW = "raw"
+    TCP = "tcp"
+    MKCP = "mkcp"
+    KCP = "kcp"
+    WebSocket = "websocket"
+    WS = "ws"
+    HTTPUpgrade = "httpupgrade"
+    SplitHTTP = "splithttp"
+    XHTTP = "xhttp"
+    GRPC = "grpc"
+    HTTP = "http"
+    H2 = "h2"
+    H3 = "h3"
+    QUIC = "quic"
+    Hysteria = "hysteria"
+
+
+class XraySecurity(str, Enum):
+    none = "none"
+    tls = "tls"
+    reality = "reality"
+
+
+XRAY_INBOUND_PROTOCOLS = {protocol.value for protocol in XrayInboundProtocol}
+XRAY_OUTBOUND_PROTOCOLS = {protocol.value for protocol in XrayOutboundProtocol}
+ACCOUNT_PROTOCOLS = {protocol.value for protocol in ProxyTypes}
+RUNTIME_API_PROTOCOLS = {
+    protocol.value for protocol in ProxyTypes if protocol.supports_runtime_api
+}
+XRAY_TRANSPORTS = {transport.value for transport in XrayTransport}
+XRAY_SECURITIES = {security.value for security in XraySecurity}
+XRAY_LEGACY_TRANSPORT_ALIASES = {
+    "tcp": "raw",
+    "kcp": "mkcp",
+    "ws": "websocket",
+    "splithttp": "xhttp",
+}
 
 
 class ProxySettings(BaseModel, use_enum_values=True):
@@ -93,6 +171,23 @@ class ShadowsocksSettings(ProxySettings):
 
     def revoke(self):
         self.password = random_password()
+
+
+class HysteriaSettings(ProxySettings):
+    auth: str = Field(default_factory=random_password)
+
+    def revoke(self):
+        self.auth = random_password()
+
+
+class XrayCapabilities(BaseModel):
+    inbound_protocols: List[str]
+    outbound_protocols: List[str]
+    account_protocols: List[str]
+    runtime_api_protocols: List[str]
+    transports: List[str]
+    securities: List[str]
+    legacy_transport_aliases: Dict[str, str]
 
 
 class ProxyHostSecurity(str, Enum):

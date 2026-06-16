@@ -14,7 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useInboundsByProtocolQuery } from "hooks/useInboundsQuery";
+import {
+  useInboundsByProtocolQuery,
+  useXrayCapabilitiesQuery,
+} from "hooks/useInboundsQuery";
 import type { InboundsMap } from "types/Inbound";
 import type { User } from "types/User";
 
@@ -88,7 +91,9 @@ function UserEditDialogContent({
   const { t } = useTranslation();
   const isEditing = Boolean(editingUser);
   const inboundsQuery = useInboundsByProtocolQuery(true);
+  const capabilitiesQuery = useXrayCapabilitiesQuery(true);
   const availableInbounds = inboundsQuery.data ?? emptyInbounds;
+  const accountProtocols = capabilitiesQuery.data?.account_protocols;
   const form = useUserEditForm(editingUser, availableInbounds);
   const usage = useUserUsage(editingUser);
   const saveMutation = useSaveUserMutation(isEditing);
@@ -159,6 +164,7 @@ function UserEditDialogContent({
               <InboundAccordionsSection
                 disabled={disabled}
                 availableInbounds={availableInbounds}
+                accountProtocols={accountProtocols}
               />
             </div>
 

@@ -37,7 +37,10 @@ import {
   useNodeQuery,
   useRestartNodeMutation,
 } from "@/pages/nodes-page/lib/query";
-import { generateErrorMessage, generateSuccessMessage } from "utils/toastHandler";
+import {
+  generateErrorMessage,
+  generateSuccessMessage,
+} from "utils/toastHandler";
 
 import { NodeCertificatesCard } from "./components/certificates/NodeCertificatesCard";
 import { NodeGeoResourcesCard } from "./components/geo-resources/NodeGeoResourcesCard";
@@ -137,9 +140,7 @@ export function NodeProfilePage() {
                   onClick={() =>
                     restart.mutate(node.id!, {
                       onSuccess: () =>
-                        generateSuccessMessage(
-                          t("nodeProfile.restartSuccess"),
-                        ),
+                        generateSuccessMessage(t("nodeProfile.restartSuccess")),
                       onError: (error) => generateErrorMessage(error),
                     })
                   }

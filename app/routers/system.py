@@ -9,6 +9,7 @@ from app.db import Session, crud, get_db
 from app.models.admin import Admin
 from app.models.node import NodeCertificateResponse
 from app.models.proxy import (
+    ACCOUNT_PROTOCOLS,
     InboundCreate,
     InboundModify,
     InboundResponse,
@@ -18,6 +19,13 @@ from app.models.proxy import (
     ProxyHost,
     ProxyInbound,
     ProxyTypes,
+    RUNTIME_API_PROTOCOLS,
+    XRAY_INBOUND_PROTOCOLS,
+    XRAY_LEGACY_TRANSPORT_ALIASES,
+    XRAY_OUTBOUND_PROTOCOLS,
+    XRAY_SECURITIES,
+    XRAY_TRANSPORTS,
+    XrayCapabilities,
 )
 from app.models.system import SystemStats
 from app.models.user import UserStatus
@@ -51,10 +59,10 @@ def _outbound_response(outbound) -> OutboundResponse:
 def _validate_inbound_content(tag: str, content: dict) -> dict:
     normalized = deepcopy(content)
     normalized["tag"] = tag
-    if normalized.get("protocol") not in ProxyTypes._value2member_map_:
+    if normalized.get("protocol") not in XRAY_INBOUND_PROTOCOLS:
         raise HTTPException(
             status_code=400,
-            detail="Inbound protocol must be vmess, vless, trojan or shadowsocks",
+            detail=f"Inbound protocol must be one of {sorted(XRAY_INBOUND_PROTOCOLS)}",
         )
 
     payload = deepcopy(dict(xray.config))
@@ -74,10 +82,10 @@ def _validate_inbound_content(tag: str, content: dict) -> dict:
 def _validate_outbound_content(tag: str, content: dict) -> dict:
     normalized = deepcopy(content)
     normalized["tag"] = tag
-    if not normalized.get("protocol"):
+    if normalized.get("protocol") not in XRAY_OUTBOUND_PROTOCOLS:
         raise HTTPException(
             status_code=400,
-            detail="Outbound protocol is required",
+            detail=f"Outbound protocol must be one of {sorted(XRAY_OUTBOUND_PROTOCOLS)}",
         )
 
     payload = deepcopy(dict(xray.config))
@@ -504,3 +512,16 @@ def modify_hosts(
 @router.get("/version", response_model=str)
 def get_version():
     return __version__
+
+
+@router.get("/xray/capabilities", response_model=XrayCapabilities)
+def get_xray_capabilities(admin: Admin = Depends(Admin.get_current)):
+    return XrayCapabilities(
+        inbound_protocols=sorted(XRAY_INBOUND_PROTOCOLS),
+        outbound_protocols=sorted(XRAY_OUTBOUND_PROTOCOLS),
+        account_protocols=sorted(ACCOUNT_PROTOCOLS),
+        runtime_api_protocols=sorted(RUNTIME_API_PROTOCOLS),
+        transports=sorted(XRAY_TRANSPORTS),
+        securities=sorted(XRAY_SECURITIES),
+        legacy_transport_aliases=XRAY_LEGACY_TRANSPORT_ALIASES,
+    )

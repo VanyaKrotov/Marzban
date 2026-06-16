@@ -1,7 +1,17 @@
 export interface InboundModel {
   listen: string;
   port: number | string;
-  protocol: "vless" | "vmess" | "trojan" | "shadowsocks";
+  protocol:
+    | "dokodemo-door"
+    | "http"
+    | "shadowsocks"
+    | "socks"
+    | "trojan"
+    | "vless"
+    | "vmess"
+    | "wireguard"
+    | "hysteria"
+    | "tun";
   settings?: {
     client: any[];
     decryption?: "none" | string;
@@ -9,12 +19,16 @@ export interface InboundModel {
   streamSettings?: {
     network:
       | "tcp"
+      | "raw"
       | "kcp"
+      | "mkcp"
       | "ws"
+      | "websocket"
       | "httpupgrade"
       | "splithttp"
       | "xhttp"
-      | "grpc";
+      | "grpc"
+      | "hysteria";
     security: "none" | "tls" | "reality";
     tlsSettings?: {
       serverName: string;

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Network, PieChart, Users } from "lucide-react";
+import { Activity, Network, PieChart, Users } from "lucide-react";
 import { FC, PropsWithChildren, ReactElement, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +16,7 @@ type StatisticCardProps = {
 
 type SystemStats = {
   users_active: number;
+  online_users: number;
   total_user: number;
   incoming_bandwidth: number;
   outgoing_bandwidth: number;
@@ -52,7 +53,8 @@ export const Statistics: FC = () => {
   });
 
   return (
-    <div className="grid gap-3 xl:grid-cols-3">
+    <div className="@container/users-stats min-w-0">
+      <div className="grid min-w-0 grid-cols-1 gap-3 @[1024px]/users-stats:grid-cols-2 @[1680px]/users-stats:grid-cols-4">
       <StatisticCard
         title={t("activeUsers")}
         content={
@@ -60,6 +62,11 @@ export const Statistics: FC = () => {
           `${numberWithCommas(systemData.users_active)} / ${numberWithCommas(systemData.total_user)}`
         }
         icon={<Users />}
+      />
+      <StatisticCard
+        title={t("onlineUsers")}
+        content={systemData && numberWithCommas(systemData.online_users)}
+        icon={<Activity />}
       />
       <StatisticCard
         title={t("dataUsage")}
@@ -79,6 +86,7 @@ export const Statistics: FC = () => {
         }
         icon={<PieChart />}
       />
+      </div>
     </div>
   );
 };

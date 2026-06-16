@@ -1369,15 +1369,32 @@ export const xrayInboundSchema: MonacoJsonSchema = {
     },
     protocol: {
       type: "string",
-      enum: ["vmess", "vless", "trojan", "shadowsocks"],
+      enum: [
+        "dokodemo-door",
+        "http",
+        "shadowsocks",
+        "socks",
+        "trojan",
+        "vless",
+        "vmess",
+        "wireguard",
+        "hysteria",
+        "tun",
+      ],
       enumDescriptions: [
-        "VMess inbound managed by Marzban.",
-        "VLESS inbound managed by Marzban.",
-        "Trojan inbound managed by Marzban.",
+        "Tunnel inbound, historically named dokodemo-door.",
+        "HTTP proxy inbound.",
         "Shadowsocks inbound managed by Marzban.",
+        "SOCKS proxy inbound.",
+        "Trojan inbound managed by Marzban.",
+        "VLESS inbound managed by Marzban.",
+        "VMess inbound managed by Marzban.",
+        "WireGuard inbound.",
+        "Hysteria inbound.",
+        "TUN inbound.",
       ],
       description:
-        "Inbound protocol. Managed inbounds are limited to protocols supported by Marzban user accounts.",
+        "Inbound protocol. User accounts are injected only for protocols supported by Marzban accounts.",
     },
     settings: {
       type: "object",
@@ -1586,6 +1603,45 @@ export const xrayInboundSchema: MonacoJsonSchema = {
                 type: "array",
                 description: "Official Xray multi-user Shadowsocks list.",
                 items: shadowsocksUserSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      if: {
+        properties: { protocol: { const: "hysteria" } },
+        required: ["protocol"],
+      },
+      then: {
+        properties: {
+          settings: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              auth: {
+                type: "string",
+                description:
+                  "Fallback Hysteria authentication secret used when per-user auth is not configured.",
+              },
+              users: {
+                type: "array",
+                description:
+                  "Official Xray Hysteria user list. Managed users are injected here at restart.",
+                items: {
+                  type: "object",
+                  required: ["auth"],
+                  additionalProperties: true,
+                  properties: {
+                    auth: {
+                      type: "string",
+                      minLength: 1,
+                      description: "Per-user Hysteria authentication secret.",
+                    },
+                    ...userBaseProperties,
+                  },
+                },
               },
             },
           },

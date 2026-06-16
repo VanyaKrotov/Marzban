@@ -155,6 +155,15 @@ class V2rayShareLink(str):
                 password=settings["password"],
                 method=settings["method"],
             )
+        elif inbound["protocol"] == "hysteria":
+            link = self.hysteria2(
+                remark=remark,
+                address=address,
+                port=inbound["port"],
+                auth=settings["auth"],
+                sni=inbound.get("sni", ""),
+                ais=inbound.get("ais", ""),
+            )
         else:
             return
 
@@ -483,6 +492,18 @@ class V2rayShareLink(str):
             + base64.b64encode(f"{method}:{password}".encode()).decode()
             + f"@{address}:{port}#{urlparse.quote(remark)}"
         )
+
+    @classmethod
+    def hysteria2(
+            cls, remark: str, address: str, port: int, auth: str, sni: str = "", ais: bool = False
+    ):
+        payload = {}
+        if sni:
+            payload["sni"] = sni
+        if ais:
+            payload["insecure"] = 1
+        query = f"?{urlparse.urlencode(payload)}" if payload else ""
+        return f"hysteria2://{urlparse.quote(auth, safe='')}@{address}:{port}{query}#{urlparse.quote(remark)}"
 
 
 class V2rayJsonConfig(str):
@@ -1036,6 +1057,8 @@ class V2rayJsonConfig(str):
                                                            port=port,
                                                            password=settings['password'],
                                                            method=settings['method'])
+        else:
+            return
 
         outbounds = [outbound]
         dialer_proxy = ''

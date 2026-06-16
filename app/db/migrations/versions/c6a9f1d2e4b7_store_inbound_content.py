@@ -16,7 +16,18 @@ down_revision = "9d3f4a7c2b11"
 branch_labels = None
 depends_on = None
 
-SUPPORTED_PROTOCOLS = {"vmess", "vless", "trojan", "shadowsocks"}
+SUPPORTED_PROTOCOLS = {
+    "dokodemo-door",
+    "http",
+    "shadowsocks",
+    "socks",
+    "trojan",
+    "vless",
+    "vmess",
+    "wireguard",
+    "hysteria",
+    "tun",
+}
 
 
 def upgrade() -> None:

@@ -84,7 +84,7 @@ const UsersTable = () => {
   );
 
   return (
-    <section className="space-y-4" id="users-table">
+    <section className="w-full min-w-0 max-w-full space-y-4" id="users-table">
       <UsersToolbar
         filters={filters}
         isFetching={isFetching}
@@ -151,12 +151,13 @@ const UsersTable = () => {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border md:block">
-            <Table>
+          <div className="hidden w-full max-w-full overflow-x-auto rounded-xl border md:block">
+            <Table className="min-w-[960px] table-fixed">
               <colgroup>
-                <col />
-                <col />
-                <col className="w-[360px]" />
+                <col className="w-56" />
+                <col className="w-64" />
+                <col className="w-52" />
+                <col className="w-80" />
                 <col className="w-44" />
               </colgroup>
               <TableHeader className="bg-muted/40">
@@ -179,7 +180,10 @@ const UsersTable = () => {
                       <SortIndicator sort={filters.sort} column="expire" />
                     </button>
                   </TableHead>
-                  <TableHead className="w-[360px] max-w-[360px]">
+                  <TableHead className="w-52">
+                    {t("usersTable.protocols")}
+                  </TableHead>
+                  <TableHead className="w-80 max-w-80">
                     <button
                       className="flex items-center gap-1.5 relative"
                       onClick={() => changeSort("used_traffic")}
@@ -207,7 +211,10 @@ const UsersTable = () => {
                           <TableCell>
                             <Skeleton className="h-6 w-40" />
                           </TableCell>
-                          <TableCell className="w-[360px] max-w-[360px]">
+                          <TableCell>
+                            <Skeleton className="h-6 w-32" />
+                          </TableCell>
+                          <TableCell className="w-80 max-w-80">
                             <Skeleton className="h-8 w-full" />
                           </TableCell>
                           <TableCell>

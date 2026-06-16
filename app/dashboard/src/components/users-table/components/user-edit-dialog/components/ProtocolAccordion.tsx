@@ -316,6 +316,28 @@ function ProtocolFields({ protocol, disabled }: ProtocolFieldsProps) {
     );
   }
 
+  if (protocol === "hysteria") {
+    return (
+      <Field>
+        <FieldLabel htmlFor={`${fieldPrefix}-auth`}>
+          {t("userDialog.auth")}
+        </FieldLabel>
+        <Controller
+          control={form.control}
+          name="proxies.hysteria.auth"
+          render={({ field }) => (
+            <GeneratedInput
+              id={`${fieldPrefix}-auth`}
+              disabled={disabled}
+              onGenerate={() => field.onChange(generateProxyPassword())}
+              {...field}
+            />
+          )}
+        />
+      </Field>
+    );
+  }
+
   return (
     <div className="grid gap-4">
       <Field>

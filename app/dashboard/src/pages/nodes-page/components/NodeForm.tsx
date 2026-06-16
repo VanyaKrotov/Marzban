@@ -66,7 +66,10 @@ export function NodeForm({
             name="status"
             control={form.control}
             render={({ field }) => (
-              <Field className="sm:pt-6" orientation="horizontal">
+              <Field
+                className="w-[140px] shrink-0 sm:pt-6 [&>[data-slot=field-label]]:flex-none"
+                orientation="horizontal"
+              >
                 <Switch
                   id="node-enabled"
                   checked={field.value !== "disabled"}
@@ -76,7 +79,9 @@ export function NodeForm({
                   }
                 />
                 <FieldLabel htmlFor="node-enabled">
-                  {field.value === "disabled" ? t("disabled") : t("active")}
+                  {field.value === "disabled"
+                    ? t("nodes.disabledState")
+                    : t("nodes.enabledState")}
                 </FieldLabel>
               </Field>
             )}

@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import logger, xray
 from app.db import GetDB, crud
 from app.models.node import NodeStatus
+from app.models.proxy import ProxyTypes
 from app.models.user import UserResponse
 from app.utils.concurrency import threaded_function
 from app.xray.node import XRayNode
@@ -23,6 +24,29 @@ def _get_inbound_node_ids():
         return crud.get_inbound_node_ids_map(
             db, list(xray.config.inbounds_by_tag)
         )
+
+
+def _supports_runtime_account(proxy_type, proxy_settings: dict) -> bool:
+    if not proxy_type.supports_runtime_api:
+        return False
+    if proxy_type.value == "shadowsocks":
+        method = proxy_settings.get("method", "")
+        return not (
+            method.startswith("2022-")
+            or method in {"unknown", "none", "plain", "chacha20-poly1305"}
+        )
+    return True
+
+
+def _restart_inbound_nodes(inbound_tags: set[str], inbound_node_ids: dict):
+    affected_node_ids = {
+        node_id
+        for inbound_tag in inbound_tags
+        for node_id in inbound_node_ids.get(inbound_tag, set())
+    }
+    for node_id, node in list(xray.nodes.items()):
+        if node_id in affected_node_ids and node.connected:
+            restart_node(node_id)
 
 
 @lru_cache(maxsize=None)
@@ -68,6 +92,7 @@ def add_user(dbuser: "DBUser"):
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
     inbound_node_ids = _get_inbound_node_ids()
+    restart_only_inbounds = set()
 
     for proxy_type, inbound_tags in user.inbounds.items():
         for inbound_tag in inbound_tags:
@@ -76,15 +101,18 @@ def add_user(dbuser: "DBUser"):
             try:
                 proxy_settings = user.proxies[proxy_type].dict(no_obj=True)
             except KeyError:
-                pass
+                continue
+            if not _supports_runtime_account(proxy_type, proxy_settings):
+                restart_only_inbounds.add(inbound_tag)
+                continue
             account = proxy_type.account_model(email=email, **proxy_settings)
 
             # XTLS currently only supports transmission methods of TCP and mKCP
             if getattr(account, 'flow', None) and (
-                inbound.get('network', 'tcp') not in ('tcp', 'kcp')
+                inbound.get('network', 'tcp') not in ('tcp', 'raw', 'kcp')
                 or
                 (
-                    inbound.get('network', 'tcp') in ('tcp', 'kcp')
+                    inbound.get('network', 'tcp') in ('tcp', 'raw', 'kcp')
                     and
                     inbound.get('tls') not in ('tls', 'reality')
                 )
@@ -100,13 +128,23 @@ def add_user(dbuser: "DBUser"):
                     and node.started
                 ):
                     _add_user_to_inbound(node.api, inbound_tag, account)
+    if restart_only_inbounds:
+        _restart_inbound_nodes(restart_only_inbounds, inbound_node_ids)
 
 
 def remove_user(dbuser: "DBUser"):
     email = f"{dbuser.id}.{dbuser.username}"
     inbound_node_ids = _get_inbound_node_ids()
+    restart_only_inbounds = {
+        inbound["tag"]
+        for inbound in xray.config.inbounds
+        if inbound["protocol"] in ProxyTypes._value2member_map_
+        and not ProxyTypes(inbound["protocol"]).supports_runtime_api
+    }
 
     for inbound_tag in xray.config.inbounds_by_tag:
+        if inbound_tag in restart_only_inbounds:
+            continue
         for node_id, node in list(xray.nodes.items()):
             if (
                 node_id in inbound_node_ids.get(inbound_tag, set())
@@ -114,12 +152,15 @@ def remove_user(dbuser: "DBUser"):
                 and node.started
             ):
                 _remove_user_from_inbound(node.api, inbound_tag, email)
+    if restart_only_inbounds:
+        _restart_inbound_nodes(restart_only_inbounds, inbound_node_ids)
 
 
 def update_user(dbuser: "DBUser"):
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
     inbound_node_ids = _get_inbound_node_ids()
+    restart_only_inbounds = set()
 
     active_inbounds = []
     for proxy_type, inbound_tags in user.inbounds.items():
@@ -130,15 +171,18 @@ def update_user(dbuser: "DBUser"):
             try:
                 proxy_settings = user.proxies[proxy_type].dict(no_obj=True)
             except KeyError:
-                pass
+                continue
+            if not _supports_runtime_account(proxy_type, proxy_settings):
+                restart_only_inbounds.add(inbound_tag)
+                continue
             account = proxy_type.account_model(email=email, **proxy_settings)
 
             # XTLS currently only supports transmission methods of TCP and mKCP
             if getattr(account, 'flow', None) and (
-                inbound.get('network', 'tcp') not in ('tcp', 'kcp')
+                inbound.get('network', 'tcp') not in ('tcp', 'raw', 'kcp')
                 or
                 (
-                    inbound.get('network', 'tcp') in ('tcp', 'kcp')
+                    inbound.get('network', 'tcp') in ('tcp', 'raw', 'kcp')
                     and
                     inbound.get('tls') not in ('tls', 'reality')
                 )
@@ -158,6 +202,14 @@ def update_user(dbuser: "DBUser"):
     for inbound_tag in xray.config.inbounds_by_tag:
         if inbound_tag in active_inbounds:
             continue
+        inbound = xray.config.inbounds_by_tag.get(inbound_tag)
+        if (
+            inbound
+            and inbound["protocol"] in ProxyTypes._value2member_map_
+            and not ProxyTypes(inbound["protocol"]).supports_runtime_api
+        ):
+            restart_only_inbounds.add(inbound_tag)
+            continue
         # remove disabled inbounds
         for node_id, node in list(xray.nodes.items()):
             if (
@@ -166,6 +218,8 @@ def update_user(dbuser: "DBUser"):
                 and node.started
             ):
                 _remove_user_from_inbound(node.api, inbound_tag, email)
+    if restart_only_inbounds:
+        _restart_inbound_nodes(restart_only_inbounds, inbound_node_ids)
 
 
 def remove_node(node_id: int):

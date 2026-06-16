@@ -20,6 +20,7 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
         "blackhole",
         "dns",
         "freedom",
+        "hysteria",
         "http",
         "loopback",
         "shadowsocks",
@@ -33,6 +34,7 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
         "Drops traffic selected for this outbound.",
         "Forwards DNS requests to the configured DNS service.",
         "Sends traffic directly to its destination.",
+        "Forwards traffic through a Hysteria server.",
         "Forwards traffic through an HTTP proxy.",
         "Redirects traffic back to another inbound.",
         "Forwards traffic through a Shadowsocks server.",
@@ -282,6 +284,38 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
                 type: "string",
                 minLength: 1,
                 description: "Inbound tag that receives looped-back traffic.",
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      if: {
+        properties: { protocol: { const: "hysteria" } },
+        required: ["protocol"],
+      },
+      then: {
+        properties: {
+          settings: {
+            type: "object",
+            required: ["servers"],
+            additionalProperties: true,
+            properties: {
+              servers: {
+                type: "array",
+                minItems: 1,
+                description: "Remote Hysteria servers.",
+                items: {
+                  type: "object",
+                  required: ["address", "port"],
+                  additionalProperties: true,
+                  properties: {
+                    address: { type: "string", minLength: 1 },
+                    port: { type: "integer", minimum: 1, maximum: 65535 },
+                    auth: { type: "string" },
+                  },
+                },
               },
             },
           },
