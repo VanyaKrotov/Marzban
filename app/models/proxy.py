@@ -294,6 +294,27 @@ class ProxyHost(BaseModel):
         return v
 
 
+class ProxyHostV2(ProxyHost):
+    id: int
+    inbound_id: int
+    inbound_tag: str
+    position: int
+
+
+class ProxyHostCreate(ProxyHost):
+    inbound_tag: str = Field(min_length=1, max_length=256)
+    position: Optional[int] = None
+
+
+class ProxyHostModify(ProxyHost):
+    inbound_tag: str = Field(min_length=1, max_length=256)
+    position: Optional[int] = None
+
+
+class ProxyHostReorder(BaseModel):
+    host_ids: List[int]
+
+
 class ProxyInbound(BaseModel):
     tag: str
     protocol: ProxyTypes

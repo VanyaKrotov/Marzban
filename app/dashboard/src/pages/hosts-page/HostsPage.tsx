@@ -51,27 +51,29 @@ import {
 import { HostDialog, type HostFormValues } from "./components/host-dialog";
 import {
   cloneHosts,
-  flattenHosts,
-  insertHost,
   removeHost,
   reorderHost,
+  toHostPayload,
   updateHost,
   type HostRow,
 } from "./lib/model";
 import {
+  useCreateHostMutation,
+  useDeleteHostMutation,
   useHostsQuery,
-  useSaveHostsMutation,
+  useReorderHostsMutation,
+  useUpdateHostMutation,
 } from "./lib/query";
 import type { HostsSchema } from "./types";
 
 export function HostsPage() {
   const { t } = useTranslation();
-  const [hosts, setHosts] = useState<HostsSchema>({});
+  const [hosts, setHosts] = useState<HostsSchema>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<HostRow | null>(null);
   const [draggedRow, setDraggedRow] = useState<HostRow | null>(null);
   const [dropTarget, setDropTarget] = useState<{
-    rowId: string;
+    rowId: number;
     position: "before" | "after";
   } | null>(null);
   const {
@@ -81,20 +83,52 @@ export function HostsPage() {
     isError,
     refetch,
   } = useHostsQuery();
-  const save = useSaveHostsMutation();
-  const rows = useMemo(() => flattenHosts(hosts), [hosts]);
+  const createHost = useCreateHostMutation();
+  const updateHostMutation = useUpdateHostMutation();
+  const deleteHost = useDeleteHostMutation();
+  const reorderHosts = useReorderHostsMutation();
+  const pending =
+    createHost.isPending ||
+    updateHostMutation.isPending ||
+    deleteHost.isPending ||
+    reorderHosts.isPending;
+  const rows = useMemo(() => hosts, [hosts]);
 
   useEffect(() => {
     if (hostsData) setHosts(cloneHosts(hostsData));
   }, [hostsData]);
 
-  const persist = (nextHosts: HostsSchema, successMessage?: string) => {
+  const persistUpdate = (
+    hostId: number,
+    nextHosts: HostsSchema,
+    values: HostFormValues,
+    successMessage?: string,
+  ) => {
+    if (!hostsData) return;
+    const previousHosts = hosts;
+    const payload = toHostPayload(values);
+    setHosts(nextHosts);
+    updateHostMutation.mutate(
+      { id: hostId, host: payload },
+      {
+        onSuccess: () => {
+          if (successMessage) generateSuccessMessage(successMessage);
+        },
+        onError: (error) => {
+          setHosts(previousHosts);
+          generateErrorMessage(error);
+        },
+      },
+    );
+  };
+
+  const persistReorder = (nextHosts: HostsSchema) => {
     if (!hostsData) return;
     const previousHosts = hosts;
     setHosts(nextHosts);
-    save.mutate(nextHosts, {
+    reorderHosts.mutate(nextHosts.map((host) => host.id), {
       onSuccess: () => {
-        if (successMessage) generateSuccessMessage(successMessage);
+        generateSuccessMessage(t("hostsPage.orderSaved"));
       },
       onError: (error) => {
         setHosts(previousHosts);
@@ -109,50 +143,89 @@ export function HostsPage() {
   };
 
   const submitHost = (values: HostFormValues) => {
-    const { inboundTag, ...host } = values;
-    const nextHosts = editingRow
-      ? updateHost(
-          hosts,
-          editingRow.inboundTag,
-          editingRow.index,
-          inboundTag,
-          host,
-        )
-      : insertHost(hosts, inboundTag, hosts[inboundTag]?.length ?? 0, host);
+    const payload = toHostPayload(values);
+    if (editingRow) {
+      persistUpdate(
+        editingRow.id,
+        updateHost(hosts, editingRow.id, payload),
+        values,
+        t("hostsDialog.savedSuccess"),
+      );
+      setDialogOpen(false);
+      return;
+    }
 
-    persist(nextHosts, t("hostsDialog.savedSuccess"));
-    setDialogOpen(false);
+    createHost.mutate(payload, {
+      onSuccess: () => {
+        generateSuccessMessage(t("hostsDialog.savedSuccess"));
+        setDialogOpen(false);
+      },
+      onError: (error) => generateErrorMessage(error),
+    });
   };
 
   const duplicate = (row: HostRow) => {
-    persist(
-      insertHost(hosts, row.inboundTag, row.index + 1, {
-        ...row.host,
-        remark: `${row.host.remark} ${t("hostsPage.copySuffix")}`,
+    createHost.mutate(
+      {
+        ...toHostPayload({
+          ...row,
+          inboundTag: row.inbound_tag,
+        }),
+        remark: `${row.remark} ${t("hostsPage.copySuffix")}`,
         is_disabled: true,
-      }),
-      t("hostsPage.copied"),
+      },
+      {
+        onSuccess: () => generateSuccessMessage(t("hostsPage.copied")),
+        onError: (error) => generateErrorMessage(error),
+      },
     );
   };
 
+  const toggleHost = (row: HostRow, checked: boolean) => {
+    const values: HostFormValues = {
+      ...row,
+      inboundTag: row.inbound_tag,
+      is_disabled: !checked,
+    };
+    persistUpdate(
+      row.id,
+      updateHost(hosts, row.id, toHostPayload(values)),
+      values,
+    );
+  };
+
+  const removeHostRow = (row: HostRow) => {
+    const previousHosts = hosts;
+    setHosts(removeHost(hosts, row.id));
+    deleteHost.mutate(row.id, {
+      onError: (error) => {
+        setHosts(previousHosts);
+        generateErrorMessage(error);
+      },
+    });
+  };
+
   const drop = (target: HostRow) => {
-    if (
-      !draggedRow ||
-      draggedRow.inboundTag !== target.inboundTag ||
-      !dropTarget
-    ) {
+    if (!draggedRow || !dropTarget) {
       setDraggedRow(null);
       setDropTarget(null);
       return;
     }
 
-    let targetIndex = target.index + (dropTarget.position === "after" ? 1 : 0);
-    if (draggedRow.index < targetIndex) targetIndex -= 1;
+    const sourceIndex = rows.findIndex((row) => row.id === draggedRow.id);
+    const targetRowIndex = rows.findIndex((row) => row.id === target.id);
+    if (sourceIndex < 0 || targetRowIndex < 0) {
+      setDraggedRow(null);
+      setDropTarget(null);
+      return;
+    }
 
-    if (draggedRow.index !== targetIndex) {
-      persist(
-        reorderHost(hosts, target.inboundTag, draggedRow.index, targetIndex),
-      );
+    let targetIndex =
+      targetRowIndex + (dropTarget.position === "after" ? 1 : 0);
+    if (sourceIndex < targetIndex) targetIndex -= 1;
+
+    if (sourceIndex !== targetIndex) {
+      persistReorder(reorderHost(hosts, sourceIndex, targetIndex));
     }
     setDraggedRow(null);
     setDropTarget(null);
@@ -236,10 +309,7 @@ export function HostsPage() {
                     }}
                     onDragOver={(event) => {
                       event.preventDefault();
-                      if (
-                        !draggedRow ||
-                        draggedRow.inboundTag !== row.inboundTag
-                      ) {
+                      if (!draggedRow) {
                         return;
                       }
 
@@ -266,10 +336,10 @@ export function HostsPage() {
                       <GripVertical className="size-4 cursor-grab text-muted-foreground" />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {row.host.remark}
+                      {row.remark}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {row.host.address}:{row.host.port ?? "default"}
+                      {row.address}:{row.port ?? "default"}
                     </TableCell>
                     <TableCell>
                       <div
@@ -277,27 +347,16 @@ export function HostsPage() {
                         onClick={(event) => event.stopPropagation()}
                       >
                         <Switch
-                          checked={!row.host.is_disabled}
-                          disabled={save.isPending}
+                          checked={!row.is_disabled}
+                          disabled={pending}
                           onCheckedChange={(checked) =>
-                            persist(
-                              updateHost(
-                                hosts,
-                                row.inboundTag,
-                                row.index,
-                                row.inboundTag,
-                                {
-                                  ...row.host,
-                                  is_disabled: !checked,
-                                },
-                              ),
-                            )
+                            toggleHost(row, checked)
                           }
                         />
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{row.inboundTag}</Badge>
+                      <Badge variant="outline">{row.inbound_tag}</Badge>
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -305,20 +364,16 @@ export function HostsPage() {
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          disabled={save.isPending}
+                          disabled={pending}
                           onClick={() => duplicate(row)}
                           aria-label={t("hostsPage.copy")}
                         >
                           <Copy />
                         </Button>
                         <DeleteHostButton
-                          pending={save.isPending}
-                          name={row.host.remark}
-                          onDelete={() =>
-                            persist(
-                              removeHost(hosts, row.inboundTag, row.index),
-                            )
-                          }
+                          pending={pending}
+                          name={row.remark}
+                          onDelete={() => removeHostRow(row)}
                         />
                       </div>
                     </TableCell>
@@ -340,31 +395,21 @@ export function HostsPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{row.host.remark}</p>
+                    <p className="font-medium">{row.remark}</p>
                     <p className="font-mono text-xs text-muted-foreground">
-                      {row.host.address}:{row.host.port ?? "default"}
+                      {row.address}:{row.port ?? "default"}
                     </p>
                   </div>
-                  <Badge variant="outline">{row.inboundTag}</Badge>
+                  <Badge variant="outline">{row.inbound_tag}</Badge>
                 </div>
                 <div
                   className="mt-4 flex items-center justify-between"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <Switch
-                    checked={!row.host.is_disabled}
-                    disabled={save.isPending}
-                    onCheckedChange={(checked) =>
-                      persist(
-                        updateHost(
-                          hosts,
-                          row.inboundTag,
-                          row.index,
-                          row.inboundTag,
-                          { ...row.host, is_disabled: !checked },
-                        ),
-                      )
-                    }
+                    checked={!row.is_disabled}
+                    disabled={pending}
+                    onCheckedChange={(checked) => toggleHost(row, checked)}
                   />
                   <div className="flex gap-1">
                     <Button
@@ -375,11 +420,9 @@ export function HostsPage() {
                       <Copy />
                     </Button>
                     <DeleteHostButton
-                      pending={save.isPending}
-                      name={row.host.remark}
-                      onDelete={() =>
-                        persist(removeHost(hosts, row.inboundTag, row.index))
-                      }
+                      pending={pending}
+                      name={row.remark}
+                      onDelete={() => removeHostRow(row)}
                     />
                   </div>
                 </div>
@@ -404,9 +447,9 @@ export function HostsPage() {
         <HostDialog
           key={`${editingRow?.id ?? "create"}-${dialogOpen}`}
           open={dialogOpen}
-          host={editingRow?.host ?? null}
-          inboundTag={editingRow?.inboundTag ?? null}
-          pending={save.isPending}
+          host={editingRow ?? null}
+          inboundTag={editingRow?.inbound_tag ?? null}
+          pending={pending}
           onOpenChange={setDialogOpen}
           onSubmit={submitHost}
         />

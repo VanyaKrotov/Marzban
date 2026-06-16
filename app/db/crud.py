@@ -38,12 +38,14 @@ from app.db.models import (
 from app.models.admin import AdminCreate, AdminModify, AdminPartialModify
 from app.models.node import NodeCreate, NodeModify, NodeStatus, NodeUsageResponse
 from app.models.node import NodeCertificateModify
-from app.models.proxy import ProxyHost as ProxyHostModify
 from app.models.proxy import (
     InboundCreate,
     InboundModify,
     OutboundCreate,
     OutboundModify,
+    ProxyHost as ProxyHostModify,
+    ProxyHostCreate,
+    ProxyHostModify as ProxyHostV2Modify,
     XRAY_INBOUND_PROTOCOLS,
 )
 from app.models.routing import RoutingRuleCreate, RoutingRuleModify
@@ -81,9 +83,19 @@ def add_default_host(db: Session, inbound: ProxyInbound):
         db (Session): Database session.
         inbound (ProxyInbound): Proxy inbound to add the default host to.
     """
-    host = ProxyHost(remark="🚀 Marz ({USERNAME}) [{PROTOCOL} - {TRANSPORT}]", address="{SERVER_IP}", inbound=inbound)
+    host = ProxyHost(
+        remark="🚀 Marz ({USERNAME}) [{PROTOCOL} - {TRANSPORT}]",
+        address="{SERVER_IP}",
+        inbound=inbound,
+        position=get_next_host_position(db),
+    )
     db.add(host)
     db.commit()
+
+
+def get_next_host_position(db: Session) -> int:
+    max_position = db.query(func.max(ProxyHost.position)).scalar()
+    return (max_position if max_position is not None else -1) + 1
 
 
 def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
@@ -109,7 +121,7 @@ def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
         inbound = ProxyInbound(tag=inbound_tag, content=content, enabled=True)
         db.add(inbound)
         db.commit()
-        add_default_host(db, inbound)
+        # add_default_host(db, inbound)
         db.refresh(inbound)
     return inbound
 
@@ -150,7 +162,7 @@ def create_inbound(db: Session, inbound: InboundCreate) -> ProxyInbound:
     )
     db.add(dbinbound)
     db.commit()
-    add_default_host(db, dbinbound)
+    # add_default_host(db, dbinbound)
     db.refresh(dbinbound)
     return get_inbound(db, dbinbound.tag)
 
@@ -504,6 +516,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         .filter(ProxyInbound.tag.in_(inbound_contents))
         .all()
     } if inbound_contents else set()
+    next_host_position = get_next_host_position(db)
     for tag in inbound_contents.keys() - existing_inbound_tags:
         inbound = ProxyInbound(
             tag=tag,
@@ -516,8 +529,10 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             ProxyHost(
                 remark="Marz ({USERNAME}) [{PROTOCOL} - {TRANSPORT}]",
                 address="{SERVER_IP}",
+                position=next_host_position,
             )
         )
+        next_host_position += 1
         db.add(inbound)
 
     readonly_outbounds = (
@@ -607,7 +622,95 @@ def get_hosts(db: Session, inbound_tag: str) -> List[ProxyHost]:
         List[ProxyHost]: List of hosts for the inbound.
     """
     inbound = get_or_create_inbound(db, inbound_tag)
-    return inbound.hosts
+    return (
+        db.query(ProxyHost)
+        .options(joinedload(ProxyHost.inbound))
+        .filter(ProxyHost.inbound_id == inbound.id)
+        .order_by(ProxyHost.position, ProxyHost.id)
+        .all()
+    )
+
+
+def get_hosts_v2(db: Session) -> List[ProxyHost]:
+    return (
+        db.query(ProxyHost)
+        .options(joinedload(ProxyHost.inbound))
+        .order_by(ProxyHost.position, ProxyHost.id)
+        .all()
+    )
+
+
+def get_host_v2(db: Session, host_id: int) -> Optional[ProxyHost]:
+    return (
+        db.query(ProxyHost)
+        .options(joinedload(ProxyHost.inbound))
+        .filter(ProxyHost.id == host_id)
+        .first()
+    )
+
+
+def _apply_host_fields(dbhost: ProxyHost, host: ProxyHostModify) -> None:
+    dbhost.remark = host.remark
+    dbhost.address = host.address
+    dbhost.port = host.port
+    dbhost.path = host.path
+    dbhost.sni = host.sni
+    dbhost.host = host.host
+    dbhost.security = host.security
+    dbhost.alpn = host.alpn
+    dbhost.fingerprint = host.fingerprint
+    dbhost.allowinsecure = host.allowinsecure
+    dbhost.is_disabled = host.is_disabled
+    dbhost.mux_enable = host.mux_enable
+    dbhost.fragment_setting = host.fragment_setting
+    dbhost.noise_setting = host.noise_setting
+    dbhost.random_user_agent = host.random_user_agent
+    dbhost.use_sni_as_host = host.use_sni_as_host
+
+
+def create_host_v2(db: Session, host: ProxyHostCreate) -> ProxyHost:
+    inbound = get_or_create_inbound(db, host.inbound_tag)
+    position = host.position
+    if position is None:
+        position = get_next_host_position(db)
+    dbhost = ProxyHost(inbound=inbound, position=position)
+    _apply_host_fields(dbhost, host)
+    db.add(dbhost)
+    db.commit()
+    db.refresh(dbhost)
+    return get_host_v2(db, dbhost.id)
+
+
+def update_host_v2(
+    db: Session, dbhost: ProxyHost, host: ProxyHostV2Modify
+) -> ProxyHost:
+    inbound = get_or_create_inbound(db, host.inbound_tag)
+    dbhost.inbound = inbound
+    if host.position is not None:
+        dbhost.position = host.position
+    _apply_host_fields(dbhost, host)
+    db.commit()
+    db.refresh(dbhost)
+    return get_host_v2(db, dbhost.id)
+
+
+def remove_host_v2(db: Session, dbhost: ProxyHost) -> None:
+    db.delete(dbhost)
+    db.commit()
+
+
+def reorder_hosts_v2(db: Session, host_ids: List[int]) -> List[ProxyHost]:
+    hosts = get_hosts_v2(db)
+    existing_ids = {host.id for host in hosts}
+    if len(host_ids) != len(set(host_ids)) or set(host_ids) != existing_ids:
+        raise ValueError("Host order must contain every host exactly once")
+
+    hosts_by_id = {host.id: host for host in hosts}
+    for position, host_id in enumerate(host_ids):
+        hosts_by_id[host_id].position = position
+
+    db.commit()
+    return get_hosts_v2(db)
 
 
 def add_host(db: Session, inbound_tag: str, host: ProxyHostModify) -> List[ProxyHost]:
@@ -632,6 +735,7 @@ def add_host(db: Session, inbound_tag: str, host: ProxyHostModify) -> List[Proxy
             sni=host.sni,
             host=host.host,
             inbound=inbound,
+            position=get_next_host_position(db),
             security=host.security,
             alpn=host.alpn,
             fingerprint=host.fingerprint
@@ -639,7 +743,7 @@ def add_host(db: Session, inbound_tag: str, host: ProxyHostModify) -> List[Proxy
     )
     db.commit()
     db.refresh(inbound)
-    return inbound.hosts
+    return get_hosts(db, inbound_tag)
 
 
 def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostModify]) -> List[ProxyHost]:
@@ -655,6 +759,7 @@ def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostMo
         List[ProxyHost]: Updated list of hosts for the inbound.
     """
     inbound = get_or_create_inbound(db, inbound_tag)
+    position = get_next_host_position(db)
     inbound.hosts = [
         ProxyHost(
             remark=host.remark,
@@ -664,6 +769,7 @@ def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostMo
             sni=host.sni,
             host=host.host,
             inbound=inbound,
+            position=position + index,
             security=host.security,
             alpn=host.alpn,
             fingerprint=host.fingerprint,
@@ -674,11 +780,11 @@ def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostMo
             noise_setting=host.noise_setting,
             random_user_agent=host.random_user_agent,
             use_sni_as_host=host.use_sni_as_host,
-        ) for host in modified_hosts
+        ) for index, host in enumerate(modified_hosts)
     ]
     db.commit()
     db.refresh(inbound)
-    return inbound.hosts
+    return get_hosts(db, inbound_tag)
 
 
 def get_user_queryset(db: Session) -> Query:

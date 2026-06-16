@@ -405,6 +405,7 @@
   "hostsPage.copy": "Copy host",
   "hostsPage.copySuffix": "copy",
   "hostsPage.copied": "Host copied",
+  "hostsPage.orderSaved": "Host order saved",
   "hostsPage.createTitle": "Create host",
   "hostsPage.editTitle": "Edit host",
   "hostsPage.dialogDescription": "Configure the subscription address and its Xray connection options.",

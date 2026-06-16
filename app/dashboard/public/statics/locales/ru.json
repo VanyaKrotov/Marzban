@@ -405,6 +405,7 @@
   "hostsPage.copy": "Копировать хост",
   "hostsPage.copySuffix": "копия",
   "hostsPage.copied": "Хост скопирован",
+  "hostsPage.orderSaved": "Порядок хостов сохранён",
   "hostsPage.createTitle": "Создание хоста",
   "hostsPage.editTitle": "Редактирование хоста",
   "hostsPage.dialogDescription": "Настройте адрес подписки и параметры подключения Xray.",

@@ -406,6 +406,7 @@
   "hostsPage.copy": "کپی هاست",
   "hostsPage.copySuffix": "کپی",
   "hostsPage.copied": "هاست کپی شد",
+  "hostsPage.orderSaved": "ترتیب هاست‌ها ذخیره شد",
   "hostsPage.createTitle": "ایجاد هاست",
   "hostsPage.editTitle": "ویرایش هاست",
   "hostsPage.dialogDescription": "آدرس اشتراک و گزینه‌های اتصال Xray را تنظیم کنید.",

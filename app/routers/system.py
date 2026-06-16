@@ -17,6 +17,10 @@ from app.models.proxy import (
     OutboundModify,
     OutboundResponse,
     ProxyHost,
+    ProxyHostCreate,
+    ProxyHostModify,
+    ProxyHostReorder,
+    ProxyHostV2,
     ProxyInbound,
     ProxyTypes,
     RUNTIME_API_PROTOCOLS,
@@ -484,6 +488,94 @@ def get_hosts(
     """Get a list of proxy hosts grouped by inbound tag."""
     hosts = {tag: crud.get_hosts(db, tag) for tag in xray.config.inbounds_by_tag}
     return hosts
+
+
+@router.get(
+    "/hosts/v2", response_model=List[ProxyHostV2], responses={403: responses._403}
+)
+def get_hosts_v2(
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+):
+    """Get a flat list of proxy hosts ordered by position."""
+    return crud.get_hosts_v2(db)
+
+
+@router.post(
+    "/hosts/v2", response_model=ProxyHostV2, responses={403: responses._403}
+)
+def create_host_v2(
+    host: ProxyHostCreate,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Create a proxy host."""
+    if host.inbound_tag not in xray.config.inbounds_by_tag:
+        raise HTTPException(
+            status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
+        )
+    dbhost = crud.create_host_v2(db, host)
+    xray.hosts.update()
+    return dbhost
+
+
+@router.put(
+    "/hosts/v2/reorder",
+    response_model=List[ProxyHostV2],
+    responses={403: responses._403},
+)
+def reorder_hosts_v2(
+    payload: ProxyHostReorder,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update the global proxy host order without changing inbound assignments."""
+    try:
+        hosts = crud.reorder_hosts_v2(db, payload.host_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    xray.hosts.update()
+    return hosts
+
+
+@router.put(
+    "/hosts/v2/{host_id}",
+    response_model=ProxyHostV2,
+    responses={403: responses._403, 404: responses._404},
+)
+def update_host_v2(
+    host_id: int,
+    host: ProxyHostModify,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update a proxy host."""
+    if host.inbound_tag not in xray.config.inbounds_by_tag:
+        raise HTTPException(
+            status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
+        )
+    dbhost = crud.get_host_v2(db, host_id)
+    if not dbhost:
+        raise HTTPException(status_code=404, detail="Host not found")
+    dbhost = crud.update_host_v2(db, dbhost, host)
+    xray.hosts.update()
+    return dbhost
+
+
+@router.delete(
+    "/hosts/v2/{host_id}", responses={403: responses._403, 404: responses._404}
+)
+def delete_host_v2(
+    host_id: int,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Delete a proxy host."""
+    dbhost = crud.get_host_v2(db, host_id)
+    if not dbhost:
+        raise HTTPException(status_code=404, detail="Host not found")
+    crud.remove_host_v2(db, dbhost)
+    xray.hosts.update()
+    return {}
 
 
 @router.put(

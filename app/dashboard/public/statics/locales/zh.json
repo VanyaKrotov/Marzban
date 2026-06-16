@@ -405,6 +405,7 @@
   "hostsPage.copy": "复制主机",
   "hostsPage.copySuffix": "副本",
   "hostsPage.copied": "主机已复制",
+  "hostsPage.orderSaved": "主机顺序已保存",
   "hostsPage.createTitle": "创建主机",
   "hostsPage.editTitle": "编辑主机",
   "hostsPage.dialogDescription": "配置订阅地址及其 Xray 连接选项。",

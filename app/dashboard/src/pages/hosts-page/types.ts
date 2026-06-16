@@ -1,4 +1,8 @@
 export type HostType = {
+  id: number;
+  inbound_id: number;
+  inbound_tag: string;
+  position: number;
   remark: string;
   address: string;
   port: number | null;
@@ -17,4 +21,12 @@ export type HostType = {
   use_sni_as_host: boolean;
 };
 
-export type HostsSchema = Record<string, HostType[]>;
+export type HostPayload = Omit<
+  HostType,
+  "id" | "inbound_id" | "inbound_tag" | "position"
+> & {
+  inbound_tag: string;
+  position?: number | null;
+};
+
+export type HostsSchema = HostType[];
