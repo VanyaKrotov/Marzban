@@ -71,7 +71,7 @@ class NodeResponse(Node):
 
 
 class NodeUsageResponse(BaseModel):
-    node_id: Optional[int] = None
+    node_id: int
     node_name: str
     uplink: int
     downlink: int

@@ -2,7 +2,6 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from operator import attrgetter
-from typing import Union
 
 from pymysql.err import OperationalError
 from sqlalchemy import and_, bindparam, insert, select, update
@@ -45,7 +44,7 @@ def safe_execute(db: Session, stmt, params=None):
         db.commit()
 
 
-def record_user_stats(params: list, node_id: Union[int, None],
+def record_user_stats(params: list, node_id: int,
                       consumption_factor: int = 1):
     if not params:
         return
@@ -83,7 +82,7 @@ def record_user_stats(params: list, node_id: Union[int, None],
         safe_execute(db, stmt, params)
 
 
-def record_node_stats(params: dict, node_id: Union[int, None]):
+def record_node_stats(params: dict, node_id: int):
     if not params:
         return
 

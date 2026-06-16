@@ -467,7 +467,7 @@ class NodeUserUsage(Base):
     created_at = Column(DateTime, unique=False, nullable=False)  # one hour per record
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="node_usages")
-    node_id = Column(Integer, ForeignKey("nodes.id"))
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
     node = relationship("Node", back_populates="user_usages")
     used_traffic = Column(BigInteger, default=0)
 
@@ -480,7 +480,7 @@ class NodeUsage(Base):
 
     id = Column(Integer, primary_key=True)
     created_at = Column(DateTime, unique=False, nullable=False)  # one hour per record
-    node_id = Column(Integer, ForeignKey("nodes.id"))
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
     node = relationship("Node", back_populates="usages")
     uplink = Column(BigInteger, default=0)
     downlink = Column(BigInteger, default=0)

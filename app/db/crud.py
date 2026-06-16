@@ -823,11 +823,7 @@ def get_user_usages(db: Session, dbuser: User, start: datetime, end: datetime) -
         List[UserUsageResponse]: List of user usage responses.
     """
 
-    usages = {0: UserUsageResponse(  # Main Core
-        node_id=None,
-        node_name="Master",
-        used_traffic=0
-    )}
+    usages = {}
 
     for node in db.query(Node).all():
         usages[node.id] = UserUsageResponse(
@@ -836,13 +832,16 @@ def get_user_usages(db: Session, dbuser: User, start: datetime, end: datetime) -
             used_traffic=0
         )
 
-    cond = and_(NodeUserUsage.user_id == dbuser.id,
-                NodeUserUsage.created_at >= start,
-                NodeUserUsage.created_at <= end)
+    cond = and_(
+        NodeUserUsage.user_id == dbuser.id,
+        NodeUserUsage.created_at >= start,
+        NodeUserUsage.created_at <= end,
+        NodeUserUsage.node_id.isnot(None),
+    )
 
     for v in db.query(NodeUserUsage).filter(cond):
         try:
-            usages[v.node_id or 0].used_traffic += v.used_traffic
+            usages[v.node_id].used_traffic += v.used_traffic
         except KeyError:
             pass
 
@@ -1277,8 +1276,7 @@ def get_all_users_usages(
     """
     Retrieves usage data for all users associated with an admin within a specified time range.
 
-    This function calculates the total traffic used by users across different nodes,
-    including a "Master" node that represents the main core.
+    This function calculates the total traffic used by users across remote nodes.
 
     Args:
         db (Session): Database session for querying.
@@ -1288,13 +1286,9 @@ def get_all_users_usages(
 
     Returns:
         List[UserUsageResponse]: A list of UserUsageResponse objects, each representing
-        the usage data for a specific node or the main core.
+        the usage data for a specific node.
     """
-    usages = {0: UserUsageResponse(  # Main Core
-        node_id=None,
-        node_name="Master",
-        used_traffic=0
-    )}
+    usages = {}
 
     for node in db.query(Node).all():
         usages[node.id] = UserUsageResponse(
@@ -1308,12 +1302,13 @@ def get_all_users_usages(
     cond = and_(
         NodeUserUsage.created_at >= start,
         NodeUserUsage.created_at <= end,
-        NodeUserUsage.user_id.in_(admin_users)
+        NodeUserUsage.user_id.in_(admin_users),
+        NodeUserUsage.node_id.isnot(None),
     )
 
     for v in db.query(NodeUserUsage).filter(cond):
         try:
-            usages[v.node_id or 0].used_traffic += v.used_traffic
+            usages[v.node_id].used_traffic += v.used_traffic
         except KeyError:
             pass
 
@@ -2045,12 +2040,16 @@ def get_nodes_usage(db: Session, start: datetime, end: datetime) -> List[NodeUsa
             downlink=0
         )
 
-    cond = and_(NodeUsage.created_at >= start, NodeUsage.created_at <= end)
+    cond = and_(
+        NodeUsage.created_at >= start,
+        NodeUsage.created_at <= end,
+        NodeUsage.node_id.isnot(None),
+    )
 
     for v in db.query(NodeUsage).filter(cond):
         try:
-            usages[v.node_id or 0].uplink += v.uplink
-            usages[v.node_id or 0].downlink += v.downlink
+            usages[v.node_id].uplink += v.uplink
+            usages[v.node_id].downlink += v.downlink
         except KeyError:
             pass
 
@@ -2101,6 +2100,7 @@ def get_stats_history(
     usage_rows = db.query(NodeUsage).filter(
         NodeUsage.created_at >= query_start,
         NodeUsage.created_at <= query_end,
+        NodeUsage.node_id.isnot(None),
     )
     for usage in usage_rows:
         if usage.node_id not in traffic_by_node:
