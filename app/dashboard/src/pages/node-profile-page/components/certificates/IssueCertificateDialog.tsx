@@ -1,6 +1,9 @@
 import { LoaderCircle, Plus } from "lucide-react";
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+
+import { generateErrorMessage } from "utils/toastHandler";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,21 +16,22 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useIssueCertificateMutation } from "@/pages/nodes-page/lib/query";
-import { generateErrorMessage } from "utils/toastHandler";
 
-export function IssueCertificateDialog({
-  nodeId,
-  nodeName,
-}: {
+import { useIssueCertificateMutation } from "@/pages/nodes-page/lib/query";
+
+type IssueCertificateFormValues = {
+  domain: string;
+  email: string;
+};
+
+interface Props {
   nodeId: number;
   nodeName: string;
-}) {
+}
+
+export function IssueCertificateDialog(props: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [domain, setDomain] = useState("");
-  const [email, setEmail] = useState("");
-  const issue = useIssueCertificateMutation(nodeId);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,56 +42,90 @@ export function IssueCertificateDialog({
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("nodes.certificates.issue")}</DialogTitle>
-          <DialogDescription>{nodeName}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <Field>
-            <FieldLabel htmlFor="profile-certificate-domain">
-              {t("nodes.certificates.domain")}
-            </FieldLabel>
-            <Input
-              id="profile-certificate-domain"
-              value={domain}
-              placeholder="node.example.com"
-              onChange={(event) => setDomain(event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="profile-certificate-email">
-              {t("nodes.certificates.email")}
-            </FieldLabel>
-            <Input
-              id="profile-certificate-email"
-              type="email"
-              value={email}
-              placeholder="admin@example.com"
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-          <Button
-            type="button"
-            className="w-full"
-            disabled={!domain.trim() || issue.isPending}
-            onClick={() =>
-              issue.mutate(
-                { domain: domain.trim(), email: email.trim() },
-                {
-                  onSuccess: () => {
-                    setDomain("");
-                    setOpen(false);
-                  },
-                  onError: (error) => generateErrorMessage(error),
-                },
-              )
-            }
-          >
-            {issue.isPending && <LoaderCircle className="animate-spin" />}
-            {t("nodes.certificates.issue")}
-          </Button>
-        </div>
+        <FormContent {...props} onClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FormContent({
+  nodeId,
+  nodeName,
+  onClose,
+}: Props & { onClose(): void }) {
+  const { t } = useTranslation();
+  const form = useForm<IssueCertificateFormValues>({
+    defaultValues: {
+      domain: "",
+      email: "",
+    },
+  });
+
+  const issue = useIssueCertificateMutation(nodeId);
+  const domain = form.watch("domain");
+
+  const submit = (values: IssueCertificateFormValues) => {
+    issue.mutate(
+      {
+        domain: values.domain.trim(),
+        email: values.email.trim(),
+      },
+      {
+        onSuccess: onClose,
+        onError: (error) => generateErrorMessage(error),
+      },
+    );
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t("nodes.certificates.issue")}</DialogTitle>
+        <DialogDescription>{nodeName}</DialogDescription>
+      </DialogHeader>
+      <form className="space-y-4" onSubmit={form.handleSubmit(submit)}>
+        <Field>
+          <FieldLabel htmlFor="profile-certificate-domain">
+            {t("nodes.certificates.domain")}
+          </FieldLabel>
+          <Controller
+            control={form.control}
+            name="domain"
+            render={({ field }) => (
+              <Input
+                id="profile-certificate-domain"
+                placeholder="node.example.com"
+                {...field}
+              />
+            )}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="profile-certificate-email">
+            {t("nodes.certificates.email")}
+          </FieldLabel>
+          <Controller
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <Input
+                id="profile-certificate-email"
+                type="email"
+                placeholder="admin@example.com"
+                {...field}
+              />
+            )}
+          />
+        </Field>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={!domain.trim() || issue.isPending}
+        >
+          {issue.isPending && <LoaderCircle className="animate-spin" />}
+          {t("nodes.certificates.issue")}
+        </Button>
+      </form>
+    </>
   );
 }

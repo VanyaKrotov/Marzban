@@ -519,7 +519,6 @@ def get_node_certificates(
 )
 def issue_node_certificate(
     request: NodeCertificateIssue,
-    bg: BackgroundTasks,
     dbnode: NodeResponse = Depends(get_node),
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
@@ -571,8 +570,6 @@ def issue_node_certificate(
         private_key=private_key,
         expires_at=expires_at,
     )
-    if dbnode.status != NodeStatus.disabled:
-        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
     return dbcertificate
 
 
@@ -583,7 +580,6 @@ def issue_node_certificate(
 def modify_node_certificate(
     certificate_id: int,
     modified: NodeCertificateModify,
-    bg: BackgroundTasks,
     dbnode: NodeResponse = Depends(get_node),
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
@@ -595,15 +591,12 @@ def modify_node_certificate(
         updated = crud.update_node_certificate(db, dbcertificate, modified)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-    if dbnode.status != NodeStatus.disabled:
-        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
     return updated
 
 
 @router.delete("/node/{node_id}/certificates/{certificate_id}")
 def remove_node_certificate(
     certificate_id: int,
-    bg: BackgroundTasks,
     dbnode: NodeResponse = Depends(get_node),
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
@@ -612,8 +605,6 @@ def remove_node_certificate(
     if not dbcertificate:
         raise HTTPException(status_code=404, detail="Node certificate not found")
     crud.remove_node_certificate(db, dbcertificate)
-    if dbnode.status != NodeStatus.disabled:
-        bg.add_task(xray.operations.restart_node, node_id=dbnode.id)
     return {}
 
 

@@ -20,7 +20,7 @@ Read `app/dashboard/package.json`, the nearest component, its Zustand context, r
 - Axios response interceptors return response data directly. Handle server errors through `error.response.data`, not legacy `_data` fields.
 - Keep shared dashboard state in the appropriate Zustand context.
 - Use TanStack Query and query invalidation where the neighboring feature already uses query keys.
-- Use `react-hook-form` and Zod for substantial forms; preserve API units and transformations such as bytes versus GB and timestamps versus dates.
+- Use `react-hook-form` for all user-editable forms, including small dialog forms. Prefer `Controller` for shadcn/custom controlled inputs and add Zod when validation or transformation is non-trivial. Preserve API units and transformations such as bytes versus GB and timestamps versus dates.
 - Keep dialog shells lightweight. Put queries, mutations, forms, local data state, and expensive derived values in a separate content component rendered inside `DialogContent` or `AlertDialogContent`. This ensures the data-owning component mounts only while the dialog is open and stops polling or other lifecycle work when it closes.
 
 ## Keep API and UI contracts synchronized

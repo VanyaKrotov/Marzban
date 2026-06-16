@@ -1,7 +1,7 @@
 from copy import deepcopy
-from typing import List, Set
+from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app import xray
 from app.db import Session, crud, get_db
@@ -49,13 +49,6 @@ def _validate_content(content: dict) -> dict:
     return normalized
 
 
-def _restart_nodes(bg: BackgroundTasks, node_ids: Set[int]) -> None:
-    for node_id in node_ids:
-        node = xray.nodes.get(node_id)
-        if node and node.connected:
-            bg.add_task(xray.operations.restart_node, node_id)
-
-
 @router.get("/rules", response_model=List[RoutingRuleResponse])
 def get_routing_rules(
     db: Session = Depends(get_db),
@@ -72,7 +65,6 @@ def get_routing_rules(
 )
 def create_routing_rule(
     rule: RoutingRuleCreate,
-    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
@@ -82,7 +74,6 @@ def create_routing_rule(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     xray.reload_config()
-    _restart_nodes(bg, set(rule.node_ids))
     return _response(created)
 
 
@@ -93,28 +84,15 @@ def create_routing_rule(
 )
 def reorder_routing_rules(
     order: RoutingRuleOrder,
-    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
-    rules = crud.get_routing_rules(db)
-    requested_positions = {
-        rule_id: position
-        for position, rule_id in enumerate(order.rule_ids)
-    }
-    affected_node_ids = {
-        node.id
-        for rule in rules
-        if requested_positions.get(rule.id) != rule.position
-        for node in rule.nodes
-    }
     try:
         reordered = crud.reorder_routing_rules(db, order.rule_ids)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     xray.reload_config()
-    _restart_nodes(bg, affected_node_ids)
     return [_response(rule) for rule in reordered]
 
 
@@ -126,7 +104,6 @@ def reorder_routing_rules(
 def modify_routing_rule(
     rule_id: int,
     modified: RoutingRuleModify,
-    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
@@ -139,7 +116,6 @@ def modify_routing_rule(
             detail="Content of routing rules loaded from the Xray JSON config is read-only",
         )
 
-    affected_node_ids = {node.id for node in dbrule.nodes}
     if modified.content is not None:
         modified.content = _validate_content(modified.content)
     try:
@@ -147,16 +123,13 @@ def modify_routing_rule(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    affected_node_ids.update(node.id for node in updated.nodes)
     xray.reload_config()
-    _restart_nodes(bg, affected_node_ids)
     return _response(updated)
 
 
 @router.delete("/rules/{rule_id}", status_code=204)
 def delete_routing_rule(
     rule_id: int,
-    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
@@ -169,7 +142,5 @@ def delete_routing_rule(
             detail="Routing rules loaded from the Xray JSON config cannot be deleted",
         )
 
-    affected_node_ids = {node.id for node in dbrule.nodes}
     crud.remove_routing_rule(db, dbrule)
     xray.reload_config()
-    _restart_nodes(bg, affected_node_ids)

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LoaderCircle, Pencil } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -31,59 +32,72 @@ import {
   useRenameGeoResourceMutation,
   useUpdateGeoResourceScheduleMutation,
 } from "./query";
+import { CronScheduleInput } from "./CronScheduleInput";
 
-export function GeoResourceSettingsDialog({
-  nodeId,
-  resource,
-}: {
+interface Props {
   nodeId: number;
   resource: NodeGeoResource;
-}) {
+}
+
+type GeoResourceSettingsFormValues = {
+  filename: string;
+  url: string;
+  cron: string;
+};
+
+export function GeoResourceSettingsDialog({ nodeId, resource }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [filename, setFilename] = useState(resource.filename);
-  const [url, setUrl] = useState(resource.url ?? "");
-  const [cron, setCron] = useState(resource.cron ?? "");
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [confirmOverwrite, setConfirmOverwrite] =
+    useState<GeoResourceSettingsFormValues | null>(null);
+
   const rename = useRenameGeoResourceMutation(nodeId);
   const schedule = useUpdateGeoResourceScheduleMutation(nodeId);
   const pending = rename.isPending || schedule.isPending;
 
-  useEffect(() => {
-    if (!open) return;
-    setFilename(resource.filename);
-    setUrl(resource.url ?? "");
-    setCron(resource.cron ?? "");
-  }, [open, resource]);
-
-  const save = async (overwrite = false) => {
+  const save = async (
+    values: GeoResourceSettingsFormValues,
+    overwrite = false,
+  ) => {
     try {
-      if (filename !== resource.filename) {
+      if (values.filename !== resource.filename) {
         await rename.mutateAsync({
           filename: resource.filename,
-          newFilename: filename,
+          newFilename: values.filename,
           overwrite,
         });
       }
       if (resource.auto_update) {
-        await schedule.mutateAsync({ filename, url, cron });
+        await schedule.mutateAsync({
+          filename: values.filename,
+          url: values.url,
+          cron: values.cron,
+        });
       }
+      setConfirmOverwrite(null);
       setOpen(false);
     } catch (error) {
       if (
         !overwrite &&
         (error as { response?: { status?: number } })?.response?.status === 409
       ) {
-        setConfirmOverwrite(true);
+        setConfirmOverwrite(values);
       } else {
         generateErrorMessage(error);
       }
     }
   };
 
+  const handleOpenChange = (value: boolean) => {
+    setOpen(value);
+    if (!value) {
+      setConfirmOverwrite(null);
+    }
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button
             type="button"
@@ -95,65 +109,15 @@ export function GeoResourceSettingsDialog({
           </Button>
         </DialogTrigger>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("geoResources.editTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("geoResources.editDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor={`geo-name-${resource.filename}`}>
-                {t("geoResources.filename")}
-              </Label>
-              <Input
-                id={`geo-name-${resource.filename}`}
-                value={filename}
-                onChange={(event) => setFilename(event.target.value)}
-              />
-            </div>
-            {resource.auto_update && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor={`geo-url-${resource.filename}`}>
-                    {t("geoResources.url")}
-                  </Label>
-                  <Input
-                    id={`geo-url-${resource.filename}`}
-                    type="url"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`geo-cron-${resource.filename}`}>
-                    {t("geoResources.cron")}
-                  </Label>
-                  <Input
-                    id={`geo-cron-${resource.filename}`}
-                    value={cron}
-                    onChange={(event) => setCron(event.target.value)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              disabled={
-                !filename ||
-                pending ||
-                (resource.auto_update && (!url || !cron))
-              }
-              onClick={() => save()}
-            >
-              {pending && <LoaderCircle className="animate-spin" />}
-              {t("save")}
-            </Button>
-          </DialogFooter>
+          <FormContent resource={resource} pending={pending} save={save} />
         </DialogContent>
       </Dialog>
-      <AlertDialog open={confirmOverwrite} onOpenChange={setConfirmOverwrite}>
+      <AlertDialog
+        open={Boolean(confirmOverwrite)}
+        onOpenChange={(state) =>
+          setConfirmOverwrite(state ? confirmOverwrite : null)
+        }
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -165,12 +129,109 @@ export function GeoResourceSettingsDialog({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => save(true)}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => save(confirmOverwrite!, true)}
+            >
               {t("geoResources.overwrite")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+}
+
+function FormContent({
+  resource,
+  pending,
+  save,
+}: Pick<Props, "resource"> & {
+  pending: boolean;
+  save(values: GeoResourceSettingsFormValues): void;
+}) {
+  const { t } = useTranslation();
+  const form = useForm<GeoResourceSettingsFormValues>({
+    defaultValues: {
+      filename: resource.filename,
+      url: resource.url ?? "",
+      cron: resource.cron ?? "",
+    },
+  });
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t("geoResources.editTitle")}</DialogTitle>
+        <DialogDescription>
+          {t("geoResources.editDescription")}
+        </DialogDescription>
+      </DialogHeader>
+      <form
+        className="space-y-4"
+        onSubmit={form.handleSubmit((values) => save(values))}
+      >
+        <div className="space-y-2">
+          <Label htmlFor={`geo-name-${resource.filename}`}>
+            {t("geoResources.filename")}
+          </Label>
+          <Controller
+            control={form.control}
+            name="filename"
+            rules={{ required: true }}
+            render={({ field }) => (
+              <Input id={`geo-name-${resource.filename}`} {...field} />
+            )}
+          />
+        </div>
+        {resource.auto_update && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor={`geo-url-${resource.filename}`}>
+                {t("geoResources.url")}
+              </Label>
+              <Controller
+                control={form.control}
+                name="url"
+                rules={{ required: resource.auto_update }}
+                render={({ field }) => (
+                  <Input
+                    id={`geo-url-${resource.filename}`}
+                    type="url"
+                    placeholder="https://example.com/geosite.dat"
+                    {...field}
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`geo-cron-${resource.filename}`}>
+                {t("geoResources.cron")}
+              </Label>
+              <Controller
+                control={form.control}
+                name="cron"
+                rules={{ required: resource.auto_update }}
+                render={({ field }) => (
+                  <CronScheduleInput
+                    id={`geo-cron-${resource.filename}`}
+                    name={field.name}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          </>
+        )}
+        <DialogFooter>
+          <Button type="submit" disabled={!form.formState.isValid || pending}>
+            {pending && <LoaderCircle className="animate-spin" />}
+            {t("geoResources.save")}
+          </Button>
+        </DialogFooter>
+      </form>
     </>
   );
 }

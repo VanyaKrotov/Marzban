@@ -98,6 +98,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
   const [pendingDelete, setPendingDelete] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [conflictingFiles, setConflictingFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const dragDepth = useRef(0);
   const resources = query.data ?? [];
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -127,6 +128,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
   const uploadFiles = async (files: File[], overwrite = false) => {
     const conflicts: File[] = [];
     let uploaded = 0;
+    setUploadingFiles((current) => [...current, ...files]);
 
     for (const file of files) {
       try {
@@ -138,6 +140,10 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
         } else {
           generateErrorMessage(error);
         }
+      } finally {
+        setUploadingFiles((current) =>
+          current.filter((item) => item !== file),
+        );
       }
     }
 
@@ -230,7 +236,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                 </EmptyTitle>
               </EmptyHeader>
             </Empty>
-          ) : resources.length === 0 ? (
+          ) : resources.length === 0 && uploadingFiles.length === 0 ? (
             <Empty className="min-h-40">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -243,6 +249,23 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
             </Empty>
           ) : (
             <div className="divide-y rounded-lg ring-1 ring-foreground/10">
+              {uploadingFiles.map((file, index) => (
+                <div
+                  key={`${file.name}-${file.lastModified}-${index}`}
+                  className="flex min-w-0 items-center gap-3 bg-muted/30 px-3 py-2.5 opacity-60"
+                >
+                  <FileArchive className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatSize(file.size)}
+                    </span>
+                  </div>
+                  <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
+                </div>
+              ))}
               {resources.map((resource) => (
                 <div
                   key={resource.filename}
@@ -327,11 +350,21 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("geoResources.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t(
+                pendingDelete.length === 1
+                  ? "geoResources.deleteSingleTitle"
+                  : "geoResources.deleteMultipleTitle",
+              )}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("geoResources.deleteDescription", {
-                count: pendingDelete.length,
-              })}
+              {pendingDelete.length === 1
+                ? t("geoResources.deleteSingleDescription", {
+                    filename: pendingDelete[0],
+                  })
+                : t("geoResources.deleteMultipleDescription", {
+                    count: pendingDelete.length,
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
