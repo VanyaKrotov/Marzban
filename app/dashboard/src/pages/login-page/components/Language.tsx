@@ -28,7 +28,7 @@ export const Language: FC = () => {
           {LANGUAGES.map(({ label, value }) => (
             <DropdownMenuItem
               key={value}
-              onClick={() => i18n.changeLanguage(value)}
+              onSelect={() => i18n.changeLanguage(value)}
             >
               {label}
             </DropdownMenuItem>

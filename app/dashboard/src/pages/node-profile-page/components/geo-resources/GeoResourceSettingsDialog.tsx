@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { LoaderCircle, Pencil } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -37,6 +37,9 @@ import { CronScheduleInput } from "./CronScheduleInput";
 interface Props {
   nodeId: number;
   resource: NodeGeoResource;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: ReactNode;
 }
 
 type GeoResourceSettingsFormValues = {
@@ -45,9 +48,14 @@ type GeoResourceSettingsFormValues = {
   cron: string;
 };
 
-export function GeoResourceSettingsDialog({ nodeId, resource }: Props) {
+export function GeoResourceSettingsDialog({
+  nodeId,
+  resource,
+  open,
+  onOpenChange,
+  trigger,
+}: Props) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [confirmOverwrite, setConfirmOverwrite] =
     useState<GeoResourceSettingsFormValues | null>(null);
 
@@ -75,7 +83,7 @@ export function GeoResourceSettingsDialog({ nodeId, resource }: Props) {
         });
       }
       setConfirmOverwrite(null);
-      setOpen(false);
+      onOpenChange?.(false);
     } catch (error) {
       if (
         !overwrite &&
@@ -89,7 +97,7 @@ export function GeoResourceSettingsDialog({ nodeId, resource }: Props) {
   };
 
   const handleOpenChange = (value: boolean) => {
-    setOpen(value);
+    onOpenChange?.(false);
     if (!value) {
       setConfirmOverwrite(null);
     }
@@ -98,16 +106,7 @@ export function GeoResourceSettingsDialog({ nodeId, resource }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label={t("edit")}
-          >
-            <Pencil />
-          </Button>
-        </DialogTrigger>
+        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
         <DialogContent>
           <FormContent resource={resource} pending={pending} save={save} />
         </DialogContent>

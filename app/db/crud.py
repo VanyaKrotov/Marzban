@@ -496,6 +496,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             db.delete(inbound)
             continue
         inbound.content = content
+        inbound.nodes = list(nodes)
 
     existing_inbound_tags = {
         row[0]
@@ -532,6 +533,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             db.delete(outbound)
             continue
         outbound.content = content
+        outbound.nodes = list(nodes)
 
     existing_outbound_tags = {
         row[0]
@@ -565,6 +567,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     ]
     for rule, content in zip(readonly_rules, routing_rules):
         rule.content = content
+        rule.nodes = list(nodes)
 
     for rule in readonly_rules[len(routing_rules):]:
         rule.nodes = []

@@ -129,7 +129,7 @@ const Layout: FC = () => {
           <Logo className="size-6" />
           <span className="font-medium">MarzbanNext</span>
           {version && (
-            <Badge variant="outline" className="-ml-1.5 px-1">
+            <Badge variant="outline" className="-ml-1.5 px-1 mt-0.5">
               v{version}
             </Badge>
           )}

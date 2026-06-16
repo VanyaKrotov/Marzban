@@ -1,8 +1,10 @@
 import { DragEvent, useMemo, useRef, useState } from "react";
 import {
   Download,
+  Ellipsis,
   FileArchive,
   LoaderCircle,
+  Pencil,
   RefreshCw,
   Trash2,
   UploadCloud,
@@ -30,7 +32,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -96,6 +109,8 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
   const upload = useUploadGeoResourceMutation(nodeId);
   const [selected, setSelected] = useState<string[]>([]);
   const [pendingDelete, setPendingDelete] = useState<string[]>([]);
+  const [settingsResource, setSettingsResource] =
+    useState<NodeGeoResource | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [conflictingFiles, setConflictingFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
@@ -141,9 +156,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
           generateErrorMessage(error);
         }
       } finally {
-        setUploadingFiles((current) =>
-          current.filter((item) => item !== file),
-        );
+        setUploadingFiles((current) => current.filter((item) => item !== file));
       }
     }
 
@@ -295,39 +308,6 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                         }).format(new Date(resource.modified_at))}`}
                     </p>
                   </div>
-                  {resource.auto_update && (
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      disabled={refresh.isPending}
-                      aria-label={t("geoResources.updateNow")}
-                      onClick={() =>
-                        refresh.mutate(resource.filename, {
-                          onError: (error) => generateErrorMessage(error),
-                        })
-                      }
-                    >
-                      <RefreshCw
-                        className={refresh.isPending ? "animate-spin" : undefined}
-                      />
-                    </Button>
-                  )}
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label={t("geoResources.download")}
-                    onClick={() =>
-                      downloadNodeGeoResource(nodeId, resource.filename).catch(
-                        generateErrorMessage,
-                      )
-                    }
-                  >
-                    <Download />
-                  </Button>
-                  <GeoResourceSettingsDialog
-                    nodeId={nodeId}
-                    resource={resource}
-                  />
                   <Button
                     size="icon-sm"
                     variant="ghost"
@@ -337,12 +317,71 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                   >
                     <Trash2 />
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t("geoResources.actions")}
+                      >
+                        <Ellipsis />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-44">
+                      {resource.auto_update && (
+                        <DropdownMenuItem
+                          disabled={refresh.isPending}
+                          onSelect={() =>
+                            refresh.mutate(resource.filename, {
+                              onError: (error) => generateErrorMessage(error),
+                            })
+                          }
+                        >
+                          <RefreshCw
+                            className={
+                              refresh.isPending ? "animate-spin" : undefined
+                            }
+                          />
+                          {t("geoResources.updateNow")}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          downloadNodeGeoResource(
+                            nodeId,
+                            resource.filename,
+                          ).catch(generateErrorMessage)
+                        }
+                      >
+                        <Download />
+                        {t("geoResources.download")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => setSettingsResource(resource)}
+                      >
+                        <Pencil />
+                        {t("edit")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {settingsResource && (
+        <GeoResourceSettingsDialog
+          nodeId={nodeId}
+          resource={settingsResource}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSettingsResource(null);
+          }}
+        />
+      )}
 
       <AlertDialog
         open={pendingDelete.length > 0}
@@ -389,7 +428,9 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("geoResources.overwriteTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("geoResources.overwriteTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {t("geoResources.dropOverwriteDescription", {
                 count: conflictingFiles.length,

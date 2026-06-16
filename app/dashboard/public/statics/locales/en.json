@@ -478,6 +478,7 @@
   ,"geoResources.autoUpdate": "Automatic updates enabled"
   ,"geoResources.updateNow": "Update now"
   ,"geoResources.download": "Download"
+  ,"geoResources.actions": "Actions"
   ,"geoResources.editTitle": "Edit geo resource"
   ,"geoResources.editDescription": "Rename the file or change its automatic update settings."
   ,"geoResources.deleteTitle": "Delete geo resources?"

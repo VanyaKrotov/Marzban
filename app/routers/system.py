@@ -276,7 +276,7 @@ def create_outbound_config(
         raise HTTPException(status_code=409, detail="Outbound tag already exists")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    xray.reload_config()
+    # xray.reload_config()
     mark_nodes_pending_restart(node.id for node in created.nodes)
     return _outbound_response(created)
 

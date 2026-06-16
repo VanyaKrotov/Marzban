@@ -478,6 +478,7 @@
   ,"geoResources.autoUpdate": "Автоматическое обновление включено"
   ,"geoResources.updateNow": "Обновить сейчас"
   ,"geoResources.download": "Скачать"
+  ,"geoResources.actions": "Действия"
   ,"geoResources.editTitle": "Редактирование георесурса"
   ,"geoResources.editDescription": "Переименуйте файл или измените параметры автообновления."
   ,"geoResources.deleteTitle": "Удалить георесурсы?"
