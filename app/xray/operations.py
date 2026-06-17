@@ -10,8 +10,12 @@ from app.models.proxy import ProxyTypes
 from app.models.user import UserResponse
 from app.utils.concurrency import threaded_function
 from app.xray.node import XRayNode
-from app.utils.node_restart_state import clear_node_pending_restart
+from app.utils.node_restart_state import (
+    clear_node_pending_restart,
+    mark_nodes_pending_restart,
+)
 from xray_api import XRay as XRayAPI
+from xray_api.routing import collect_geo_resource_filenames
 from xray_api.types.account import Account, XTLSFlows
 
 if TYPE_CHECKING:
@@ -86,6 +90,108 @@ def _alter_inbound_user(api: XRayAPI, inbound_tag: str, account: Account):
         api.add_inbound_user(tag=inbound_tag, user=account, timeout=30)
     except (xray.exc.EmailExistsError, xray.exc.ConnectionError):
         pass
+
+
+def _known_routing_rule_ids(extra_rule_ids: set[int] | None = None) -> set[int]:
+    with GetDB() as db:
+        rule_ids = {rule.id for rule in crud.get_routing_rules(db)}
+    if extra_rule_ids:
+        rule_ids.update(extra_rule_ids)
+    return rule_ids
+
+
+def _get_enabled_routing_rules(node_id: int) -> list[dict]:
+    with GetDB() as db:
+        return crud.get_routing_rules_for_node(db, node_id)
+
+
+def _validate_live_routing_rules(
+    rules: list[dict],
+    geo_resources: dict[str, bytes],
+) -> None:
+    for rule in rules:
+        XRayAPI.validate_routing_rule(rule, geo_resources=geo_resources)
+
+
+def _error_details(exc: Exception) -> str:
+    return getattr(exc, "details", str(exc))
+
+
+def _sync_routing_rules_for_api(
+    api: XRayAPI,
+    rules: list[dict],
+    known_rule_ids: set[int],
+    geo_resources: dict[str, bytes],
+):
+    _validate_live_routing_rules(rules, geo_resources)
+
+    for rule_id in sorted(known_rule_ids):
+        try:
+            api.remove_routing_rule(
+                crud.routing_rule_tag(rule_id),
+                timeout=30,
+            )
+        except xray.exc.XrayError:
+            pass
+
+    for rule in rules:
+        api.add_routing_rule(
+            rule,
+            geo_resources=geo_resources,
+            should_append=True,
+            timeout=30,
+        )
+
+
+def _download_node_geo_resources(node: XRayNode, rules: list[dict]) -> dict[str, bytes]:
+    filenames = collect_geo_resource_filenames(rules)
+    if not filenames:
+        return {}
+
+    available = {
+        file.get("filename")
+        for file in node.list_geo_resources()
+        if isinstance(file, dict) and isinstance(file.get("filename"), str)
+    }
+    return {
+        filename: node.download_geo_resource(filename)
+        for filename in filenames
+        if filename in available
+    }
+
+
+def sync_routing_rules(
+    node_ids: set[int] | None = None,
+    extra_rule_ids: set[int] | None = None,
+):
+    known_rule_ids = _known_routing_rule_ids(extra_rule_ids)
+
+    if node_ids is None:
+        node_ids = set(xray.nodes)
+
+    pending_restart_node_ids = set()
+    for node_id, node in list(xray.nodes.items()):
+        if node_id not in node_ids:
+            continue
+        if not node.connected or not node.started:
+            continue
+        try:
+            rules = _get_enabled_routing_rules(node_id)
+            _sync_routing_rules_for_api(
+                node.api,
+                rules,
+                known_rule_ids,
+                _download_node_geo_resources(node, rules),
+            )
+        except Exception as exc:
+            pending_restart_node_ids.add(node_id)
+            logger.warning(
+                f"Unable to sync Xray routing rules for node {node_id}: "
+                f"{_error_details(exc)}"
+            )
+
+    if pending_restart_node_ids:
+        mark_nodes_pending_restart(pending_restart_node_ids)
 
 
 def add_user(dbuser: "DBUser"):
@@ -355,4 +461,5 @@ __all__ = [
     "remove_node",
     "connect_node",
     "restart_node",
+    "sync_routing_rules",
 ]

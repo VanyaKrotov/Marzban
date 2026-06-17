@@ -167,6 +167,8 @@ class XRayConfig(dict):
         self._apply_api()
 
     def _apply_api(self):
+        self._ensure_api_services()
+
         api_inbound = self.get_inbound("API_INBOUND")
         if api_inbound:
             api_inbound["listen"] = self.api_host
@@ -176,14 +178,6 @@ class XRayConfig(dict):
             api_inbound["settings"]["address"] = self.api_host
             return
 
-        self["api"] = {
-            "services": [
-                "HandlerService",
-                "StatsService",
-                "LoggerService"
-            ],
-            "tag": "API"
-        }
         self["stats"] = {}
         forced_policies = {
             "levels": {
@@ -230,6 +224,19 @@ class XRayConfig(dict):
         except KeyError:
             self["routing"] = {"rules": []}
             self["routing"]["rules"].insert(0, rule)
+
+    def _ensure_api_services(self):
+        api = self.setdefault("api", {})
+        api.setdefault("tag", "API")
+        services = api.setdefault("services", [])
+        for service in (
+            "HandlerService",
+            "StatsService",
+            "LoggerService",
+            "RoutingService",
+        ):
+            if service not in services:
+                services.append(service)
 
     def _validate(self):
         if not self.get("inbounds"):
