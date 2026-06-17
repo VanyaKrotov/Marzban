@@ -226,9 +226,9 @@ const Layout: FC = () => {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-4">
+      <div className="min-w-0 flex-1 px-4 pb-4">
         <Outlet />
-      </main>
+      </div>
     </SidebarProvider>
   );
 };

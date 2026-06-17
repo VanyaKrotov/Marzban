@@ -1,5 +1,6 @@
 import {
   Braces,
+  FileArchive,
   GripVertical,
   LoaderCircle,
   Plus,
@@ -56,6 +57,7 @@ import {
   generateErrorMessage,
   generateSuccessMessage,
 } from "utils/toastHandler";
+import { NodeGeoResourcesDialog } from "./geo-resources/NodeGeoResourcesCard";
 
 export function NodeRoutingCard({
   node,
@@ -69,6 +71,7 @@ export function NodeRoutingCard({
   const reorder = useReorderRoutingRulesMutation();
   const remove = useDeleteRoutingRuleMutation();
   const [open, setOpen] = useState(false);
+  const [geoResourcesOpen, setGeoResourcesOpen] = useState(false);
   const [editing, setEditing] = useState<RoutingRule | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{
@@ -154,6 +157,15 @@ export function NodeRoutingCard({
         <CardTitle>{t("routingPage.title")}</CardTitle>
         <CardDescription>{t("nodeProfile.routingDescription")}</CardDescription>
         <CardAction className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("geoResources.title")}
+            onClick={() => setGeoResourcesOpen(true)}
+          >
+            <FileArchive />
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -329,6 +341,11 @@ export function NodeRoutingCard({
         pending={create.isPending || update.isPending}
         onOpenChange={setOpen}
         onSubmit={save}
+      />
+      <NodeGeoResourcesDialog
+        nodeId={node.id}
+        open={geoResourcesOpen}
+        onOpenChange={setGeoResourcesOpen}
       />
     </Card>
   );

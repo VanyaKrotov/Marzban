@@ -22,7 +22,7 @@ const Header = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         className={cn(
-          "mb-3 flex min-h-16 items-center gap-x-1.5 py-3 md:rounded-b-2xl md:pt-4 [&_h2]:text-lg",
+          "mb-3 flex min-h-16 items-center gap-x-1.5 py-3 md:pt-4 [&_h2]:text-lg",
           {
             ["sticky top-0 z-20 -mx-3 bg-background px-3 md:-mx-4 md:px-4"]:
               sticky,

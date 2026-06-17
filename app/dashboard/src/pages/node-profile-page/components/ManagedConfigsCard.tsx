@@ -65,6 +65,7 @@ type ManagedConfigsCardProps<T extends ManagedConfig> = {
   onEdit: (item: T) => void;
   onToggle: (item: T, enabled: boolean) => void;
   onDelete: (item: T) => void;
+  beforeRefreshAction?: ReactNode;
   dialogs?: ReactNode;
 };
 
@@ -86,6 +87,7 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
   onEdit,
   onToggle,
   onDelete,
+  beforeRefreshAction,
   dialogs,
 }: ManagedConfigsCardProps<T>) {
   const { t } = useTranslation();
@@ -96,6 +98,7 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
         <CardAction className="flex gap-2">
+          {beforeRefreshAction}
           <Button
             type="button"
             variant="outline"

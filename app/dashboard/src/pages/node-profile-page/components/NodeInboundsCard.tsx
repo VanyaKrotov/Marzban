@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ShieldCheck } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { InboundDialog } from "./inbounds/InboundDialog";
+import { NodeCertificatesDialog } from "./certificates/NodeCertificatesCard";
 import {
   type InboundConfig,
   type InboundPayload,
@@ -29,6 +32,7 @@ export function NodeInboundsCard({
   const update = useUpdateInboundMutation();
   const remove = useDeleteInboundMutation();
   const [open, setOpen] = useState(false);
+  const [certificatesOpen, setCertificatesOpen] = useState(false);
   const [editing, setEditing] = useState<InboundConfig | null>(null);
   const items = (query.data ?? []).filter((item) =>
     item.node_ids.includes(node.id),
@@ -77,6 +81,17 @@ export function NodeInboundsCard({
       deleteDescription={(item) =>
         t("inboundsPage.deleteDescription", { tag: item.tag })
       }
+      beforeRefreshAction={
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={t("nodes.certificates.title")}
+          onClick={() => setCertificatesOpen(true)}
+        >
+          <ShieldCheck />
+        </Button>
+      }
       onCreate={() => {
         setEditing(null);
         setOpen(true);
@@ -100,15 +115,23 @@ export function NodeInboundsCard({
         })
       }
       dialogs={
-        <InboundDialog
-          key={`${editing?.tag ?? "create"}-${open}`}
-          inbound={editing}
-          nodeId={node.id}
-          open={open}
-          pending={create.isPending || update.isPending}
-          onOpenChange={setOpen}
-          onSubmit={save}
-        />
+        <>
+          <InboundDialog
+            key={`${editing?.tag ?? "create"}-${open}`}
+            inbound={editing}
+            nodeId={node.id}
+            open={open}
+            pending={create.isPending || update.isPending}
+            onOpenChange={setOpen}
+            onSubmit={save}
+          />
+          <NodeCertificatesDialog
+            nodeId={node.id}
+            nodeName={node.name}
+            open={certificatesOpen}
+            onOpenChange={setCertificatesOpen}
+          />
+        </>
       }
     />
   );

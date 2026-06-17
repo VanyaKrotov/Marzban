@@ -24,13 +24,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -40,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Empty,
+  EmptyContent,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -101,7 +101,25 @@ function ResourceStatus({ resource }: { resource: NodeGeoResource }) {
   );
 }
 
-export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
+export function NodeGeoResourcesDialog({
+  nodeId,
+  open,
+  onOpenChange,
+}: {
+  nodeId: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
+        {open && <NodeGeoResourcesContent nodeId={nodeId} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NodeGeoResourcesContent({ nodeId }: { nodeId: number }) {
   const { t, i18n } = useTranslation();
   const query = useNodeGeoResourcesQuery(nodeId);
   const remove = useDeleteGeoResourcesMutation(nodeId);
@@ -117,6 +135,25 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
   const dragDepth = useRef(0);
   const resources = query.data ?? [];
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const createAction = <GeoResourceFormDialog nodeId={nodeId} />;
+  const controls = (
+    <div className="flex justify-end gap-2">
+      {selected.length > 0 && (
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => setPendingDelete(selected)}
+        >
+          <Trash2 />
+          <span className="hidden sm:inline">{t("delete")}</span>
+        </Button>
+      )}
+      {createAction}
+    </div>
+  );
+  const emptyControls = (
+    <div className="flex justify-center">{createAction}</div>
+  );
 
   const toggle = (filename: string, checked: boolean) =>
     setSelected((current) =>
@@ -200,7 +237,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
 
   return (
     <>
-      <Card
+      <div
         className="relative h-full"
         onDragEnter={handleDragEnter}
         onDragOver={(event) => event.preventDefault()}
@@ -215,24 +252,11 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
             </div>
           </div>
         )}
-        <CardHeader>
-          <CardTitle>{t("geoResources.title")}</CardTitle>
-          <CardDescription>{t("geoResources.description")}</CardDescription>
-          <CardAction className="flex gap-2">
-            {selected.length > 0 && (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setPendingDelete(selected)}
-              >
-                <Trash2 />
-                <span className="hidden sm:inline">{t("delete")}</span>
-              </Button>
-            )}
-            <GeoResourceFormDialog nodeId={nodeId} />
-          </CardAction>
-        </CardHeader>
-        <CardContent>
+        <DialogHeader className="pe-8">
+          <DialogTitle>{t("geoResources.title")}</DialogTitle>
+          <DialogDescription>{t("geoResources.description")}</DialogDescription>
+        </DialogHeader>
+        <div className="mt-4">
           {query.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-14" />
@@ -248,6 +272,7 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                   {t("geoResources.loadError")}
                 </EmptyTitle>
               </EmptyHeader>
+              <EmptyContent>{emptyControls}</EmptyContent>
             </Empty>
           ) : resources.length === 0 && uploadingFiles.length === 0 ? (
             <Empty className="min-h-40">
@@ -259,9 +284,12 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                   {t("geoResources.empty")}
                 </EmptyTitle>
               </EmptyHeader>
+              <EmptyContent>{emptyControls}</EmptyContent>
             </Empty>
           ) : (
-            <div className="divide-y rounded-lg ring-1 ring-foreground/10">
+            <div className="space-y-3">
+              {controls}
+              <div className="divide-y rounded-lg ring-1 ring-foreground/10">
               {uploadingFiles.map((file, index) => (
                 <div
                   key={`${file.name}-${file.lastModified}-${index}`}
@@ -367,10 +395,11 @@ export function NodeGeoResourcesCard({ nodeId }: { nodeId: number }) {
                   </DropdownMenu>
                 </div>
               ))}
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {settingsResource && (
         <GeoResourceSettingsDialog
