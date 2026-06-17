@@ -94,8 +94,20 @@ function RoutingRuleDialogContent({
   const inboundsQuery = useRoutingInboundsQuery();
   const outboundsQuery = useRoutingOutboundsQuery();
   const geoResourcesQuery = useNodeGeoResourcesQuery(nodeId);
-  const inboundTags = (inboundsQuery.data ?? []).map((item) => item.tag);
-  const outboundTags = (outboundsQuery.data ?? []).map((item) => item.tag);
+  const inboundTags = useMemo(
+    () =>
+      (inboundsQuery.data ?? [])
+        .filter((item) => item.node_ids.includes(nodeId))
+        .map((item) => item.tag),
+    [inboundsQuery.data, nodeId],
+  );
+  const outboundTags = useMemo(
+    () =>
+      (outboundsQuery.data ?? [])
+        .filter((item) => item.node_ids.includes(nodeId))
+        .map((item) => item.tag),
+    [outboundsQuery.data, nodeId],
+  );
   const geoResourceFilenames = (geoResourcesQuery.data ?? []).map(
     (item) => item.filename,
   );

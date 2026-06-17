@@ -332,6 +332,8 @@
   "inboundsPage.dialogDescription": "Настройте состояние инбаунда и полный JSON-объект конфигурации Xray.",
   "inboundsPage.tag": "Тег",
   "inboundsPage.enabled": "Включён",
+  "inboundsPage.enabledState": "Включено",
+  "inboundsPage.disabledState": "Отключено",
   "inboundsPage.nodes": "Ноды",
   "inboundsPage.assignedNodes": "Назначенные ноды",
   "inboundsPage.noNodes": "Ноды не назначены",

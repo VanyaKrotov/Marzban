@@ -2294,6 +2294,16 @@ def create_node(db: Session, node: NodeCreate) -> Node:
                   address=node.address,
                   port=node.port,
                   api_port=node.api_port)
+    dbnode.inbounds = (
+        db.query(ProxyInbound)
+        .filter(ProxyInbound.readonly.is_(True))
+        .all()
+    )
+    dbnode.outbounds = (
+        db.query(ProxyOutbound)
+        .filter(ProxyOutbound.readonly.is_(True))
+        .all()
+    )
     dbnode.routing_rules = (
         db.query(RoutingRule)
         .filter(RoutingRule.readonly.is_(True))

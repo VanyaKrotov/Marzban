@@ -332,6 +332,8 @@
   "inboundsPage.dialogDescription": "Configure the inbound state and its complete Xray JSON object.",
   "inboundsPage.tag": "Tag",
   "inboundsPage.enabled": "Enabled",
+  "inboundsPage.enabledState": "已启用",
+  "inboundsPage.disabledState": "已禁用",
   "inboundsPage.nodes": "Nodes",
   "inboundsPage.assignedNodes": "Assigned nodes",
   "inboundsPage.noNodes": "No nodes assigned",

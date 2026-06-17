@@ -151,7 +151,7 @@ function InboundDialogContent({
           </DialogHeader>
 
           <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="grid gap-4 sm:grid-cols-[1fr_140px] sm:items-end">
               <Controller
                 control={form.control}
                 name="tag"
@@ -174,15 +174,19 @@ function InboundDialogContent({
                 control={form.control}
                 name="enabled"
                 render={({ field }) => (
-                  <Field orientation="horizontal" className="h-9">
+                  <Field orientation="horizontal" className="h-9 w-[140px]">
                     <Switch
                       id="inbound-enabled"
                       checked={field.value}
                       disabled={pending}
                       onCheckedChange={field.onChange}
                     />
-                    <FieldLabel htmlFor="inbound-enabled">
-                      {t(field.value ? "enabled" : "disabled")}
+                    <FieldLabel htmlFor="inbound-enabled" className="min-w-0">
+                      {t(
+                        field.value
+                          ? "inboundsPage.enabledState"
+                          : "inboundsPage.disabledState",
+                      )}
                     </FieldLabel>
                   </Field>
                 )}

@@ -20,6 +20,7 @@ export type RoutingRulePayload = Pick<
 
 type TaggedConfig = {
   tag: string;
+  node_ids: number[];
 };
 
 export const routingRulesQueryKey = ["routing-rules"] as const;
