@@ -1859,63 +1859,6 @@ def get_all_node_certificates(db: Session) -> List[NodeCertificate]:
     )
 
 
-def get_inbound_certificates(
-    db: Session, inbound_tags: List[str]
-) -> Dict[str, List[int]]:
-    return {
-        inbound_tag: [
-            certificate.id
-            for certificate in get_or_create_inbound(
-                db, inbound_tag
-            ).node_certificates
-        ]
-        for inbound_tag in inbound_tags
-    }
-
-
-def update_inbound_certificates(
-    db: Session, inbound_certificates: Dict[str, List[int]]
-) -> Dict[str, List[int]]:
-    certificate_ids = {
-        certificate_id
-        for ids in inbound_certificates.values()
-        for certificate_id in ids
-    }
-    certificates = {
-        certificate.id: certificate
-        for certificate in db.query(NodeCertificate)
-        .filter(NodeCertificate.id.in_(certificate_ids))
-        .all()
-    } if certificate_ids else {}
-
-    missing_certificate_ids = certificate_ids - certificates.keys()
-    if missing_certificate_ids:
-        raise ValueError(
-            f"Certificates {sorted(missing_certificate_ids)} don't exist"
-        )
-
-    for inbound_tag, assigned_certificate_ids in inbound_certificates.items():
-        inbound = get_or_create_inbound(db, inbound_tag)
-        assigned_node_ids = {node.id for node in inbound.nodes}
-        selected_certificates = [
-            certificates[certificate_id]
-            for certificate_id in dict.fromkeys(assigned_certificate_ids)
-        ]
-        invalid_certificate_ids = [
-            certificate.id
-            for certificate in selected_certificates
-            if certificate.node_id not in assigned_node_ids
-        ]
-        if invalid_certificate_ids:
-            raise ValueError(
-                f"Certificates {invalid_certificate_ids} don't belong to assigned nodes"
-            )
-        inbound.node_certificates = selected_certificates
-
-    db.commit()
-    return get_inbound_certificates(db, list(inbound_certificates))
-
-
 def get_node_certificate(
     db: Session, node_id: int, certificate_id: int
 ) -> Optional[NodeCertificate]:
@@ -1937,6 +1880,8 @@ def upsert_node_certificate(
     certificate: str,
     private_key: str,
     expires_at: Optional[datetime],
+    certificate_file: Optional[str] = None,
+    key_file: Optional[str] = None,
 ) -> NodeCertificate:
     dbcertificate = (
         db.query(NodeCertificate)
@@ -1949,6 +1894,8 @@ def upsert_node_certificate(
     if dbcertificate:
         dbcertificate.certificate = certificate
         dbcertificate.private_key = private_key
+        dbcertificate.certificate_file = certificate_file
+        dbcertificate.key_file = key_file
         dbcertificate.expires_at = expires_at
         dbcertificate.updated_at = datetime.utcnow()
     else:
@@ -1957,6 +1904,8 @@ def upsert_node_certificate(
             domain=domain,
             certificate=certificate,
             private_key=private_key,
+            certificate_file=certificate_file,
+            key_file=key_file,
             expires_at=expires_at,
         )
         db.add(dbcertificate)
@@ -1973,19 +1922,6 @@ def update_node_certificate(
 ) -> NodeCertificate:
     if modify.active is not None:
         dbcertificate.active = modify.active
-    if modify.inbound_tags is not None:
-        unique_tags = list(dict.fromkeys(modify.inbound_tags))
-        inbounds = (
-            db.query(ProxyInbound).filter(ProxyInbound.tag.in_(unique_tags)).all()
-            if unique_tags
-            else []
-        )
-        if len(inbounds) != len(unique_tags):
-            found = {inbound.tag for inbound in inbounds}
-            raise ValueError(
-                f"Inbounds {sorted(set(unique_tags) - found)} don't exist"
-            )
-        dbcertificate.inbounds = inbounds
     dbcertificate.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(dbcertificate)

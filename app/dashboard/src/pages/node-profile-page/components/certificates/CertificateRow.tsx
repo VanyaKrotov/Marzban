@@ -49,6 +49,16 @@ export function CertificateRow({
             })}
           </p>
         )}
+        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+          <p className="truncate">
+            {t("nodes.certificates.certificateFile")}:{" "}
+            <code className="text-foreground">{certificate.certificate_file}</code>
+          </p>
+          <p className="truncate">
+            {t("nodes.certificates.keyFile")}:{" "}
+            <code className="text-foreground">{certificate.key_file}</code>
+          </p>
+        </div>
       </div>
       <div className="flex gap-2">
         <Button

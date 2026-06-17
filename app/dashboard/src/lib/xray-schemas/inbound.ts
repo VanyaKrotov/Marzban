@@ -257,16 +257,14 @@ const tlsCertificateSchema: MonacoJsonSchema = {
         { type: "string" },
         { type: "array", items: { type: "string" } },
       ],
-      description:
-        "Inline PEM certificate chain. Marzban injects assigned node certificates here.",
+      description: "Inline PEM certificate chain.",
     },
     key: {
       anyOf: [
         { type: "string" },
         { type: "array", items: { type: "string" } },
       ],
-      description:
-        "Inline PEM private key. Marzban injects assigned node certificates here.",
+      description: "Inline PEM private key.",
     },
     ocspStapling: {
       type: "integer",
@@ -1051,7 +1049,7 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
         certificates: {
           type: "array",
           description:
-            "TLS certificates. Assigned node certificates are injected by Marzban when node configuration is generated.",
+            "TLS certificates. Use certificateFile/keyFile paths for certificates stored on the node.",
           items: tlsCertificateSchema,
         },
         disableSystemRoot: { type: "boolean", default: false },
@@ -1707,3 +1705,83 @@ export const xrayInboundSchema: MonacoJsonSchema = {
     },
   ],
 };
+
+type XrayInboundSchemaOptions = {
+  certificateFiles?: string[];
+  keyFiles?: string[];
+};
+
+function unique(values: string[] = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function withPathSuggestions(
+  schema: unknown,
+  paths: string[],
+) {
+  const suggestions = unique(paths);
+  if (!isSchema(schema) || !suggestions.length) {
+    return;
+  }
+
+  schema.anyOf = [{ type: "string", enum: suggestions }, { type: "string" }];
+  schema.examples = suggestions;
+}
+
+function isSchema(schema: unknown): schema is MonacoJsonSchema {
+  return Boolean(schema && typeof schema === "object" && !Array.isArray(schema));
+}
+
+function applyCertificatePathSuggestions(
+  schema: unknown,
+  options: Required<XrayInboundSchemaOptions>,
+) {
+  if (!isSchema(schema)) return;
+
+  if (schema.properties) {
+    withPathSuggestions(
+      schema.properties.certificateFile,
+      options.certificateFiles,
+    );
+    withPathSuggestions(schema.properties.keyFile, options.keyFiles);
+
+    Object.values(schema.properties).forEach((property) =>
+      applyCertificatePathSuggestions(property, options),
+    );
+  }
+
+  const nestedSchemas = [
+    schema.items,
+    ...(schema.allOf ?? []),
+    ...(schema.anyOf ?? []),
+    ...(schema.oneOf ?? []),
+    schema.not,
+    schema.if,
+    schema.then,
+    schema.else,
+  ];
+
+  nestedSchemas.forEach((nestedSchema) => {
+    if (Array.isArray(nestedSchema)) {
+      nestedSchema.forEach((item) =>
+        applyCertificatePathSuggestions(item, options),
+      );
+      return;
+    }
+
+    applyCertificatePathSuggestions(nestedSchema, options);
+  });
+}
+
+export function createXrayInboundSchema(
+  options: XrayInboundSchemaOptions = {},
+): MonacoJsonSchema {
+  const schema = structuredClone(xrayInboundSchema);
+
+  applyCertificatePathSuggestions(schema, {
+    certificateFiles: unique(options.certificateFiles),
+    keyFiles: unique(options.keyFiles),
+  });
+
+  return schema;
+}

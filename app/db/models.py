@@ -422,6 +422,8 @@ class NodeCertificate(Base):
     domain = Column(String(253), nullable=False)
     certificate = Column(Text, nullable=False)
     private_key = Column(Text, nullable=False)
+    certificate_file = Column(String(2048), nullable=True)
+    key_file = Column(String(2048), nullable=True)
     expires_at = Column(DateTime, nullable=True)
     active = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

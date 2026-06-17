@@ -5,7 +5,10 @@ from typing import List, Optional
 from urllib.parse import urlparse
 
 from apscheduler.triggers.cron import CronTrigger
-from pydantic import ConfigDict, BaseModel, Field, field_validator
+from pydantic import ConfigDict, BaseModel, Field, field_validator, model_validator
+
+
+NODE_CERTIFICATES_DIR = "/var/lib/marzban-node/certificates"
 
 
 class NodeStatus(str, Enum):
@@ -101,7 +104,6 @@ class NodeCertificateIssue(BaseModel):
 
 class NodeCertificateModify(BaseModel):
     active: Optional[bool] = None
-    inbound_tags: Optional[List[str]] = None
 
 
 class NodeCertificateResponse(BaseModel):
@@ -109,12 +111,23 @@ class NodeCertificateResponse(BaseModel):
     node_id: int
     domain: str
     certificate: str
+    certificate_file: Optional[str] = None
+    key_file: Optional[str] = None
     expires_at: Optional[datetime] = None
     active: bool
     inbound_tags: List[str]
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def fill_file_paths(self):
+        base = f"{NODE_CERTIFICATES_DIR}/{self.domain}/production"
+        if not self.certificate_file:
+            self.certificate_file = f"{base}/fullchain.pem"
+        if not self.key_file:
+            self.key_file = f"{base}/private_key.pem"
+        return self
 
 
 def validate_geo_resource_filename(value: str) -> str:

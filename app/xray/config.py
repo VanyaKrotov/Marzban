@@ -524,7 +524,6 @@ class XRayConfig(dict):
                 ],
             )
             routing_rules = crud.get_routing_rules_for_node(db, node_id)
-            node_certificates = crud.get_node_certificates(db, node_id)
 
         allowed_tags = {
             tag for tag, node_ids in assignments.items() if node_id in node_ids
@@ -556,26 +555,6 @@ class XRayConfig(dict):
             and rule.get("outboundTag") == "API"
         ]
         config.setdefault("routing", {})["rules"] = api_rules + routing_rules
-
-        if node_certificates:
-            certificates_by_inbound = defaultdict(list)
-            for certificate in node_certificates:
-                payload = {
-                    "certificate": certificate.certificate.splitlines(),
-                    "key": certificate.private_key.splitlines(),
-                }
-                for inbound in certificate.inbounds:
-                    certificates_by_inbound[inbound.tag].append(payload)
-
-            for inbound in config["inbounds"]:
-                tag = inbound.get("tag")
-                if tag not in managed_tags:
-                    continue
-                stream_settings = inbound.get("streamSettings") or {}
-                if stream_settings.get("security") != "tls":
-                    continue
-                tls_settings = stream_settings.setdefault("tlsSettings", {})
-                tls_settings["certificates"] = certificates_by_inbound.get(tag, [])
 
         config.inbounds = [
             inbound for inbound in config.inbounds if inbound["tag"] in allowed_tags

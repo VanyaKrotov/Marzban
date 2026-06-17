@@ -584,6 +584,18 @@ def issue_node_certificate(
         domain=request.domain,
         certificate=certificate,
         private_key=private_key,
+        certificate_file=(
+            result.get("certificate_file")
+            or result.get("certificateFile")
+            or result.get("fullchain_file")
+            or result.get("fullchainFile")
+        ),
+        key_file=(
+            result.get("key_file")
+            or result.get("keyFile")
+            or result.get("private_key_file")
+            or result.get("privateKeyFile")
+        ),
         expires_at=expires_at,
     )
     mark_nodes_pending_restart([dbnode.id])

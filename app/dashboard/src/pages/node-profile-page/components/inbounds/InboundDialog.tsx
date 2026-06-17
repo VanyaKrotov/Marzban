@@ -24,12 +24,11 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 
-import { xrayInboundSchema } from "@/lib/xray-schemas/inbound";
-import type {
-  InboundConfig,
-  InboundPayload,
-} from "../../lib/inbounds-query";
+import { createXrayInboundSchema } from "@/lib/xray-schemas/inbound";
+import { useNodeCertificatesQuery } from "@/pages/nodes-page/lib/query";
+import type { InboundConfig, InboundPayload } from "../../lib/inbounds-query";
 import { tryParseInbound } from "./selectors";
+import CertificateHelper from "./CertificateHelper";
 import ShortIdsHelper from "./ShortIdsHelper";
 import X25519Helpers from "./X25519Helpers";
 
@@ -115,15 +114,20 @@ function InboundDialogContent({
   nodeId,
   pending,
   onSubmit,
-}: Pick<
-  InboundDialogProps,
-  | "inbound"
-  | "nodeId"
-  | "pending"
-  | "onSubmit"
->) {
+}: Pick<InboundDialogProps, "inbound" | "nodeId" | "pending" | "onSubmit">) {
   const { t } = useTranslation();
   const readonly = inbound?.readonly ?? false;
+  const certificatesQuery = useNodeCertificatesQuery(nodeId);
+  const inboundSchema = useMemo(
+    () =>
+      createXrayInboundSchema({
+        certificateFiles: certificatesQuery.data?.map(
+          ({ certificate_file }) => certificate_file,
+        ),
+        keyFiles: certificatesQuery.data?.map(({ key_file }) => key_file),
+      }),
+    [certificatesQuery.data],
+  );
   const form = useForm<InboundFormValues>({
     resolver: zodResolver(inboundFormSchema),
     defaultValues: {
@@ -146,81 +150,79 @@ function InboundDialogContent({
   return (
     <FormProvider {...form}>
       <>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Braces className="size-5 text-primary" />
-              {t(
-                inbound ? "inboundsPage.editTitle" : "inboundsPage.createTitle",
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                readonly
-                  ? "inboundsPage.readonlyDescription"
-                  : "inboundsPage.dialogDescription",
-              )}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Braces className="size-5 text-primary" />
+            {t(inbound ? "inboundsPage.editTitle" : "inboundsPage.createTitle")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              readonly
+                ? "inboundsPage.readonlyDescription"
+                : "inboundsPage.dialogDescription",
+            )}
+          </DialogDescription>
+        </DialogHeader>
 
-          <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
+        <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
+          <Controller
+            control={form.control}
+            name="content"
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="inbound-content">
+                  {t("inboundsPage.content")}
+                </FieldLabel>
+                <MonacoJsonEditor
+                  id="inbound-content"
+                  value={field.value}
+                  onChange={field.onChange}
+                  schema={inboundSchema}
+                  schemaUri="https://marzban.local/schemas/xray-inbound.json"
+                  className="min-h-96"
+                  disabled={pending || readonly}
+                  invalid={fieldState.invalid}
+                />
+                <FieldError errors={[fieldState.error]} />
+                <InboundHelpers nodeId={nodeId} />
+              </Field>
+            )}
+          />
+
+          <div className="flex items-center justify-between gap-4">
             <Controller
               control={form.control}
-              name="content"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="inbound-content">
-                    {t("inboundsPage.content")}
-                  </FieldLabel>
-                  <MonacoJsonEditor
-                    id="inbound-content"
-                    value={field.value}
-                    onChange={field.onChange}
-                    schema={xrayInboundSchema}
-                    schemaUri="https://marzban.local/schemas/xray-inbound.json"
-                    className="min-h-96"
-                    disabled={pending || readonly}
-                    invalid={fieldState.invalid}
+              name="enabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="min-h-9">
+                  <Switch
+                    id="inbound-enabled"
+                    checked={field.value}
+                    disabled={pending}
+                    onCheckedChange={field.onChange}
                   />
-                  <FieldError errors={[fieldState.error]} />
-                  <InboundHelpers />
+                  <FieldLabel htmlFor="inbound-enabled" className="min-w-0">
+                    {t(
+                      field.value
+                        ? "inboundsPage.enabledState"
+                        : "inboundsPage.disabledState",
+                    )}
+                  </FieldLabel>
                 </Field>
               )}
             />
-
-            <div className="flex items-center justify-between gap-4">
-              <Controller
-                control={form.control}
-                name="enabled"
-                render={({ field }) => (
-                  <Field orientation="horizontal" className="min-h-9">
-                    <Switch
-                      id="inbound-enabled"
-                      checked={field.value}
-                      disabled={pending}
-                      onCheckedChange={field.onChange}
-                    />
-                    <FieldLabel htmlFor="inbound-enabled" className="min-w-0">
-                      {t(
-                        field.value
-                          ? "inboundsPage.enabledState"
-                          : "inboundsPage.disabledState",
-                      )}
-                    </FieldLabel>
-                  </Field>
-                )}
-              />
-              <Button type="submit" disabled={pending}>
-                {pending && <LoaderCircle className="animate-spin" />}
-                {t(inbound ? "core.save" : "create")}
-              </Button>
-            </div>
-          </form>
+            <Button type="submit" disabled={pending}>
+              {pending && <LoaderCircle className="animate-spin" />}
+              {t(inbound ? "core.save" : "create")}
+            </Button>
+          </div>
+        </form>
       </>
     </FormProvider>
   );
 }
 
-function InboundHelpers() {
+function InboundHelpers({ nodeId }: { nodeId: number }) {
   const { control, setValue } = useFormContext<InboundFormValues>();
 
   const value = useWatch({
@@ -235,8 +237,13 @@ function InboundHelpers() {
     }
 
     const helpers = [];
-    if (inbound.streamSettings?.security === "reality") {
-      helpers.push("shortIds", "x25519");
+    switch (inbound.streamSettings?.security) {
+      case "tls":
+        helpers.push("certificate");
+        break;
+      case "reality":
+        helpers.push("shortIds", "x25519");
+        break;
     }
 
     return { inbound, helpers };
@@ -252,6 +259,7 @@ function InboundHelpers() {
         if (type === "shortIds") {
           return (
             <ShortIdsHelper
+              key={type}
               onSet={(ids) => {
                 const res = set(
                   inbound!,
@@ -268,6 +276,7 @@ function InboundHelpers() {
         if (type === "x25519") {
           return (
             <X25519Helpers
+              key={type}
               onSet={(publicKey, privateKey) => {
                 let res = set(
                   inbound!,
@@ -278,6 +287,24 @@ function InboundHelpers() {
                   inbound!,
                   "streamSettings.realitySettings.privateKey",
                   privateKey,
+                );
+
+                setValue("content", JSON.stringify(res, null, 2));
+              }}
+            />
+          );
+        }
+
+        if (type === "certificate") {
+          return (
+            <CertificateHelper
+              key={type}
+              nodeId={nodeId}
+              onSet={(certificateFile, keyFile) => {
+                const res = set(
+                  inbound!,
+                  "streamSettings.tlsSettings.certificates",
+                  [{ certificateFile, keyFile }],
                 );
 
                 setValue("content", JSON.stringify(res, null, 2));

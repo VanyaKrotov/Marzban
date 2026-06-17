@@ -13,6 +13,8 @@ export type NodeCertificate = {
   node_id: number;
   domain: string;
   certificate: string;
+  certificate_file: string;
+  key_file: string;
   expires_at?: string | null;
   active: boolean;
   inbound_tags: string[];
@@ -145,9 +147,12 @@ export function useIssueCertificateMutation(nodeId: number) {
         force,
       }),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: nodeCertificatesQueryKey(nodeId),
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: nodeCertificatesQueryKey(nodeId),
+        }),
+        queryClient.invalidateQueries({ queryKey: nodesQueryKey }),
+      ]),
   });
 }
 
@@ -157,8 +162,11 @@ export function useDeleteCertificateMutation(nodeId: number) {
     mutationFn: (certificateId: number) =>
       api.delete(`/node/${nodeId}/certificates/${certificateId}`),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: nodeCertificatesQueryKey(nodeId),
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: nodeCertificatesQueryKey(nodeId),
+        }),
+        queryClient.invalidateQueries({ queryKey: nodesQueryKey }),
+      ]),
   });
 }

@@ -417,69 +417,6 @@ def get_node_certificates(
 
 
 @router.get(
-    "/inbounds/certificates",
-    response_model=Dict[str, List[int]],
-    responses={403: responses._403},
-)
-def get_inbound_certificates(
-    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
-):
-    """Get certificate assignments for every managed inbound."""
-    return crud.get_inbound_certificates(db, list(xray.config.inbounds_by_tag))
-
-
-@router.put(
-    "/inbounds/certificates",
-    response_model=Dict[str, List[int]],
-    responses={400: responses._400, 403: responses._403},
-)
-def modify_inbound_certificates(
-    inbound_certificates: Dict[str, List[int]],
-    db: Session = Depends(get_db),
-    admin: Admin = Depends(Admin.check_sudo_admin),
-):
-    """Assign node certificates to TLS inbounds."""
-    unknown_inbounds = set(inbound_certificates) - xray.config.inbounds_by_tag.keys()
-    if unknown_inbounds:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Inbounds {sorted(unknown_inbounds)} don't exist",
-        )
-
-    non_tls_inbounds = [
-        tag
-        for tag, certificate_ids in inbound_certificates.items()
-        if certificate_ids and xray.config.inbounds_by_tag[tag]["tls"] != "tls"
-    ]
-    if non_tls_inbounds:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Inbounds {sorted(non_tls_inbounds)} don't use TLS",
-        )
-
-    before = crud.get_inbound_certificates(db, list(inbound_certificates))
-    try:
-        result = crud.update_inbound_certificates(db, inbound_certificates)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    changed_tags = {
-        tag
-        for tag, certificate_ids in result.items()
-        if set(certificate_ids) != set(before.get(tag, []))
-    }
-    assignments = crud.get_inbound_node_ids_map(db, list(changed_tags))
-    affected_node_ids = {
-        node_id
-        for node_ids in assignments.values()
-        for node_id in node_ids
-    }
-    mark_nodes_pending_restart(affected_node_ids)
-
-    return result
-
-
-@router.get(
     "/hosts", response_model=Dict[str, List[ProxyHost]], responses={403: responses._403}
 )
 def get_hosts(
