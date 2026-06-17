@@ -29,6 +29,7 @@ const protocolLabels: Record<keyof ProxyType, string> = {
   vless: "VLESS",
   trojan: "Trojan",
   shadowsocks: "Shadowsocks",
+  socks: "SOCKS",
   hysteria: "Hysteria",
 };
 

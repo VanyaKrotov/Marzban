@@ -173,6 +173,8 @@ class ClashConfiguration(object):
 
         if type == 'shadowsocks':
             type = 'ss'
+        if type == 'socks':
+            type = 'socks5'
         if network in ("http", "h2", "h3"):
             network = "h2"
         if network in ('tcp', 'raw') and headers == 'http':
@@ -200,7 +202,7 @@ class ClashConfiguration(object):
             max_early_data = None
             early_data_header_name = ""
 
-        if type == 'ss':  # shadowsocks
+        if type in ('ss', 'socks5'):
             return node
 
         if tls:
@@ -290,6 +292,11 @@ class ClashConfiguration(object):
         elif inbound['protocol'] == 'shadowsocks':
             node['password'] = settings['password']
             node['cipher'] = settings['method']
+
+        elif inbound['protocol'] == 'socks':
+            node['type'] = 'socks5'
+            node['username'] = settings['username']
+            node['password'] = settings['password']
 
         else:
             return
@@ -407,6 +414,11 @@ class ClashMetaConfiguration(ClashConfiguration):
         elif inbound['protocol'] == 'shadowsocks':
             node['password'] = settings['password']
             node['cipher'] = settings['method']
+
+        elif inbound['protocol'] == 'socks':
+            node['type'] = 'socks5'
+            node['username'] = settings['username']
+            node['password'] = settings['password']
 
         else:
             return

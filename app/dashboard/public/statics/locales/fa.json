@@ -211,6 +211,7 @@
   "userDialog.selectOneProtocol": "لطفا حداقل یک پروتکل انتخاب کنید",
   "userDialog.shadowsocksDesc": "سریع و امن، اما کارآمد کمتر از بقیه",
   "userDialog.hysteriaDesc": "حساب Hysteria مبتنی بر QUIC",
+  "userDialog.socksDesc": "حساب SOCKS با نام کاربری و رمز عبور",
   "userDialog.startDate": "تاریخ شروع",
   "userDialog.total": "مجموع: ",
   "userDialog.trojanDesc": "سبک، امن و فوق‌العاده سریع",

@@ -153,6 +153,17 @@ const shadowsocksUserSchema: MonacoJsonSchema = {
   },
 };
 
+const socksAccountsSchema: MonacoJsonSchema = {
+  type: "object",
+  additionalProperties: {
+    type: "string",
+    minLength: 1,
+    description: "Password for this SOCKS username.",
+  },
+  description:
+    "SOCKS username/password map. Managed Marzban users are injected here at runtime.",
+};
+
 const httpHeaderSchema: MonacoJsonSchema = {
   type: "object",
   additionalProperties: true,
@@ -1603,6 +1614,39 @@ export const xrayInboundSchema: MonacoJsonSchema = {
                 type: "array",
                 description: "Official Xray multi-user Shadowsocks list.",
                 items: shadowsocksUserSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      if: {
+        properties: { protocol: { const: "socks" } },
+        required: ["protocol"],
+      },
+      then: {
+        properties: {
+          settings: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              auth: {
+                type: "string",
+                enum: ["noauth", "password"],
+                default: "password",
+                description:
+                  "SOCKS authentication mode. Managed Marzban accounts require password.",
+              },
+              accounts: socksAccountsSchema,
+              udp: {
+                type: "boolean",
+                default: true,
+                description: "Whether UDP relay is enabled for this SOCKS inbound.",
+              },
+              ip: {
+                type: "string",
+                description: "Optional listen IP override for SOCKS UDP relay.",
               },
             },
           },

@@ -3,6 +3,7 @@ export type ProtocolType =
   | "vless"
   | "trojan"
   | "shadowsocks"
+  | "socks"
   | "hysteria";
 
 export type InboundType = {

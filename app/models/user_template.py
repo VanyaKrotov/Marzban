@@ -26,7 +26,11 @@ class UserTemplateCreate(UserTemplate):
             "name": "my template 1",
             "username_prefix": None,
             "username_suffix": None,
-            "inbounds": {"vmess": ["VMESS_INBOUND"], "vless": ["VLESS_INBOUND"]},
+            "inbounds": {
+                "vmess": ["VMESS_INBOUND"],
+                "vless": ["VLESS_INBOUND"],
+                "socks": ["SOCKS_INBOUND"],
+            },
             "data_limit": 0,
             "expire_duration": 0,
         }
@@ -39,7 +43,11 @@ class UserTemplateModify(UserTemplate):
             "name": "my template 1",
             "username_prefix": None,
             "username_suffix": None,
-            "inbounds": {"vmess": ["VMESS_INBOUND"], "vless": ["VLESS_INBOUND"]},
+            "inbounds": {
+                "vmess": ["VMESS_INBOUND"],
+                "vless": ["VLESS_INBOUND"],
+                "socks": ["SOCKS_INBOUND"],
+            },
             "data_limit": 0,
             "expire_duration": 0,
         }

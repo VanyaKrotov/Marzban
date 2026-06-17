@@ -11,6 +11,7 @@ from xray_api.types.account import (
     HysteriaAccount,
     ShadowsocksAccount,
     ShadowsocksMethods,
+    SocksAccount,
     TrojanAccount,
     VLESSAccount,
     VMessAccount,
@@ -30,6 +31,7 @@ class ProxyTypes(str, Enum):
     VLESS = "vless"
     Trojan = "trojan"
     Shadowsocks = "shadowsocks"
+    Socks = "socks"
     Hysteria = "hysteria"
 
     @property
@@ -42,6 +44,8 @@ class ProxyTypes(str, Enum):
             return TrojanAccount
         if self == self.Shadowsocks:
             return ShadowsocksAccount
+        if self == self.Socks:
+            return SocksAccount
         if self == self.Hysteria:
             return HysteriaAccount
 
@@ -55,12 +59,14 @@ class ProxyTypes(str, Enum):
             return TrojanSettings
         if self == self.Shadowsocks:
             return ShadowsocksSettings
+        if self == self.Socks:
+            return SocksSettings
         if self == self.Hysteria:
             return HysteriaSettings
 
     @property
     def supports_runtime_api(self):
-        return self.value in {"vmess", "vless", "trojan", "shadowsocks"}
+        return self.value in {"vmess", "vless", "trojan", "shadowsocks", "socks"}
 
 
 class XrayInboundProtocol(str, Enum):
@@ -168,6 +174,14 @@ class TrojanSettings(ProxySettings):
 class ShadowsocksSettings(ProxySettings):
     password: str = Field(default_factory=random_password)
     method: ShadowsocksMethods = ShadowsocksMethods.CHACHA20_POLY1305
+
+    def revoke(self):
+        self.password = random_password()
+
+
+class SocksSettings(ProxySettings):
+    username: str = Field(default_factory=random_password)
+    password: str = Field(default_factory=random_password)
 
     def revoke(self):
         self.password = random_password()

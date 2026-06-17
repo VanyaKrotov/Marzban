@@ -257,10 +257,17 @@ class XRayConfig(dict):
 
             if not inbound.get('settings'):
                 inbound['settings'] = {}
-            user_container = "users" if inbound["protocol"] == ProxyTypes.Hysteria.value else "clients"
+            if inbound["protocol"] == ProxyTypes.Hysteria.value:
+                user_container = "users"
+            elif inbound["protocol"] == ProxyTypes.Socks.value:
+                user_container = "accounts"
+            else:
+                user_container = "clients"
             is_account_protocol = inbound['protocol'] in ACCOUNT_PROTOCOLS
             if is_account_protocol and not inbound['settings'].get(user_container):
-                inbound['settings'][user_container] = []
+                inbound['settings'][user_container] = {} if user_container == "accounts" else []
+            if inbound["protocol"] == ProxyTypes.Socks.value and is_account_protocol:
+                inbound["settings"]["auth"] = inbound["settings"].get("auth") or "password"
 
             settings = {
                 "tag": inbound["tag"],
@@ -631,6 +638,10 @@ class XRayConfig(dict):
                             "email": f"{user_id}.{username}",
                             **settings
                         }
+
+                        if proxy_type == ProxyTypes.Socks.value:
+                            clients[client["username"]] = client["password"]
+                            continue
 
                         # XTLS currently only supports transmission methods of TCP and mKCP
                         if client.get('flow') and (

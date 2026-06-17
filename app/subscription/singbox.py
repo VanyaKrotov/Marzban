@@ -49,10 +49,10 @@ class SingBoxConfiguration(str):
         self.config["outbounds"].append(outbound_data)
 
     def render(self, reverse=False):
-        urltest_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2"]
+        urltest_types = ["vmess", "vless", "trojan", "shadowsocks", "socks", "hysteria2"]
         urltest_tags = [outbound["tag"]
                         for outbound in self.config["outbounds"] if outbound["type"] in urltest_types]
-        selector_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2", "urltest"]
+        selector_types = ["vmess", "vless", "trojan", "shadowsocks", "socks", "hysteria2", "urltest"]
         selector_tags = [outbound["tag"]
                          for outbound in self.config["outbounds"] if outbound["type"] in selector_types]
 
@@ -349,5 +349,9 @@ class SingBoxConfiguration(str):
         elif inbound['protocol'] == 'shadowsocks':
             outbound['password'] = settings['password']
             outbound['method'] = settings['method']
+
+        elif inbound['protocol'] == 'socks':
+            outbound['username'] = settings['username']
+            outbound['password'] = settings['password']
 
         self.add_outbound(outbound)
