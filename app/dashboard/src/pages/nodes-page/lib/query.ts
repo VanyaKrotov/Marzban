@@ -46,7 +46,9 @@ export function useNodeQuery(
     queryFn: () => api.get<NodeType>(`/node/${nodeId}`),
     enabled: Boolean(nodeId) && enabled,
     placeholderData,
-    refetchInterval: enabled ? 10_000 : false,
+    refetchInterval: enabled
+      ? ({ state }) => (state.data?.restart_required ? 3_000 : 10_000)
+      : false,
     refetchOnWindowFocus: false,
   });
 }
