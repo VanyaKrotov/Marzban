@@ -35,6 +35,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  chartTooltipContentStyle,
+  chartTooltipItemStyle,
+  chartTooltipLabelStyle,
+} from "@/lib/chart-tooltip";
 
 import { CHART_COLORS, formatCompactBytes, formatPeriod } from "../lib/chart";
 import type { StatsGranularity, StatsHistory } from "../lib/query";
@@ -167,11 +172,9 @@ export function TrafficHistoryChart({
                     );
                     return [formatCompactBytes(Number(value)), node?.node_name];
                   }}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                  }}
+                  contentStyle={chartTooltipContentStyle}
+                  itemStyle={chartTooltipItemStyle}
+                  labelStyle={chartTooltipLabelStyle}
                 />
                 {traffic.map((node, index) => (
                   <Line

@@ -74,19 +74,6 @@ from config import (
     XRAY_EXCLUDE_INBOUND_TAGS,
 )
 
-ROUTING_RULE_TAG_PREFIX = "marzban-routing-"
-
-
-def routing_rule_tag(rule_id: int) -> str:
-    return f"{ROUTING_RULE_TAG_PREFIX}{rule_id}"
-
-
-def normalize_routing_rule_content(content: dict, rule_id: int) -> dict:
-    normalized = dict(content)
-    normalized["ruleTag"] = routing_rule_tag(rule_id)
-    return normalized
-
-
 def add_default_host(db: Session, inbound: ProxyInbound):
     """
     Adds a default host to a proxy inbound.
@@ -403,9 +390,6 @@ def create_routing_rule(
     db.add(dbrule)
     db.commit()
     db.refresh(dbrule)
-    dbrule.content = normalize_routing_rule_content(dbrule.content, dbrule.id)
-    db.commit()
-    db.refresh(dbrule)
     return get_routing_rule(db, dbrule.id)
 
 
@@ -419,10 +403,7 @@ def update_routing_rule(
     if modified.content is not None:
         if dbrule.readonly:
             raise ValueError("Content of read-only routing rules cannot be changed")
-        dbrule.content = normalize_routing_rule_content(
-            modified.content,
-            dbrule.id,
-        )
+        dbrule.content = dict(modified.content)
     if modified.enabled is not None:
         dbrule.enabled = modified.enabled
     if modified.position is not None:
@@ -472,7 +453,7 @@ def remove_routing_rule(db: Session, dbrule: RoutingRule) -> None:
 
 def get_routing_rules_for_node(db: Session, node_id: int) -> List[dict]:
     return [
-        normalize_routing_rule_content(rule.content, rule.id)
+        rule.content
         for rule in (
             db.query(RoutingRule)
             .join(RoutingRule.nodes)
@@ -599,7 +580,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         content for content in routing_rules if isinstance(content, dict)
     ]
     for rule, content in zip(readonly_rules, routing_rules):
-        rule.content = normalize_routing_rule_content(content, rule.id)
+        rule.content = content
         rule.nodes = list(nodes)
 
     for rule in readonly_rules[len(routing_rules):]:
@@ -622,8 +603,6 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             nodes=list(nodes),
         )
         db.add(rule)
-        db.flush()
-        rule.content = normalize_routing_rule_content(content, rule.id)
         next_position += 1
 
     db.commit()

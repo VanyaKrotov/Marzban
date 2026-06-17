@@ -28,6 +28,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  chartTooltipContentStyle,
+  chartTooltipItemStyle,
+  chartTooltipLabelStyle,
+} from "@/lib/chart-tooltip";
 import { cn } from "@/lib/utils";
 
 import { NodeUsageDateRangeFilter } from "./DateRangeFilter";
@@ -165,11 +170,9 @@ export function NodeUsageChart({
                 </Pie>
                 <Tooltip
                   formatter={(value) => formatCompactBytes(Number(value))}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                  }}
+                  contentStyle={chartTooltipContentStyle}
+                  itemStyle={chartTooltipItemStyle}
+                  labelStyle={chartTooltipLabelStyle}
                 />
                 <Legend />
               </PieChart>

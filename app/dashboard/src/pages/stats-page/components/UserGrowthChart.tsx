@@ -17,6 +17,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  chartTooltipContentStyle,
+  chartTooltipItemStyle,
+  chartTooltipLabelStyle,
+} from "@/lib/chart-tooltip";
 
 import { formatPeriod } from "../lib/chart";
 import type { StatsGranularity, StatsHistory } from "../lib/query";
@@ -100,11 +105,9 @@ export function UserGrowthChart({
                       item.payload,
                     ];
                   }}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                  }}
+                  contentStyle={chartTooltipContentStyle}
+                  itemStyle={chartTooltipItemStyle}
+                  labelStyle={chartTooltipLabelStyle}
                 />
                 <Bar
                   yAxisId="count"
