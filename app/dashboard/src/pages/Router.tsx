@@ -1,4 +1,9 @@
-import { createHashRouter, Navigate, useRouteError } from "react-router-dom";
+import {
+  createHashRouter,
+  Navigate,
+  redirect,
+  useRouteError,
+} from "react-router-dom";
 import { AxiosError } from "axios";
 
 import { ErrorFallback } from "@/components/ErrorFallback";
@@ -25,6 +30,16 @@ function RouteErrorBoundary() {
   return <ErrorFallback error={error} />;
 }
 
+async function requireSudo() {
+  const admin = await queryClient.ensureQueryData(accountQuery);
+
+  if (!admin.is_sudo) {
+    throw redirect("/");
+  }
+
+  return null;
+}
+
 export const router = createHashRouter([
   {
     id: "layout",
@@ -40,14 +55,17 @@ export const router = createHashRouter([
       {
         path: "nodes",
         element: <NodesPage />,
+        loader: requireSudo,
       },
       {
         path: "nodes/:id",
         element: <NodeProfilePage />,
+        loader: requireSudo,
       },
       {
         path: "hosts",
         element: <HostsPage />,
+        loader: requireSudo,
       },
       {
         path: "stats",
@@ -56,6 +74,7 @@ export const router = createHashRouter([
       {
         path: "config",
         element: <ConfigPage />,
+        loader: requireSudo,
       },
     ],
   },

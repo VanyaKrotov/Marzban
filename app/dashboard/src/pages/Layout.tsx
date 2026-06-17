@@ -69,16 +69,19 @@ const NAVIGATION = [
       {
         icon: Server,
         labelKey: "navigation.nodes",
+        sudoOnly: true,
         to: "/nodes",
       },
       {
         icon: Waypoints,
         labelKey: "navigation.hosts",
+        sudoOnly: true,
         to: "/hosts",
       },
       {
         icon: FileJson,
         labelKey: "navigation.config",
+        sudoOnly: true,
         to: "/config",
       },
     ],
@@ -121,6 +124,10 @@ const Layout: FC = () => {
   }
 
   const { username, is_sudo } = admin;
+  const navigation = NAVIGATION.map(({ children, ...group }) => ({
+    ...group,
+    children: children.filter((item) => is_sudo || !("sudoOnly" in item)),
+  }));
 
   return (
     <SidebarProvider>
@@ -135,7 +142,7 @@ const Layout: FC = () => {
           )}
         </SidebarHeader>
         <SidebarContent>
-          {NAVIGATION.map(({ children, title }) => (
+          {navigation.map(({ children, title }) => (
             <SidebarGroup key={title}>
               <SidebarGroupLabel>{title}</SidebarGroupLabel>
               <SidebarGroupContent className="flex flex-col gap-1">
