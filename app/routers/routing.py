@@ -73,7 +73,7 @@ def create_routing_rule(
         created = crud.create_routing_rule(db, rule)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    xray.reload_config()
+    # xray.reload_config()
     xray.operations.sync_routing_rules({node.id for node in created.nodes})
     return _response(created)
 
@@ -104,7 +104,7 @@ def reorder_routing_rules(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    xray.reload_config()
+    # xray.reload_config()
     xray.operations.sync_routing_rules(affected_node_ids)
     return [_response(rule) for rule in reordered]
 
@@ -137,7 +137,7 @@ def modify_routing_rule(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    xray.reload_config()
+    # xray.reload_config()
     affected_node_ids.update(node.id for node in updated.nodes)
     xray.operations.sync_routing_rules(affected_node_ids)
     return _response(updated)
@@ -161,7 +161,7 @@ def delete_routing_rule(
     affected_node_ids = {node.id for node in dbrule.nodes}
     removed_rule_id = dbrule.id
     crud.remove_routing_rule(db, dbrule)
-    xray.reload_config()
+    # xray.reload_config()
     xray.operations.sync_routing_rules(
         affected_node_ids,
         extra_rule_ids={removed_rule_id},

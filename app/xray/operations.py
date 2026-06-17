@@ -15,7 +15,6 @@ from app.utils.node_restart_state import (
     mark_nodes_pending_restart,
 )
 from xray_api import XRay as XRayAPI
-from xray_api.routing import collect_geo_resource_filenames
 from xray_api.types.account import Account, XTLSFlows
 
 if TYPE_CHECKING:
@@ -105,12 +104,9 @@ def _get_enabled_routing_rules(node_id: int) -> list[dict]:
         return crud.get_routing_rules_for_node(db, node_id)
 
 
-def _validate_live_routing_rules(
-    rules: list[dict],
-    geo_resources: dict[str, bytes],
-) -> None:
+def _validate_live_routing_rules(rules: list[dict]) -> None:
     for rule in rules:
-        XRayAPI.validate_routing_rule(rule, geo_resources=geo_resources)
+        XRayAPI.validate_routing_rule(rule)
 
 
 def _error_details(exc: Exception) -> str:
@@ -121,9 +117,8 @@ def _sync_routing_rules_for_api(
     api: XRayAPI,
     rules: list[dict],
     known_rule_ids: set[int],
-    geo_resources: dict[str, bytes],
 ):
-    _validate_live_routing_rules(rules, geo_resources)
+    _validate_live_routing_rules(rules)
 
     for rule_id in sorted(known_rule_ids):
         try:
@@ -137,27 +132,9 @@ def _sync_routing_rules_for_api(
     for rule in rules:
         api.add_routing_rule(
             rule,
-            geo_resources=geo_resources,
             should_append=True,
             timeout=30,
         )
-
-
-def _download_node_geo_resources(node: XRayNode, rules: list[dict]) -> dict[str, bytes]:
-    filenames = collect_geo_resource_filenames(rules)
-    if not filenames:
-        return {}
-
-    available = {
-        file.get("filename")
-        for file in node.list_geo_resources()
-        if isinstance(file, dict) and isinstance(file.get("filename"), str)
-    }
-    return {
-        filename: node.download_geo_resource(filename)
-        for filename in filenames
-        if filename in available
-    }
 
 
 def sync_routing_rules(
@@ -181,7 +158,6 @@ def sync_routing_rules(
                 node.api,
                 rules,
                 known_rule_ids,
-                _download_node_geo_resources(node, rules),
             )
         except Exception as exc:
             pending_restart_node_ids.add(node_id)
