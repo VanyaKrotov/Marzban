@@ -297,14 +297,13 @@ function InboundHelpers({ nodeId }: { nodeId: number }) {
 
         if (type === "certificate") {
           const certificates =
-            inbound?.streamSettings?.tlsSettings?.certificates;
+            inbound?.streamSettings?.tlsSettings?.certificates ?? [];
 
           return (
             <CertificateHelper
               key={type}
               nodeId={nodeId}
               checkSelected={(cert) =>
-                Boolean(certificates) &&
                 certificates!.some(
                   (x) =>
                     x.certificateFile === cert.certificate_file &&
