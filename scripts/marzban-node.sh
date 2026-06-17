@@ -55,6 +55,7 @@ fi
 
 DATA_DIR="/var/lib/$APP_NAME"
 DATA_MAIN_DIR="/var/lib/$APP_NAME"
+XRAY_ASSETS_PATH="/usr/local/share/xray"
 COMPOSE_FILE="$APP_DIR/docker-compose.yml"
 LAST_XRAY_CORES=5
 CERT_FILE="$DATA_DIR/cert.pem"
@@ -305,6 +306,27 @@ set_compose_node_image() {
     sed -i "s|^[[:space:]]*image:.*|    image: $MARZBAN_NODE_IMAGE|" "$COMPOSE_FILE"
 }
 
+ensure_xray_assets_config() {
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        colorized_echo red "Compose file not found at $COMPOSE_FILE"
+        return 1
+    fi
+
+    if ! command -v yq &>/dev/null; then
+        colorized_echo blue "Installing yq to update docker-compose.yml"
+        install_yq
+    fi
+
+    yq eval ".services.\"marzban-node\".environment.XRAY_ASSETS_PATH = \"$XRAY_ASSETS_PATH\"" -i "$COMPOSE_FILE"
+    yq eval ".services.\"marzban-node\".volumes = (.services.\"marzban-node\".volumes // [])" -i "$COMPOSE_FILE"
+
+    if ! yq eval -e ".services.\"marzban-node\".volumes[] | select(. == \"xray-assets:$XRAY_ASSETS_PATH\")" "$COMPOSE_FILE" &>/dev/null; then
+        yq eval ".services.\"marzban-node\".volumes += \"xray-assets:$XRAY_ASSETS_PATH\"" -i "$COMPOSE_FILE"
+    fi
+
+    yq eval ".volumes.\"xray-assets\" = (.volumes.\"xray-assets\" // {})" -i "$COMPOSE_FILE"
+}
+
 # Get a list of occupied ports
 get_occupied_ports() {
     if command -v ss &>/dev/null; then
@@ -423,6 +445,7 @@ services:
       SSL_CLIENT_CERT_FILE: "/var/lib/marzban-node/cert.pem"
       SERVICE_PORT: "$SERVICE_PORT"
       XRAY_API_PORT: "$XRAY_API_PORT"
+      XRAY_ASSETS_PATH: "$XRAY_ASSETS_PATH"
 EOL
     
     # Add SERVICE_PROTOCOL line only if REST is selected
@@ -437,6 +460,10 @@ EOL
     volumes:
       - $DATA_MAIN_DIR:/var/lib/marzban
       - $DATA_DIR:/var/lib/marzban-node
+      - xray-assets:$XRAY_ASSETS_PATH
+
+volumes:
+  xray-assets:
 EOL
     colorized_echo green "File saved in $APP_DIR/docker-compose.yml"
 }
@@ -796,6 +823,7 @@ update_command() {
     update_marzban_node_script
     install_marzban_node_image latest
     set_compose_node_image
+    ensure_xray_assets_config
     
     colorized_echo blue "Restarting Marzban-node services"
     down_marzban_node
@@ -1083,6 +1111,8 @@ update_core_command() {
     if ! grep -q 'XRAY_EXECUTABLE_PATH: "/var/lib/marzban-node/xray-core/xray"' "$COMPOSE_FILE"; then
         yq eval '.services."marzban-node".environment.XRAY_EXECUTABLE_PATH = "/var/lib/marzban-node/xray-core/xray"' -i "$COMPOSE_FILE"
     fi
+
+    ensure_xray_assets_config
 
     if ! yq eval ".services.\"marzban-node\".volumes[] | select(. == \"${DATA_MAIN_DIR}:/var/lib/marzban-node\")" "$COMPOSE_FILE" &>/dev/null; then
         yq eval ".services.\"marzban-node\".volumes += \"${DATA_MAIN_DIR}:/var/lib/marzban-node\"" -i "$COMPOSE_FILE"

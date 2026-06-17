@@ -79,25 +79,8 @@ class ReSTXRayNode:
         self._started = False
 
     def _prepare_config(self, config: XRayConfig):
-        for inbound in config.get("inbounds", []):
-            streamSettings = inbound.get("streamSettings") or {}
-            tlsSettings = streamSettings.get("tlsSettings") or {}
-            certificates = tlsSettings.get("certificates") or []
-            for certificate in certificates:
-                if certificate.get("certificateFile"):
-                    with open(certificate['certificateFile']) as file:
-                        certificate['certificate'] = [
-                            line.strip() for line in file.readlines()
-                        ]
-                        del certificate['certificateFile']
-
-                if certificate.get("keyFile"):
-                    with open(certificate['keyFile']) as file:
-                        certificate['key'] = [
-                            line.strip() for line in file.readlines()
-                        ]
-                        del certificate['keyFile']
-
+        # certificateFile/keyFile paths in node configs point to files on the
+        # remote node, so the panel must not try to read and inline them here.
         return config
 
     def make_request(self, path: str, timeout: int, **params):
@@ -437,25 +420,8 @@ class RPyCXRayNode:
         return self.remote.fetch_xray_version()
 
     def _prepare_config(self, config: XRayConfig):
-        for inbound in config.get("inbounds", []):
-            streamSettings = inbound.get("streamSettings") or {}
-            tlsSettings = streamSettings.get("tlsSettings") or {}
-            certificates = tlsSettings.get("certificates") or []
-            for certificate in certificates:
-                if certificate.get("certificateFile"):
-                    with open(certificate['certificateFile']) as file:
-                        certificate['certificate'] = [
-                            line.strip() for line in file.readlines()
-                        ]
-                        del certificate['certificateFile']
-
-                if certificate.get("keyFile"):
-                    with open(certificate['keyFile']) as file:
-                        certificate['key'] = [
-                            line.strip() for line in file.readlines()
-                        ]
-                        del certificate['keyFile']
-
+        # certificateFile/keyFile paths in node configs point to files on the
+        # remote node, so the panel must not try to read and inline them here.
         return config
 
     def start(self, config: XRayConfig):

@@ -16,10 +16,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   type NodeCertificate,
   useIssueCertificateMutation,
 } from "@/pages/nodes-page/lib/query";
 import { generateErrorMessage } from "utils/toastHandler";
+
+const truncatePath = (path: string, headLength = 22, tailLength = 32) => {
+  if (path.length <= headLength + tailLength + 5) {
+    return path;
+  }
+
+  return `${path.slice(0, headLength)}/.../${path.slice(-tailLength)}`;
+};
 
 export function CertificateRow({
   certificate,
@@ -49,18 +62,18 @@ export function CertificateRow({
             })}
           </p>
         )}
-        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-          <p className="truncate">
-            {t("nodes.certificates.certificateFile")}:{" "}
-            <code className="text-foreground">{certificate.certificate_file}</code>
-          </p>
-          <p className="truncate">
-            {t("nodes.certificates.keyFile")}:{" "}
-            <code className="text-foreground">{certificate.key_file}</code>
-          </p>
+        <div className="mt-2 grid min-w-0 gap-1 text-xs text-muted-foreground">
+          <CertificatePath
+            label={t("nodes.certificates.certificateFile")}
+            path={certificate.certificate_file}
+          />
+          <CertificatePath
+            label={t("nodes.certificates.keyFile")}
+            path={certificate.key_file}
+          />
         </div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex shrink-0 gap-2">
         <Button
           type="button"
           size="sm"
@@ -110,6 +123,24 @@ export function CertificateRow({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+    </div>
+  );
+}
+
+function CertificatePath({ label, path }: { label: string; path: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className="shrink-0">{label}:</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <code className="min-w-0 max-w-full truncate text-foreground">
+            {truncatePath(path)}
+          </code>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[min(36rem,calc(100vw-2rem))] break-all">
+          {path}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

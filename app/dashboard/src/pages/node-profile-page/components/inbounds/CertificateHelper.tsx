@@ -1,30 +1,26 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useNodeCertificatesQuery } from "@/pages/nodes-page/lib/query";
+  NodeCertificate,
+  useNodeCertificatesQuery,
+} from "@/pages/nodes-page/lib/query";
 
 interface Props {
   nodeId: number;
+  checkSelected(cert: NodeCertificate): boolean;
   onSet(certificateFile: string, keyFile: string): void;
 }
 
-function CertificateHelper({ nodeId, onSet }: Props) {
+function CertificateHelper({ nodeId, checkSelected, onSet }: Props) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const query = useNodeCertificatesQuery(nodeId, open);
+  const query = useNodeCertificatesQuery(nodeId);
   const certificates = query.data ?? [];
 
   if (query.isFetched && !certificates.length) {
@@ -32,39 +28,31 @@ function CertificateHelper({ nodeId, onSet }: Props) {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" size="sm" variant="secondary">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={query.isLoading}
+        >
           {t("nodes.certificate")}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent sideOffset={10} align="start" className="w-80">
-        <Select
-          disabled={query.isLoading}
-          onValueChange={(value) => {
-            const certificate = certificates.find(
-              ({ id }) => String(id) === value,
-            );
-            if (!certificate) {
-              return;
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-56">
+        {certificates.map((certificate) => (
+          <DropdownMenuCheckboxItem
+            checked={checkSelected(certificate)}
+            key={certificate.id}
+            onCheckedChange={() =>
+              onSet(certificate.certificate_file, certificate.key_file)
             }
-            onSet(certificate.certificate_file, certificate.key_file);
-            setOpen(false);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder={t("nodes.certificates.select")} />
-          </SelectTrigger>
-          <SelectContent>
-            {certificates.map((certificate) => (
-              <SelectItem value={String(certificate.id)} key={certificate.id}>
-                {certificate.domain}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </PopoverContent>
-    </Popover>
+          >
+            <span className="truncate">{certificate.domain}</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

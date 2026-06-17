@@ -31,7 +31,11 @@ export interface InboundModel {
       | "hysteria";
     security: "none" | "tls" | "reality";
     tlsSettings?: {
-      serverName: string;
+      serverName?: string;
+      certificates?: Array<{
+        certificateFile?: string;
+        keyFile?: string;
+      }>;
     };
     realitySettings?: {
       show: boolean;
