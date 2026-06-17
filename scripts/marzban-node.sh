@@ -493,9 +493,24 @@ follow_marzban_node_logs() {
 }
 
 update_marzban_node_script() {
+    local temp_file
+
     colorized_echo blue "Updating marzban-node script"
-    curl --fail --silent --show-error --location "$SCRIPT_URL" \
-        | install -m 755 /dev/stdin "/usr/local/bin/$APP_NAME"
+    temp_file=$(mktemp)
+
+    if ! curl --fail --silent --show-error --location "$SCRIPT_URL" -o "$temp_file"; then
+        rm -f "$temp_file"
+        colorized_echo red "Unable to download marzban-node script from $SCRIPT_URL"
+        return 1
+    fi
+
+    if ! install -m 755 "$temp_file" "/usr/local/bin/$APP_NAME"; then
+        rm -f "$temp_file"
+        colorized_echo red "Unable to install marzban-node script to /usr/local/bin/$APP_NAME"
+        return 1
+    fi
+
+    rm -f "$temp_file"
     colorized_echo green "marzban-node script updated successfully"
 }
 
