@@ -154,14 +154,26 @@ const shadowsocksUserSchema: MonacoJsonSchema = {
 };
 
 const socksAccountsSchema: MonacoJsonSchema = {
-  type: "object",
-  additionalProperties: {
-    type: "string",
-    minLength: 1,
-    description: "Password for this SOCKS username.",
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: true,
+    required: ["user", "pass"],
+    properties: {
+      user: {
+        type: "string",
+        minLength: 1,
+        description: "SOCKS username.",
+      },
+      pass: {
+        type: "string",
+        minLength: 1,
+        description: "SOCKS password.",
+      },
+    },
   },
   description:
-    "SOCKS username/password map. Managed Marzban users are injected here at runtime.",
+    "SOCKS username/password accounts. Managed Marzban users are injected here at runtime.",
 };
 
 const httpHeaderSchema: MonacoJsonSchema = {
@@ -1639,6 +1651,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
                   "SOCKS authentication mode. Managed Marzban accounts require password.",
               },
               accounts: socksAccountsSchema,
+              users: socksAccountsSchema,
               udp: {
                 type: "boolean",
                 default: true,

@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 import { xrayInboundSchema } from "@/lib/xray-schemas/inbound";
@@ -35,7 +34,6 @@ import ShortIdsHelper from "./ShortIdsHelper";
 import X25519Helpers from "./X25519Helpers";
 
 const inboundFormSchema = z.object({
-  tag: z.string().trim().min(1).max(256),
   enabled: z.boolean(),
   content: z.string().superRefine((value, context) => {
     try {
@@ -44,6 +42,18 @@ const inboundFormSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "JSON must contain an object",
+        });
+      }
+
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        !Array.isArray(parsed) &&
+        (typeof parsed.tag !== "string" || !parsed.tag.trim())
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "JSON must contain a non-empty tag",
         });
       }
     } catch {
@@ -64,6 +74,7 @@ type InboundDialogProps = {
 };
 
 const defaultContent = {
+  tag: "",
   listen: "0.0.0.0",
   port: 443,
   protocol: "vless",
@@ -116,18 +127,19 @@ function InboundDialogContent({
   const form = useForm<InboundFormValues>({
     resolver: zodResolver(inboundFormSchema),
     defaultValues: {
-      tag: inbound?.tag ?? "",
       enabled: inbound?.enabled ?? true,
       content: JSON.stringify(inbound?.content ?? defaultContent, null, 2),
     },
   });
 
   const submit = (values: InboundFormValues) => {
+    const content = JSON.parse(values.content) as Record<string, unknown>;
+
     onSubmit({
-      tag: values.tag,
+      tag: String(content.tag).trim(),
       enabled: values.enabled,
       node_ids: inbound?.node_ids ?? [nodeId],
-      content: JSON.parse(values.content) as Record<string, unknown>,
+      content,
     });
   };
 
@@ -151,48 +163,6 @@ function InboundDialogContent({
           </DialogHeader>
 
           <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
-            <div className="grid gap-4 sm:grid-cols-[1fr_140px] sm:items-end">
-              <Controller
-                control={form.control}
-                name="tag"
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="inbound-tag">
-                      {t("inboundsPage.tag")}
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id="inbound-tag"
-                      disabled={Boolean(inbound) || pending}
-                      aria-invalid={fieldState.invalid}
-                    />
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="enabled"
-                render={({ field }) => (
-                  <Field orientation="horizontal" className="h-9 w-[140px]">
-                    <Switch
-                      id="inbound-enabled"
-                      checked={field.value}
-                      disabled={pending}
-                      onCheckedChange={field.onChange}
-                    />
-                    <FieldLabel htmlFor="inbound-enabled" className="min-w-0">
-                      {t(
-                        field.value
-                          ? "inboundsPage.enabledState"
-                          : "inboundsPage.disabledState",
-                      )}
-                    </FieldLabel>
-                  </Field>
-                )}
-              />
-            </div>
-
             <Controller
               control={form.control}
               name="content"
@@ -217,10 +187,31 @@ function InboundDialogContent({
               )}
             />
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-4">
+              <Controller
+                control={form.control}
+                name="enabled"
+                render={({ field }) => (
+                  <Field orientation="horizontal" className="min-h-9">
+                    <Switch
+                      id="inbound-enabled"
+                      checked={field.value}
+                      disabled={pending}
+                      onCheckedChange={field.onChange}
+                    />
+                    <FieldLabel htmlFor="inbound-enabled" className="min-w-0">
+                      {t(
+                        field.value
+                          ? "inboundsPage.enabledState"
+                          : "inboundsPage.disabledState",
+                      )}
+                    </FieldLabel>
+                  </Field>
+                )}
+              />
               <Button type="submit" disabled={pending}>
                 {pending && <LoaderCircle className="animate-spin" />}
-                {t(inbound ? "save" : "create")}
+                {t(inbound ? "core.save" : "create")}
               </Button>
             </div>
           </form>
