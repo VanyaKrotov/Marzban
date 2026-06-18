@@ -157,6 +157,7 @@ class V2rayShareLink(str):
                 port=inbound["port"],
                 auth=settings["auth"],
                 sni=inbound.get("sni", ""),
+                alpn=inbound.get("alpn", ""),
                 ais=inbound.get("ais", ""),
             )
         else:
@@ -490,11 +491,20 @@ class V2rayShareLink(str):
 
     @classmethod
     def hysteria2(
-            cls, remark: str, address: str, port: int, auth: str, sni: str = "", ais: bool = False
+            cls,
+            remark: str,
+            address: str,
+            port: int,
+            auth: str,
+            sni: str = "",
+            alpn: str = "",
+            ais: bool = False,
     ):
         payload = {}
         if sni:
             payload["sni"] = sni
+        if alpn:
+            payload["alpn"] = alpn
         if ais:
             payload["insecure"] = 1
         query = f"?{urlparse.urlencode(payload)}" if payload else ""
@@ -876,6 +886,18 @@ class V2rayJsonConfig(str):
         }
 
     @staticmethod
+    def hysteria_config(address=None, port=None, auth=None) -> dict:
+        return {
+            "servers": [
+                {
+                    "address": address,
+                    "port": port,
+                    "auth": auth,
+                }
+            ]
+        }
+
+    @staticmethod
     def make_fragment(fragment: str) -> dict:
         length, interval, packets = fragment.split(',')
         return {
@@ -978,6 +1000,8 @@ class V2rayJsonConfig(str):
                                                     noGRPCHeader=noGRPCHeader,
                                                     keepAlivePeriod=keepAlivePeriod,
                                                     )
+        elif net == "hysteria":
+            network_setting = {"version": 2}
         else:
             network_setting = {}
 
@@ -1054,6 +1078,11 @@ class V2rayJsonConfig(str):
                                                            port=port,
                                                            password=settings['password'],
                                                            method=settings['method'])
+
+        elif inbound['protocol'] == 'hysteria':
+            outbound["settings"] = self.hysteria_config(address=address,
+                                                        port=port,
+                                                        auth=settings['auth'])
         else:
             return
 

@@ -304,12 +304,12 @@ class SingBoxConfiguration(str):
                 "server_port": inbound["port"],
                 "password": settings["auth"],
             }
-            if inbound.get("sni") or inbound.get("ais"):
-                outbound["tls"] = self.tls_config(
-                    sni=inbound.get("sni", ""),
-                    tls="tls",
-                    ais=inbound.get("ais", ""),
-                )
+            outbound["tls"] = self.tls_config(
+                sni=inbound.get("sni", ""),
+                tls="tls",
+                alpn=alpn.rsplit(sep=",") if alpn else None,
+                ais=inbound.get("ais", ""),
+            )
             self.add_outbound(outbound)
             return
 

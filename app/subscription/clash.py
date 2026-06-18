@@ -363,6 +363,8 @@ class ClashMetaConfiguration(ClashConfiguration):
             }
             if inbound.get("sni"):
                 node["sni"] = inbound["sni"]
+            if inbound.get("alpn"):
+                node["alpn"] = inbound["alpn"].split(",")
             if inbound.get("ais"):
                 node["skip-cert-verify"] = inbound["ais"]
             self.data["proxies"].append(node)
