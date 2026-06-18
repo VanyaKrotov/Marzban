@@ -11,7 +11,6 @@ from xray_api.types.account import (
     HysteriaAccount,
     ShadowsocksAccount,
     ShadowsocksMethods,
-    SocksAccount,
     TrojanAccount,
     VLESSAccount,
     VMessAccount,
@@ -31,7 +30,6 @@ class ProxyTypes(str, Enum):
     VLESS = "vless"
     Trojan = "trojan"
     Shadowsocks = "shadowsocks"
-    Socks = "socks"
     Hysteria = "hysteria"
 
     @property
@@ -44,8 +42,6 @@ class ProxyTypes(str, Enum):
             return TrojanAccount
         if self == self.Shadowsocks:
             return ShadowsocksAccount
-        if self == self.Socks:
-            return SocksAccount
         if self == self.Hysteria:
             return HysteriaAccount
 
@@ -59,8 +55,6 @@ class ProxyTypes(str, Enum):
             return TrojanSettings
         if self == self.Shadowsocks:
             return ShadowsocksSettings
-        if self == self.Socks:
-            return SocksSettings
         if self == self.Hysteria:
             return HysteriaSettings
 
@@ -73,7 +67,6 @@ class XrayInboundProtocol(str, Enum):
     DokodemoDoor = "dokodemo-door"
     HTTP = "http"
     Shadowsocks = "shadowsocks"
-    Socks = "socks"
     Trojan = "trojan"
     VLESS = "vless"
     VMess = "vmess"
@@ -89,7 +82,6 @@ class XrayOutboundProtocol(str, Enum):
     HTTP = "http"
     Loopback = "loopback"
     Shadowsocks = "shadowsocks"
-    Socks = "socks"
     Trojan = "trojan"
     VLESS = "vless"
     VMess = "vmess"
@@ -124,6 +116,7 @@ class XraySecurity(str, Enum):
 XRAY_INBOUND_PROTOCOLS = {protocol.value for protocol in XrayInboundProtocol}
 XRAY_OUTBOUND_PROTOCOLS = {protocol.value for protocol in XrayOutboundProtocol}
 ACCOUNT_PROTOCOLS = {protocol.value for protocol in ProxyTypes}
+USER_ACCOUNT_PROTOCOLS = {protocol.value for protocol in ProxyTypes}
 RUNTIME_API_PROTOCOLS = {
     protocol.value for protocol in ProxyTypes if protocol.supports_runtime_api
 }
@@ -174,14 +167,6 @@ class TrojanSettings(ProxySettings):
 class ShadowsocksSettings(ProxySettings):
     password: str = Field(default_factory=random_password)
     method: ShadowsocksMethods = ShadowsocksMethods.CHACHA20_POLY1305
-
-    def revoke(self):
-        self.password = random_password()
-
-
-class SocksSettings(ProxySettings):
-    username: str = Field(default_factory=random_password)
-    password: str = Field(default_factory=random_password)
 
     def revoke(self):
         self.password = random_password()

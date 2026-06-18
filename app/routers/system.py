@@ -9,7 +9,6 @@ from app.db import Session, crud, get_db
 from app.models.admin import Admin
 from app.models.node import NodeCertificateResponse
 from app.models.proxy import (
-    ACCOUNT_PROTOCOLS,
     InboundCreate,
     InboundModify,
     InboundResponse,
@@ -24,6 +23,7 @@ from app.models.proxy import (
     ProxyInbound,
     ProxyTypes,
     RUNTIME_API_PROTOCOLS,
+    USER_ACCOUNT_PROTOCOLS,
     XRAY_INBOUND_PROTOCOLS,
     XRAY_LEGACY_TRANSPORT_ALIASES,
     XRAY_OUTBOUND_PROTOCOLS,
@@ -548,7 +548,7 @@ def get_xray_capabilities(admin: Admin = Depends(Admin.get_current)):
     return XrayCapabilities(
         inbound_protocols=sorted(XRAY_INBOUND_PROTOCOLS),
         outbound_protocols=sorted(XRAY_OUTBOUND_PROTOCOLS),
-        account_protocols=sorted(ACCOUNT_PROTOCOLS),
+        account_protocols=sorted(USER_ACCOUNT_PROTOCOLS),
         runtime_api_protocols=sorted(RUNTIME_API_PROTOCOLS),
         transports=sorted(XRAY_TRANSPORTS),
         securities=sorted(XRAY_SECURITIES),

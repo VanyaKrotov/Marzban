@@ -155,14 +155,6 @@ class V2rayShareLink(str):
                 password=settings["password"],
                 method=settings["method"],
             )
-        elif inbound["protocol"] == "socks":
-            link = self.socks(
-                remark=remark,
-                address=address,
-                port=inbound["port"],
-                username=settings["username"],
-                password=settings["password"],
-            )
         elif inbound["protocol"] == "hysteria":
             link = self.hysteria2(
                 remark=remark,
@@ -500,13 +492,6 @@ class V2rayShareLink(str):
             + base64.b64encode(f"{method}:{password}".encode()).decode()
             + f"@{address}:{port}#{urlparse.quote(remark)}"
         )
-
-    @classmethod
-    def socks(
-            cls, remark: str, address: str, port: int, username: str, password: str
-    ):
-        credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
-        return f"socks://{credentials}@{address}:{port}#{urlparse.quote(remark)}"
 
     @classmethod
     def hysteria2(
@@ -894,23 +879,6 @@ class V2rayJsonConfig(str):
         }
 
     @staticmethod
-    def socks_config(address=None, port=None, username=None, password=None) -> dict:
-        return {
-            "servers": [
-                {
-                    "address": address,
-                    "port": port,
-                    "users": [
-                        {
-                            "user": username,
-                            "pass": password,
-                        }
-                    ],
-                }
-            ]
-        }
-
-    @staticmethod
     def make_fragment(fragment: str) -> dict:
         length, interval, packets = fragment.split(',')
         return {
@@ -1089,11 +1057,6 @@ class V2rayJsonConfig(str):
                                                            port=port,
                                                            password=settings['password'],
                                                            method=settings['method'])
-        elif inbound['protocol'] == 'socks':
-            outbound["settings"] = self.socks_config(address=address,
-                                                     port=port,
-                                                     username=settings['username'],
-                                                     password=settings['password'])
         else:
             return
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app import xray
 from app.models.admin import Admin
-from app.models.proxy import ProxySettings, ProxyTypes
+from app.models.proxy import ProxySettings, ProxyTypes, USER_ACCOUNT_PROTOCOLS
 from app.subscription.share import generate_v2ray_links
 from app.utils.jwt import create_subscription_token
 from config import XRAY_SUBSCRIPTION_PATH, XRAY_SUBSCRIPTION_URL_PREFIX
@@ -121,6 +121,34 @@ class User(BaseModel):
         return v
 
 
+def validate_user_account_protocols(proxies: Dict[ProxyTypes, ProxySettings]):
+    unsupported = sorted(
+        proxy_type.value if isinstance(proxy_type, ProxyTypes) else str(proxy_type)
+        for proxy_type in proxies
+        if (proxy_type.value if isinstance(proxy_type, ProxyTypes) else str(proxy_type))
+        not in USER_ACCOUNT_PROTOCOLS
+    )
+    if unsupported:
+        raise ValueError(
+            f"Unsupported user proxy protocol: {', '.join(unsupported)}"
+        )
+    return proxies
+
+
+def validate_user_inbound_protocols(inbounds: Dict[ProxyTypes, List[str]]):
+    unsupported = sorted(
+        proxy_type.value if isinstance(proxy_type, ProxyTypes) else str(proxy_type)
+        for proxy_type in inbounds
+        if (proxy_type.value if isinstance(proxy_type, ProxyTypes) else str(proxy_type))
+        not in USER_ACCOUNT_PROTOCOLS
+    )
+    if unsupported:
+        raise ValueError(
+            f"Unsupported user inbound protocol: {', '.join(unsupported)}"
+        )
+    return inbounds
+
+
 class UserCreate(User):
     username: str
     status: UserStatusCreate = None
@@ -130,12 +158,12 @@ class UserCreate(User):
             "proxies": {
                 "vmess": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
                 "vless": {},
-                "socks": {"username": "user1234", "password": "p@ssw0rd"},
+                "trojan": {"password": "p@ssw0rd"},
             },
             "inbounds": {
                 "vmess": ["VMess TCP", "VMess Websocket"],
                 "vless": ["VLESS TCP REALITY", "VLESS GRPC REALITY"],
-                "socks": ["SOCKS TCP"],
+                "trojan": ["Trojan TCP"],
             },
             "next_plan": {
                 "data_limit": 0,
@@ -191,7 +219,11 @@ class UserCreate(User):
                     for i in xray.config.inbounds_by_protocol.get(proxy_type, [])
                 ]
 
-        return inbounds
+        return validate_user_inbound_protocols(inbounds)
+
+    @field_validator("proxies")
+    def validate_supported_proxies(cls, proxies):
+        return validate_user_account_protocols(proxies)
 
     @field_validator("status", mode="before")
     def validate_status(cls, status, values):
@@ -213,12 +245,12 @@ class UserModify(User):
             "proxies": {
                 "vmess": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
                 "vless": {},
-                "socks": {"username": "user1234", "password": "p@ssw0rd"},
+                "trojan": {"password": "p@ssw0rd"},
             },
             "inbounds": {
                 "vmess": ["VMess TCP", "VMess Websocket"],
                 "vless": ["VLESS TCP REALITY", "VLESS GRPC REALITY"],
-                "socks": ["SOCKS TCP"],
+                "trojan": ["Trojan TCP"],
             },
             "next_plan": {
                 "data_limit": 0,
@@ -251,25 +283,28 @@ class UserModify(User):
     def validate_inbounds(cls, inbounds, values, **kwargs):
         # check with inbounds, "proxies" is optional on modifying
         # so inbounds particularly can be modified
-        if inbounds:
-            for proxy_type, tags in inbounds.items():
+        if not inbounds:
+            return inbounds
 
-                # if not tags:
-                #     raise ValueError(f"{proxy_type} inbounds cannot be empty")
+        for proxy_type, tags in inbounds.items():
 
-                for tag in tags:
-                    if tag not in xray.config.inbounds_by_tag:
-                        raise ValueError(f"Inbound {tag} doesn't exist")
+            # if not tags:
+            #     raise ValueError(f"{proxy_type} inbounds cannot be empty")
 
-        return inbounds
+            for tag in tags:
+                if tag not in xray.config.inbounds_by_tag:
+                    raise ValueError(f"Inbound {tag} doesn't exist")
+
+        return validate_user_inbound_protocols(inbounds)
 
     @field_validator("proxies", mode="before")
     def validate_proxies(cls, v):
-        return {
+        proxies = {
             proxy_type: ProxySettings.from_dict(
                 proxy_type, v.get(proxy_type, {}))
             for proxy_type in v
         }
+        return validate_user_account_protocols(proxies)
 
     @field_validator("status", mode="before")
     def validate_status(cls, status, values):

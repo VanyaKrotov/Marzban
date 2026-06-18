@@ -44,7 +44,6 @@ export const getDefaultUserFormValues = (
       vmess: { id: "" },
       trojan: { password: "" },
       shadowsocks: { password: "", method: "chacha20-ietf-poly1305" },
-      socks: { username: "", password: "" },
       hysteria: { auth: "" },
     },
   };
@@ -106,8 +105,6 @@ const baseSchema = {
       removeEmpty(value.trojan, "password");
       removeEmpty(value.shadowsocks, "password");
       removeEmpty(value.shadowsocks, "method");
-      removeEmpty(value.socks, "username");
-      removeEmpty(value.socks, "password");
       removeEmpty(value.hysteria, "auth");
       return value;
     }),

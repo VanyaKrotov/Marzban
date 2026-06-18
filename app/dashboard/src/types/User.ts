@@ -12,7 +12,6 @@ export type ProxyKeys = (
   | "vless"
   | "trojan"
   | "shadowsocks"
-  | "socks"
   | "hysteria"
 )[];
 export type ProxyType = {
@@ -29,10 +28,6 @@ export type ProxyType = {
   shadowsocks?: {
     password?: string;
     method?: string;
-  };
-  socks?: {
-    username?: string;
-    password?: string;
   };
   hysteria?: {
     auth?: string;

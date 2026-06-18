@@ -12,10 +12,7 @@
       "protocol": "socks",
       "sniffing": {
         "enabled": true,
-        "destOverride": [
-          "http",
-          "tls"
-        ],
+        "destOverride": ["http", "tls"],
         "routeOnly": false
       },
       "settings": {
@@ -31,10 +28,7 @@
       "protocol": "http",
       "sniffing": {
         "enabled": true,
-        "destOverride": [
-          "http",
-          "tls"
-        ],
+        "destOverride": ["http", "tls"],
         "routeOnly": false
       },
       "settings": {
@@ -46,13 +40,21 @@
   ],
   "outbounds": [],
   "dns": {
-    "servers": [
-      "1.1.1.1",
-      "8.8.8.8"
-    ]
+    "servers": ["1.1.1.1", "8.8.8.8"]
   },
   "routing": {
     "domainStrategy": "AsIs",
-    "rules": []
+    "rules": [
+      {
+        "domain": ["oneme.ru", "max.ru"],
+        "outboundTag": "block",
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "protocol": ["bittorrent"],
+        "type": "field"
+      }
+    ]
   }
 }

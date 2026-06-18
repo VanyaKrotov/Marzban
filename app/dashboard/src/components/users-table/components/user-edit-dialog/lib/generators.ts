@@ -14,5 +14,3 @@ export const generateProxyPassword = () => {
   crypto.getRandomValues(bytes);
   return toBase64Url(bytes);
 };
-
-export const generateProxyUsername = () => generateProxyPassword();

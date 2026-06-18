@@ -12,7 +12,6 @@ const PROTOCOLS = [
   "vless",
   "trojan",
   "shadowsocks",
-  "socks",
   "hysteria",
 ] as const;
 

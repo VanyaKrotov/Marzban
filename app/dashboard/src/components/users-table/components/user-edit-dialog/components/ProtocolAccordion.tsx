@@ -46,7 +46,6 @@ import type { UserFormValues } from "../lib/form";
 import {
   generateProxyId,
   generateProxyPassword,
-  generateProxyUsername,
 } from "../lib/generators";
 
 type ProtocolOption = {
@@ -339,47 +338,6 @@ function ProtocolFields({ protocol, disabled }: ProtocolFieldsProps) {
           )}
         />
       </Field>
-    );
-  }
-
-  if (protocol === "socks") {
-    return (
-      <div className="grid gap-4">
-        <Field>
-          <FieldLabel htmlFor={`${fieldPrefix}-username`}>
-            {t("username")}
-          </FieldLabel>
-          <Controller
-            control={form.control}
-            name="proxies.socks.username"
-            render={({ field }) => (
-              <GeneratedInput
-                id={`${fieldPrefix}-username`}
-                disabled={disabled}
-                onGenerate={() => field.onChange(generateProxyUsername())}
-                {...field}
-              />
-            )}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`${fieldPrefix}-password`}>
-            {t("password")}
-          </FieldLabel>
-          <Controller
-            control={form.control}
-            name="proxies.socks.password"
-            render={({ field }) => (
-              <GeneratedInput
-                id={`${fieldPrefix}-password`}
-                disabled={disabled}
-                onGenerate={() => field.onChange(generateProxyPassword())}
-                {...field}
-              />
-            )}
-          />
-        </Field>
-      </div>
     );
   }
 

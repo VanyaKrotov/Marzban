@@ -29,7 +29,7 @@ class UserTemplateCreate(UserTemplate):
             "inbounds": {
                 "vmess": ["VMESS_INBOUND"],
                 "vless": ["VLESS_INBOUND"],
-                "socks": ["SOCKS_INBOUND"],
+                "trojan": ["TROJAN_INBOUND"],
             },
             "data_limit": 0,
             "expire_duration": 0,
@@ -46,7 +46,7 @@ class UserTemplateModify(UserTemplate):
             "inbounds": {
                 "vmess": ["VMESS_INBOUND"],
                 "vless": ["VLESS_INBOUND"],
-                "socks": ["SOCKS_INBOUND"],
+                "trojan": ["TROJAN_INBOUND"],
             },
             "data_limit": 0,
             "expire_duration": 0,
