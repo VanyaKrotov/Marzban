@@ -114,12 +114,7 @@ export function StatsPage() {
           </Button>
         }
       >
-        <div>
-          <h1 className="font-semibold">{t("statsPage.title")}</h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            {t("statsPage.description")}
-          </p>
-        </div>
+        <h1 className="font-semibold">{t("statsPage.title")}</h1>
       </Page.Header>
 
       <div className="flex flex-col gap-4">

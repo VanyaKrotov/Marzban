@@ -16,14 +16,6 @@ from . import *
 if TYPE_CHECKING:
     from app.models.user import UserResponse
 
-from config import (
-    ACTIVE_STATUS_TEXT,
-    DISABLED_STATUS_TEXT,
-    EXPIRED_STATUS_TEXT,
-    LIMITED_STATUS_TEXT,
-    ONHOLD_STATUS_TEXT,
-)
-
 SERVER_IP = get_public_ip()
 SERVER_IPV6 = get_public_ipv6()
 
@@ -35,13 +27,17 @@ STATUS_EMOJIS = {
     "on_hold": "🔌",
 }
 
-STATUS_TEXTS = {
-    "active": ACTIVE_STATUS_TEXT,
-    "expired": EXPIRED_STATUS_TEXT,
-    "limited": LIMITED_STATUS_TEXT,
-    "disabled": DISABLED_STATUS_TEXT,
-    "on_hold": ONHOLD_STATUS_TEXT,
-}
+def get_status_texts() -> dict:
+    from app.utils.runtime_settings import get_runtime_settings
+
+    settings = get_runtime_settings()
+    return {
+        "active": settings.active_status_text,
+        "expired": settings.expired_status_text,
+        "limited": settings.limited_status_text,
+        "disabled": settings.disabled_status_text,
+        "on_hold": settings.onhold_status_text,
+    }
 
 
 def generate_v2ray_links(proxies: dict, inbounds: dict, extra_data: dict, reverse: bool) -> list:
@@ -206,7 +202,7 @@ def setup_format_variables(extra_data: dict) -> dict:
         data_left = "∞"
 
     status_emoji = STATUS_EMOJIS.get(extra_data.get("status")) or ""
-    status_text = STATUS_TEXTS.get(extra_data.get("status")) or ""
+    status_text = get_status_texts().get(extra_data.get("status")) or ""
 
     format_variables = defaultdict(
         lambda: "<missing>",

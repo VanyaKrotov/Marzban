@@ -7,18 +7,14 @@ import yaml
 from jinja2.exceptions import TemplateNotFound
 
 from app.subscription.funcs import get_grpc_gun
-from app.templates import render_template
+from app.templates import render_template_content
 from app.utils.helpers import yml_uuid_representer
-from config import (
-    CLASH_SETTINGS_TEMPLATE,
-    CLASH_SUBSCRIPTION_TEMPLATE,
-    MUX_TEMPLATE,
-    USER_AGENT_TEMPLATE,
-)
 
 
 class ClashConfiguration(object):
     def __init__(self):
+        from app.utils.runtime_settings import get_subscription_template
+
         self.data = {
             'proxies': [],
             'proxy-groups': [],
@@ -26,8 +22,8 @@ class ClashConfiguration(object):
             'rules': []
         }
         self.proxy_remarks = []
-        self.mux_template = render_template(MUX_TEMPLATE)
-        user_agent_data = json.loads(render_template(USER_AGENT_TEMPLATE))
+        self.mux_template = render_template_content(get_subscription_template("mux"))
+        user_agent_data = json.loads(render_template_content(get_subscription_template("user_agent")))
 
         if 'list' in user_agent_data and isinstance(user_agent_data['list'], list):
             self.user_agent_list = user_agent_data['list']
@@ -35,21 +31,26 @@ class ClashConfiguration(object):
             self.user_agent_list = []
 
         try:
-            self.settings = yaml.load(render_template(CLASH_SETTINGS_TEMPLATE), Loader=yaml.SafeLoader)
+            self.settings = yaml.load(
+                render_template_content(get_subscription_template("clash_settings")),
+                Loader=yaml.SafeLoader,
+            )
         except TemplateNotFound:
             self.settings = {}
 
         del user_agent_data
 
     def render(self, reverse=False):
+        from app.utils.runtime_settings import get_subscription_template
+
         if reverse:
             self.data['proxies'].reverse()
 
         yaml.add_representer(UUID, yml_uuid_representer)
         return yaml.dump(
             yaml.load(
-                render_template(
-                    CLASH_SUBSCRIPTION_TEMPLATE,
+                render_template_content(
+                    get_subscription_template("clash_subscription"),
                     {"conf": self.data, "proxy_remarks": self.proxy_remarks}
                 ),
                 Loader=yaml.SafeLoader

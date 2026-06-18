@@ -62,12 +62,7 @@ export function NodesPage() {
           </div>
         }
       >
-        <div>
-          <h1 className="font-semibold">{t("nodesPage.title")}</h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            {t("nodesPage.description")}
-          </p>
-        </div>
+        <h1 className="font-semibold">{t("nodesPage.title")}</h1>
       </Page.Header>
 
       {isLoading ? (

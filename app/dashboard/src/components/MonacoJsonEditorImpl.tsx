@@ -26,6 +26,7 @@ type MonacoJsonEditorImplProps = {
   schema?: MonacoJsonSchema;
   schemaUri?: string;
   onValidate?: (markers: MonacoJsonMarker[]) => void;
+  language: "json" | "yaml" | "text";
 };
 
 const schemaRegistry = new Map<
@@ -71,11 +72,12 @@ export function MonacoJsonEditorImpl({
   schema,
   schemaUri,
   onValidate,
+  language,
 }: MonacoJsonEditorImplProps) {
   const theme = useSystemEditorTheme();
 
   useEffect(() => {
-    if (!schema) return;
+    if (!schema || language !== "json") return;
 
     schemaRegistry.set(modelPath, {
       uri: schemaUri ?? `${modelPath}.schema.json`,
@@ -88,7 +90,7 @@ export function MonacoJsonEditorImpl({
       schemaRegistry.delete(modelPath);
       applySchemas();
     };
-  }, [modelPath, schema, schemaUri]);
+  }, [language, modelPath, schema, schemaUri]);
 
   const handleMount: OnMount = (editor) => {
     editor.getAction("editor.action.formatDocument")?.run();
@@ -97,7 +99,7 @@ export function MonacoJsonEditorImpl({
   return (
     <Editor
       height="100%"
-      language="json"
+      language={language === "text" ? "plaintext" : language}
       path={modelPath}
       theme={theme}
       value={value}

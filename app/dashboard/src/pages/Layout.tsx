@@ -15,6 +15,7 @@ import {
   Languages,
   ExternalLink,
   ChevronsUpDown,
+  Settings,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -83,6 +84,12 @@ const NAVIGATION = [
         labelKey: "navigation.config",
         sudoOnly: true,
         to: "/config",
+      },
+      {
+        icon: Settings,
+        labelKey: "navigation.settings",
+        sudoOnly: true,
+        to: "/settings",
       },
     ],
   },
@@ -233,7 +240,7 @@ const Layout: FC = () => {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <div className="min-w-0 flex-1 px-4 pb-4">
+      <div className="min-w-0 flex-1 px-4 pb-4 max-w-[1920px] mx-auto">
         <Outlet />
       </div>
     </SidebarProvider>
@@ -281,7 +288,7 @@ function LayoutSkeleton() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-5 p-4">
+      <main className="flex min-w-0 flex-1 flex-col gap-5 p-4 max-w-[1920px] mx-auto">
         <div className="flex items-center gap-3 md:hidden">
           <Skeleton className="size-9" />
           <Skeleton className="h-5 w-28" />

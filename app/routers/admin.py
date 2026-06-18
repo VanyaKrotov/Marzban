@@ -10,7 +10,7 @@ from app.dependencies import get_admin_by_username, validate_admin
 from app.models.admin import Admin, AdminCreate, AdminModify, Token
 from app.utils import report, responses
 from app.utils.jwt import create_admin_token
-from config import LOGIN_NOTIFY_WHITE_LIST
+from app.utils.runtime_settings import get_runtime_settings
 
 router = APIRouter(tags=["Admin"], prefix="/api", responses={401: responses._401})
 
@@ -43,7 +43,7 @@ def admin_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if client_ip not in LOGIN_NOTIFY_WHITE_LIST:
+    if client_ip not in get_runtime_settings().login_notify_white_list:
         report.login(form_data.username, "🔒", client_ip, True)
 
     return Token(access_token=create_admin_token(form_data.username, dbadmin.is_sudo))

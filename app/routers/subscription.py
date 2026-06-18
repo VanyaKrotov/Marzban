@@ -9,16 +9,9 @@ from app.dependencies import get_validated_sub, validate_dates
 from app.models.user import SubscriptionUserResponse, UserResponse
 from app.subscription.share import encode_title, generate_subscription
 from app.templates import render_template
+from app.utils.runtime_settings import get_runtime_settings
 from config import (
-    SUB_PROFILE_TITLE,
-    SUB_SUPPORT_URL,
-    SUB_UPDATE_INTERVAL,
     SUBSCRIPTION_PAGE_TEMPLATE,
-    USE_CUSTOM_JSON_DEFAULT,
-    USE_CUSTOM_JSON_FOR_HAPP,
-    USE_CUSTOM_JSON_FOR_STREISAND,
-    USE_CUSTOM_JSON_FOR_V2RAYN,
-    USE_CUSTOM_JSON_FOR_V2RAYNG,
     XRAY_SUBSCRIPTION_PATH,
 )
 
@@ -45,6 +38,21 @@ def get_subscription_user_info(user: UserResponse) -> dict:
     }
 
 
+def get_subscription_response_headers(request: Request, user: UserResponse) -> dict:
+    settings = get_runtime_settings()
+    return {
+        "content-disposition": f'attachment; filename="{user.username}"',
+        "profile-web-page-url": str(request.url),
+        "support-url": settings.sub_support_url,
+        "profile-title": encode_title(settings.sub_profile_title),
+        "profile-update-interval": settings.sub_update_interval,
+        "subscription-userinfo": "; ".join(
+            f"{key}={val}"
+            for key, val in get_subscription_user_info(user).items()
+        )
+    }
+
+
 @router.get("/{token}/")
 @router.get("/{token}", include_in_schema=False)
 def user_subscription(
@@ -66,17 +74,8 @@ def user_subscription(
         )
 
     crud.update_user_sub(db, dbuser, user_agent)
-    response_headers = {
-        "content-disposition": f'attachment; filename="{user.username}"',
-        "profile-web-page-url": str(request.url),
-        "support-url": SUB_SUPPORT_URL,
-        "profile-title": encode_title(SUB_PROFILE_TITLE),
-        "profile-update-interval": SUB_UPDATE_INTERVAL,
-        "subscription-userinfo": "; ".join(
-            f"{key}={val}"
-            for key, val in get_subscription_user_info(user).items()
-        )
-    }
+    response_headers = get_subscription_response_headers(request, user)
+    settings = get_runtime_settings()
 
     if re.match(r'^([Cc]lash-verge|[Cc]lash[-\.]?[Mm]eta|[Ff][Ll][Cc]lash|[Mm]ihomo)', user_agent):
         conf = generate_subscription(user=user, config_format="clash-meta", as_base64=False, reverse=False)
@@ -94,7 +93,9 @@ def user_subscription(
         conf = generate_subscription(user=user, config_format="outline", as_base64=False, reverse=False)
         return Response(content=conf, media_type="application/json", headers=response_headers)
 
-    elif (USE_CUSTOM_JSON_DEFAULT or USE_CUSTOM_JSON_FOR_V2RAYN) and re.match(r'^v2rayN/(\d+\.\d+)', user_agent):
+    elif (
+        settings.use_custom_json_default or settings.use_custom_json_for_v2rayn
+    ) and re.match(r'^v2rayN/(\d+\.\d+)', user_agent):
         version_str = re.match(r'^v2rayN/(\d+\.\d+)', user_agent).group(1)
         if LooseVersion(version_str) >= LooseVersion("6.40"):
             conf = generate_subscription(user=user, config_format="v2ray-json", as_base64=False, reverse=False)
@@ -103,7 +104,9 @@ def user_subscription(
             conf = generate_subscription(user=user, config_format="v2ray", as_base64=True, reverse=False)
             return Response(content=conf, media_type="text/plain", headers=response_headers)
 
-    elif (USE_CUSTOM_JSON_DEFAULT or USE_CUSTOM_JSON_FOR_V2RAYNG) and re.match(r'^v2rayNG/(\d+\.\d+\.\d+)', user_agent):
+    elif (
+        settings.use_custom_json_default or settings.use_custom_json_for_v2rayng
+    ) and re.match(r'^v2rayNG/(\d+\.\d+\.\d+)', user_agent):
         version_str = re.match(r'^v2rayNG/(\d+\.\d+\.\d+)', user_agent).group(1)
         if LooseVersion(version_str) >= LooseVersion("1.8.29"):
             conf = generate_subscription(user=user, config_format="v2ray-json", as_base64=False, reverse=False)
@@ -116,14 +119,16 @@ def user_subscription(
             return Response(content=conf, media_type="text/plain", headers=response_headers)
 
     elif re.match(r'^[Ss]treisand', user_agent):
-        if USE_CUSTOM_JSON_DEFAULT or USE_CUSTOM_JSON_FOR_STREISAND:
+        if settings.use_custom_json_default or settings.use_custom_json_for_streisand:
             conf = generate_subscription(user=user, config_format="v2ray-json", as_base64=False, reverse=False)
             return Response(content=conf, media_type="application/json", headers=response_headers)
         else:
             conf = generate_subscription(user=user, config_format="v2ray", as_base64=True, reverse=False)
             return Response(content=conf, media_type="text/plain", headers=response_headers)
 
-    elif (USE_CUSTOM_JSON_DEFAULT or USE_CUSTOM_JSON_FOR_HAPP) and re.match(r'^[Hh]app/(\d+\.\d+\.\d+)(?:/|$)', user_agent):
+    elif (
+        settings.use_custom_json_default or settings.use_custom_json_for_happ
+    ) and re.match(r'^[Hh]app/(\d+\.\d+\.\d+)(?:/|$)', user_agent):
         version_str = re.match(r'^[Hh]app/(\d+\.\d+\.\d+)(?:/|$)', user_agent).group(1)
         if LooseVersion(version_str) >= LooseVersion("1.63.1"):
             conf = generate_subscription(user=user, config_format="v2ray-json", as_base64=False, reverse=False)
@@ -173,17 +178,7 @@ def user_subscription_with_client_type(
     """Provides a subscription link based on the specified client type (e.g., Clash, V2Ray)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
 
-    response_headers = {
-        "content-disposition": f'attachment; filename="{user.username}"',
-        "profile-web-page-url": str(request.url),
-        "support-url": SUB_SUPPORT_URL,
-        "profile-title": encode_title(SUB_PROFILE_TITLE),
-        "profile-update-interval": SUB_UPDATE_INTERVAL,
-        "subscription-userinfo": "; ".join(
-            f"{key}={val}"
-            for key, val in get_subscription_user_info(user).items()
-        )
-    }
+    response_headers = get_subscription_response_headers(request, user)
 
     config = client_config.get(client_type)
     conf = generate_subscription(user=user,

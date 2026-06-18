@@ -94,9 +94,6 @@ export function ConfigPage() {
               </Badge>
             )}
           </div>
-          <p className="hidden text-sm text-muted-foreground sm:block mt-1">
-            {t("configPage.description")}
-          </p>
         </div>
       </Page.Header>
 

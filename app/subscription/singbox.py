@@ -6,22 +6,18 @@ from app.utils.helpers import UUIDEncoder
 from jinja2.exceptions import TemplateNotFound
 
 from app.subscription.funcs import get_grpc_gun
-from app.templates import render_template
-from config import (
-    MUX_TEMPLATE,
-    SINGBOX_SETTINGS_TEMPLATE,
-    SINGBOX_SUBSCRIPTION_TEMPLATE,
-    USER_AGENT_TEMPLATE
-)
+from app.templates import render_template_content
 
 
 class SingBoxConfiguration(str):
 
     def __init__(self):
+        from app.utils.runtime_settings import get_subscription_template
+
         self.proxy_remarks = []
-        self.config = json.loads(render_template(SINGBOX_SUBSCRIPTION_TEMPLATE))
-        self.mux_template = render_template(MUX_TEMPLATE)
-        user_agent_data = json.loads(render_template(USER_AGENT_TEMPLATE))
+        self.config = json.loads(render_template_content(get_subscription_template("singbox_subscription")))
+        self.mux_template = render_template_content(get_subscription_template("mux"))
+        user_agent_data = json.loads(render_template_content(get_subscription_template("user_agent")))
 
         if 'list' in user_agent_data and isinstance(user_agent_data['list'], list):
             self.user_agent_list = user_agent_data['list']
@@ -29,7 +25,7 @@ class SingBoxConfiguration(str):
             self.user_agent_list = []
 
         try:
-            self.settings = json.loads(render_template(SINGBOX_SETTINGS_TEMPLATE))
+            self.settings = json.loads(render_template_content(get_subscription_template("singbox_settings")))
         except TemplateNotFound:
             self.settings = {}
 

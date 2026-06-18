@@ -67,9 +67,8 @@ from app.models.user import (
 )
 from app.models.user_template import UserTemplateCreate, UserTemplateModify
 from app.utils.helpers import calculate_expiration_days, calculate_usage_percent
+from app.utils.runtime_settings import get_runtime_settings
 from config import (
-    NOTIFY_DAYS_LEFT,
-    NOTIFY_REACHED_USAGE_PERCENT,
     USERS_AUTODELETE_DAYS,
     XRAY_EXCLUDE_INBOUND_TAGS,
 )
@@ -1090,13 +1089,14 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
         dbuser.status = modify.status
 
     if modify.data_limit is not None:
+        runtime_settings = get_runtime_settings()
         dbuser.data_limit = (modify.data_limit or None)
         if dbuser.status not in (UserStatus.expired, UserStatus.disabled):
             if not dbuser.data_limit or dbuser.used_traffic < dbuser.data_limit:
                 if dbuser.status != UserStatus.on_hold:
                     dbuser.status = UserStatus.active
 
-                for percent in sorted(NOTIFY_REACHED_USAGE_PERCENT, reverse=True):
+                for percent in sorted(runtime_settings.notify_reached_usage_percent, reverse=True):
                     if not dbuser.data_limit or (calculate_usage_percent(
                             dbuser.used_traffic, dbuser.data_limit) < percent):
                         reminder = get_notification_reminder(db, dbuser.id, ReminderType.data_usage, threshold=percent)
@@ -1107,11 +1107,12 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
                 dbuser.status = UserStatus.limited
 
     if modify.expire is not None:
+        runtime_settings = get_runtime_settings()
         dbuser.expire = (modify.expire or None)
         if dbuser.status in (UserStatus.active, UserStatus.expired):
             if not dbuser.expire or dbuser.expire > datetime.utcnow().timestamp():
                 dbuser.status = UserStatus.active
-                for days_left in sorted(NOTIFY_DAYS_LEFT):
+                for days_left in sorted(runtime_settings.notify_days_left):
                     if not dbuser.expire or (calculate_expiration_days(
                             dbuser.expire) > days_left):
                         reminder = get_notification_reminder(

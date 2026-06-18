@@ -14,6 +14,7 @@ import NodeProfilePage from "@/pages/node-profile-page";
 import StatsPage from "@/pages/stats-page";
 import UsersPage from "@/pages/users-page";
 import LoginPage from "@/pages/login-page";
+import SettingsPage from "@/pages/settings-page";
 
 import { queryClient } from "@/utils/query-client";
 import { accountQuery } from "@/hooks/use-admin";
@@ -74,6 +75,11 @@ export const router = createHashRouter([
       {
         path: "config",
         element: <ConfigPage />,
+        loader: requireSudo,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
         loader: requireSudo,
       },
     ],

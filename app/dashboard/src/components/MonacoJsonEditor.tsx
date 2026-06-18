@@ -12,6 +12,7 @@ export type MonacoJsonEditorProps = {
   schema?: MonacoJsonSchema;
   schemaUri?: string;
   onValidate?: (markers: MonacoJsonMarker[]) => void;
+  language?: "json" | "yaml" | "text";
   className?: string;
   disabled?: boolean;
   invalid?: boolean;
@@ -35,6 +36,7 @@ export const MonacoJsonEditor = forwardRef<
       schema,
       schemaUri,
       onValidate,
+      language = "json",
       className,
       disabled = false,
       invalid = false,
@@ -44,8 +46,8 @@ export const MonacoJsonEditor = forwardRef<
   ) => {
     const editorId = useId();
     const modelPath = useMemo(
-      () => `inmemory://model/json-editor-${editorId.replace(/:/g, "")}.json`,
-      [editorId],
+      () => `inmemory://model/json-editor-${editorId.replace(/:/g, "")}.${language}`,
+      [editorId, language],
     );
 
     return (
@@ -76,6 +78,7 @@ export const MonacoJsonEditor = forwardRef<
             schema={schema}
             schemaUri={schemaUri}
             onValidate={onValidate}
+            language={language}
           />
         </Suspense>
       </div>

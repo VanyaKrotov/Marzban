@@ -255,12 +255,7 @@ export function HostsPage() {
           </div>
         }
       >
-        <div>
-          <h1 className="font-semibold">{t("hostsPage.title")}</h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            {t("hostsPage.description")}
-          </p>
-        </div>
+        <h1 className="font-semibold">{t("hostsPage.title")}</h1>
       </Page.Header>
 
       {isLoading ? (
