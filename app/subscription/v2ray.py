@@ -962,6 +962,7 @@ class V2rayJsonConfig(str):
                             noGRPCHeader: bool = False,
                             heartbeatPeriod: int = 0,
                             keepAlivePeriod: int = 0,
+                            hysteria_auth: str = "",
                             ) -> dict:
 
         if net == "ws":
@@ -998,6 +999,8 @@ class V2rayJsonConfig(str):
                                                     )
         elif net == "hysteria":
             network_setting = {"version": 2}
+            if hysteria_auth:
+                network_setting["auth"] = hysteria_auth
         else:
             network_setting = {}
 
@@ -1114,6 +1117,7 @@ class V2rayJsonConfig(str):
             noGRPCHeader=inbound.get("noGRPCHeader", False),
             heartbeatPeriod=inbound.get("heartbeatPeriod", 0),
             keepAlivePeriod=inbound.get("keepAlivePeriod", 0),
+            hysteria_auth=settings.get("auth", "") if protocol == "hysteria" else "",
         )
 
         mux_json = json.loads(self.mux_template)
