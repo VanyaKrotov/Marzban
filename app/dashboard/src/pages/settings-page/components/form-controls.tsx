@@ -9,12 +9,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Field,
   FieldError,
   FieldLabel,
@@ -127,53 +121,6 @@ export function SwitchInput<TFieldValues extends FieldValues>({
         </Field>
       )}
     />
-  );
-}
-
-export function CheckboxDropdownInput<TFieldValues extends FieldValues>({
-  form,
-  title,
-  summary,
-  actionLabel,
-  items,
-}: {
-  form: UseFormReturn<TFieldValues>;
-  title: string;
-  summary: string;
-  actionLabel: string;
-  items: Array<{
-    name: Path<TFieldValues>;
-    label: string;
-  }>;
-}) {
-  return (
-    <SettingsActionItem title={title} description={summary}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm">
-            {actionLabel}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
-          {items.map((item) => (
-            <Controller
-              key={item.name}
-              control={form.control}
-              name={item.name}
-              render={({ field }) => (
-                <DropdownMenuCheckboxItem
-                  checked={Boolean(field.value)}
-                  onCheckedChange={field.onChange}
-                  onSelect={(event) => event.preventDefault()}
-                >
-                  {item.label}
-                </DropdownMenuCheckboxItem>
-              )}
-            />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </SettingsActionItem>
   );
 }
 

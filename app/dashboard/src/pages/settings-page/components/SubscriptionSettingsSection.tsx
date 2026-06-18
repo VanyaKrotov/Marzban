@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useForm, useWatch, type Path } from "react-hook-form";
+import { Controller, useForm, type Path } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -18,23 +18,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   generateErrorMessage,
   generateSuccessMessage,
 } from "@/utils/toastHandler";
 
 import {
+  subscriptionCustomJsonFormSchema,
   subscriptionSettingsFormSchema,
+  subscriptionStatusTextsFormSchema,
+  toSubscriptionCustomJsonFormValues,
+  toSubscriptionCustomJsonPayload,
   toSubscriptionFormValues,
   toSubscriptionPayload,
+  toSubscriptionStatusTextsFormValues,
+  toSubscriptionStatusTextsPayload,
+  type SubscriptionCustomJsonForm,
   type SubscriptionSettingsForm,
+  type SubscriptionStatusTextsForm,
 } from "../lib/form";
 import type { RuntimeSettings } from "../lib/query";
 import { useUpdateRuntimeSettingsMutation } from "../lib/query";
 import {
-  CheckboxDropdownInput,
   Section,
   SettingsActionItem,
   SettingsSaveButton,
@@ -49,90 +57,28 @@ export function SubscriptionSettingsSection({
 }) {
   const { t } = useTranslation();
   const updateSettings = useUpdateRuntimeSettingsMutation();
+  const [customJsonDialogOpen, setCustomJsonDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const form = useForm<SubscriptionSettingsForm>({
     resolver: zodResolver(subscriptionSettingsFormSchema),
     mode: "onChange",
     defaultValues: toSubscriptionFormValues(settings),
   });
-  const customJsonOptions: Array<{
-    name: Path<SubscriptionSettingsForm>;
-    label: string;
-    summary: string;
-  }> = [
-    {
-      name: "use_custom_json_default",
-      label: t("settingsPage.fields.useCustomJsonDefault"),
-      summary: t("settingsPage.customJson.default"),
-    },
-    {
-      name: "use_custom_json_for_v2rayn",
-      label: t("settingsPage.fields.useCustomJsonForV2rayn"),
-      summary: t("settingsPage.customJson.v2rayn"),
-    },
-    {
-      name: "use_custom_json_for_v2rayng",
-      label: t("settingsPage.fields.useCustomJsonForV2rayng"),
-      summary: t("settingsPage.customJson.v2rayng"),
-    },
-    {
-      name: "use_custom_json_for_streisand",
-      label: t("settingsPage.fields.useCustomJsonForStreisand"),
-      summary: t("settingsPage.customJson.streisand"),
-    },
-    {
-      name: "use_custom_json_for_happ",
-      label: t("settingsPage.fields.useCustomJsonForHapp"),
-      summary: t("settingsPage.customJson.happ"),
-    },
-  ];
-  const customJsonValues = useWatch({
-    control: form.control,
-    name: customJsonOptions.map((option) => option.name),
-  });
-  const enabledCustomJsonOptions = customJsonOptions
-    .filter((_, index) => Boolean(customJsonValues[index]))
-    .map((option) => option.summary);
-  const customJsonSummary = enabledCustomJsonOptions.length
-    ? enabledCustomJsonOptions.join(", ")
-    : t("settingsPage.customJson.none");
-  const statusTextOptions: Array<{
-    name: Path<SubscriptionSettingsForm>;
-    label: string;
-  }> = [
-    {
-      name: "active_status_text",
-      label: t("settingsPage.fields.activeStatusText"),
-    },
-    {
-      name: "expired_status_text",
-      label: t("settingsPage.fields.expiredStatusText"),
-    },
-    {
-      name: "limited_status_text",
-      label: t("settingsPage.fields.limitedStatusText"),
-    },
-    {
-      name: "disabled_status_text",
-      label: t("settingsPage.fields.disabledStatusText"),
-    },
-    {
-      name: "onhold_status_text",
-      label: t("settingsPage.fields.onholdStatusText"),
-    },
-  ];
-  const statusTextValues = useWatch({
-    control: form.control,
-    name: statusTextOptions.map((option) => option.name),
-  });
-  const statusTextSummary = statusTextValues
-    .map((value) => String(value || "").trim())
-    .filter(Boolean)
-    .join(", ");
 
   useEffect(() => {
     form.reset(toSubscriptionFormValues(settings));
   }, [form, settings]);
+
+  const customJsonOptions = useCustomJsonOptions();
+  const statusTextOptions = useStatusTextOptions();
+  const customJsonSummary = summarizeEnabledOptions(
+    customJsonOptions.filter((option) => settings[option.name]),
+    t("settingsPage.customJson.none"),
+  );
+  const statusTextSummary = statusTextOptions
+    .map((option) => settings[option.name].trim())
+    .filter(Boolean)
+    .join(", ");
 
   const saveSettings = form.handleSubmit((values) => {
     updateSettings.mutate(toSubscriptionPayload(values), {
@@ -183,13 +129,19 @@ export function SubscriptionSettingsSection({
                 label={t("settingsPage.fields.externalConfig")}
               />
               <div className="col-span-full flex flex-col gap-3">
-                <CheckboxDropdownInput
-                  form={form}
+                <SettingsActionItem
                   title={t("settingsPage.customJson.title")}
-                  summary={customJsonSummary}
-                  actionLabel={t("settingsPage.change")}
-                  items={customJsonOptions}
-                />
+                  description={customJsonSummary}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCustomJsonDialogOpen(true)}
+                  >
+                    {t("settingsPage.change")}
+                  </Button>
+                </SettingsActionItem>
                 <SettingsActionItem
                   title={t("settingsPage.statusTexts.title")}
                   description={statusTextSummary}
@@ -209,14 +161,151 @@ export function SubscriptionSettingsSection({
         </Card>
       </form>
 
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent>
+      <CustomJsonSettingsDialog
+        open={customJsonDialogOpen}
+        onOpenChange={setCustomJsonDialogOpen}
+        settings={settings}
+      />
+      <StatusTextsSettingsDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        settings={settings}
+      />
+    </>
+  );
+}
+
+function CustomJsonSettingsDialog({
+  open,
+  onOpenChange,
+  settings,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settings: RuntimeSettings;
+}) {
+  const { t } = useTranslation();
+  const updateSettings = useUpdateRuntimeSettingsMutation();
+  const form = useForm<SubscriptionCustomJsonForm>({
+    resolver: zodResolver(subscriptionCustomJsonFormSchema),
+    mode: "onChange",
+    defaultValues: toSubscriptionCustomJsonFormValues(settings),
+  });
+  const customJsonOptions = useCustomJsonOptions();
+
+  useEffect(() => {
+    if (open) {
+      form.reset(toSubscriptionCustomJsonFormValues(settings));
+    }
+  }, [form, open, settings]);
+
+  const saveSettings = form.handleSubmit((values) => {
+    updateSettings.mutate(toSubscriptionCustomJsonPayload(values), {
+      onSuccess: (nextSettings) => {
+        form.reset(toSubscriptionCustomJsonFormValues(nextSettings));
+        generateSuccessMessage(t("settingsPage.saved"));
+        onOpenChange(false);
+      },
+      onError: (error) => generateErrorMessage(error),
+    });
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={saveSettings} className="grid gap-6">
+          <DialogHeader>
+            <DialogTitle>{t("settingsPage.customJson.title")}</DialogTitle>
+          </DialogHeader>
+          <FieldSet className="gap-3">
+            {customJsonOptions.map((option) => (
+              <Controller
+                key={option.name}
+                control={form.control}
+                name={option.name}
+                render={({ field }) => (
+                  <Field
+                    orientation="horizontal"
+                    className="justify-between rounded-md border p-3"
+                  >
+                    <FieldLabel htmlFor={option.name}>
+                      {option.label}
+                    </FieldLabel>
+                    <Switch
+                      id={option.name}
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                    />
+                  </Field>
+                )}
+              />
+            ))}
+          </FieldSet>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <SettingsSaveButton
+              isPending={updateSettings.isPending}
+              isValid={form.formState.isValid}
+              label={t("settingsPage.save")}
+            />
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatusTextsSettingsDialog({
+  open,
+  onOpenChange,
+  settings,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settings: RuntimeSettings;
+}) {
+  const { t } = useTranslation();
+  const updateSettings = useUpdateRuntimeSettingsMutation();
+  const form = useForm<SubscriptionStatusTextsForm>({
+    resolver: zodResolver(subscriptionStatusTextsFormSchema),
+    mode: "onChange",
+    defaultValues: toSubscriptionStatusTextsFormValues(settings),
+  });
+  const statusTextOptions = useStatusTextOptions();
+
+  useEffect(() => {
+    if (open) {
+      form.reset(toSubscriptionStatusTextsFormValues(settings));
+    }
+  }, [form, open, settings]);
+
+  const saveSettings = form.handleSubmit((values) => {
+    updateSettings.mutate(toSubscriptionStatusTextsPayload(values), {
+      onSuccess: (nextSettings) => {
+        form.reset(toSubscriptionStatusTextsFormValues(nextSettings));
+        generateSuccessMessage(t("settingsPage.saved"));
+        onOpenChange(false);
+      },
+      onError: (error) => generateErrorMessage(error),
+    });
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={saveSettings} className="grid gap-6">
           <DialogHeader>
             <DialogTitle>
               {t("settingsPage.statusTexts.dialogTitle")}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
+          <FieldSet className="gap-4">
             {statusTextOptions.map((option) => {
               const error = form.getFieldState(
                 option.name,
@@ -227,31 +316,102 @@ export function SubscriptionSettingsSection({
                 <Field key={option.name}>
                   <FieldLabel htmlFor={option.name}>{option.label}</FieldLabel>
                   <Input id={option.name} {...form.register(option.name)} />
-                  {error && (
-                    <p className="text-sm text-destructive">{error.message}</p>
-                  )}
+                  <FieldError errors={[error]} />
                 </Field>
               );
             })}
-          </div>
+          </FieldSet>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setStatusDialogOpen(false)}
+              onClick={() => onOpenChange(false)}
             >
               {t("cancel")}
             </Button>
-            <Button
-              type="button"
-              disabled={!form.formState.isValid}
-              onClick={() => setStatusDialogOpen(false)}
-            >
-              {t("settingsPage.statusTexts.apply")}
-            </Button>
+            <SettingsSaveButton
+              isPending={updateSettings.isPending}
+              isValid={form.formState.isValid}
+              label={t("settingsPage.save")}
+            />
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
+}
+
+function useCustomJsonOptions(): Array<{
+  name: Path<SubscriptionCustomJsonForm>;
+  label: string;
+  summary: string;
+}> {
+  const { t } = useTranslation();
+
+  return [
+    {
+      name: "use_custom_json_default",
+      label: t("settingsPage.fields.useCustomJsonDefault"),
+      summary: t("settingsPage.customJson.default"),
+    },
+    {
+      name: "use_custom_json_for_v2rayn",
+      label: t("settingsPage.fields.useCustomJsonForV2rayn"),
+      summary: t("settingsPage.customJson.v2rayn"),
+    },
+    {
+      name: "use_custom_json_for_v2rayng",
+      label: t("settingsPage.fields.useCustomJsonForV2rayng"),
+      summary: t("settingsPage.customJson.v2rayng"),
+    },
+    {
+      name: "use_custom_json_for_streisand",
+      label: t("settingsPage.fields.useCustomJsonForStreisand"),
+      summary: t("settingsPage.customJson.streisand"),
+    },
+    {
+      name: "use_custom_json_for_happ",
+      label: t("settingsPage.fields.useCustomJsonForHapp"),
+      summary: t("settingsPage.customJson.happ"),
+    },
+  ];
+}
+
+function useStatusTextOptions(): Array<{
+  name: Path<SubscriptionStatusTextsForm>;
+  label: string;
+}> {
+  const { t } = useTranslation();
+
+  return [
+    {
+      name: "active_status_text",
+      label: t("settingsPage.fields.activeStatusText"),
+    },
+    {
+      name: "expired_status_text",
+      label: t("settingsPage.fields.expiredStatusText"),
+    },
+    {
+      name: "limited_status_text",
+      label: t("settingsPage.fields.limitedStatusText"),
+    },
+    {
+      name: "disabled_status_text",
+      label: t("settingsPage.fields.disabledStatusText"),
+    },
+    {
+      name: "onhold_status_text",
+      label: t("settingsPage.fields.onholdStatusText"),
+    },
+  ];
+}
+
+function summarizeEnabledOptions(
+  options: Array<{ summary: string }>,
+  emptyValue: string,
+) {
+  return options.length
+    ? options.map((option) => option.summary).join(", ")
+    : emptyValue;
 }

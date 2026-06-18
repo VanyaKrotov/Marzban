@@ -96,7 +96,7 @@ def upgrade():
         sa.Column("sub_profile_title", sa.String(length=256), server_default="Subscription", nullable=False),
         sa.Column("sub_support_url", sa.String(length=2048), server_default="https://t.me/", nullable=False),
         sa.Column("sub_update_interval", sa.String(length=32), server_default="12", nullable=False),
-        sa.Column("external_config", sa.Text(), server_default="", nullable=False),
+        sa.Column("external_config", sa.Text(), nullable=False),
         sa.Column("use_custom_json_default", sa.Boolean(), server_default="0", nullable=False),
         sa.Column("use_custom_json_for_v2rayn", sa.Boolean(), server_default="0", nullable=False),
         sa.Column("use_custom_json_for_v2rayng", sa.Boolean(), server_default="0", nullable=False),
@@ -123,7 +123,7 @@ def upgrade():
         sa.Column("webhook_secret", sa.String(length=2048), nullable=True),
         sa.Column("recurrent_notifications_timeout", sa.Integer(), server_default="180", nullable=False),
         sa.Column("number_of_recurrent_notifications", sa.Integer(), server_default="3", nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -131,7 +131,7 @@ def upgrade():
         sa.Column("key", sa.String(length=64), nullable=False),
         sa.Column("format", sa.String(length=16), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("key"),
     )
 

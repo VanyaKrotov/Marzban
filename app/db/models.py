@@ -513,7 +513,7 @@ class RuntimeSettings(Base):
     sub_profile_title = Column(String(256), nullable=False, default="Subscription", server_default="Subscription")
     sub_support_url = Column(String(2048), nullable=False, default="https://t.me/", server_default="https://t.me/")
     sub_update_interval = Column(String(32), nullable=False, default="12", server_default="12")
-    external_config = Column(Text, nullable=False, default="", server_default="")
+    external_config = Column(Text, nullable=False, default="")
     use_custom_json_default = Column(Boolean, nullable=False, default=False, server_default="0")
     use_custom_json_for_v2rayn = Column(Boolean, nullable=False, default=False, server_default="0")
     use_custom_json_for_v2rayng = Column(Boolean, nullable=False, default=False, server_default="0")

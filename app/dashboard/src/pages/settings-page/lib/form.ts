@@ -77,11 +77,17 @@ export const subscriptionSettingsFormSchema = runtimeSettingsFormSchema.pick({
   sub_support_url: true,
   sub_update_interval: true,
   external_config: true,
+});
+
+export const subscriptionCustomJsonFormSchema = runtimeSettingsFormSchema.pick({
   use_custom_json_default: true,
   use_custom_json_for_v2rayn: true,
   use_custom_json_for_v2rayng: true,
   use_custom_json_for_streisand: true,
   use_custom_json_for_happ: true,
+});
+
+export const subscriptionStatusTextsFormSchema = runtimeSettingsFormSchema.pick({
   active_status_text: true,
   expired_status_text: true,
   limited_status_text: true,
@@ -90,6 +96,12 @@ export const subscriptionSettingsFormSchema = runtimeSettingsFormSchema.pick({
 });
 
 export const notificationSettingsFormSchema = runtimeSettingsFormSchema.pick({
+  notify_days_left: true,
+  notify_reached_usage_percent: true,
+  login_notify_white_list: true,
+});
+
+export const notificationEventsFormSchema = runtimeSettingsFormSchema.pick({
   notify_status_change: true,
   notify_user_created: true,
   notify_user_updated: true,
@@ -99,15 +111,10 @@ export const notificationSettingsFormSchema = runtimeSettingsFormSchema.pick({
   notify_if_data_usage_percent_reached: true,
   notify_if_days_left_reached: true,
   notify_login: true,
-  notify_days_left: true,
-  notify_reached_usage_percent: true,
-  login_notify_white_list: true,
 });
 
 export const webhookSettingsFormSchema = runtimeSettingsFormSchema.pick({
   webhook_addresses: true,
-  webhook_secret: true,
-  clear_webhook_secret: true,
   recurrent_notifications_timeout: true,
   number_of_recurrent_notifications: true,
 });
@@ -115,9 +122,16 @@ export const webhookSettingsFormSchema = runtimeSettingsFormSchema.pick({
 export type SubscriptionSettingsForm = z.infer<
   typeof subscriptionSettingsFormSchema
 >;
+export type SubscriptionCustomJsonForm = z.infer<
+  typeof subscriptionCustomJsonFormSchema
+>;
+export type SubscriptionStatusTextsForm = z.infer<
+  typeof subscriptionStatusTextsFormSchema
+>;
 export type NotificationSettingsForm = z.infer<
   typeof notificationSettingsFormSchema
 >;
+export type NotificationEventsForm = z.infer<typeof notificationEventsFormSchema>;
 export type WebhookSettingsForm = z.infer<typeof webhookSettingsFormSchema>;
 
 export function toFormValues(settings: RuntimeSettings): RuntimeSettingsForm {
@@ -141,8 +155,32 @@ export function toSubscriptionFormValues(
   return subscriptionSettingsFormSchema.parse(toFormValues(settings));
 }
 
+export function toSubscriptionCustomJsonFormValues(
+  settings: RuntimeSettings,
+): SubscriptionCustomJsonForm {
+  return subscriptionCustomJsonFormSchema.parse(toFormValues(settings));
+}
+
+export function toSubscriptionStatusTextsFormValues(
+  settings: RuntimeSettings,
+): SubscriptionStatusTextsForm {
+  return subscriptionStatusTextsFormSchema.parse(toFormValues(settings));
+}
+
 export function toSubscriptionPayload(
   values: SubscriptionSettingsForm,
+): RuntimeSettingsUpdate {
+  return values;
+}
+
+export function toSubscriptionCustomJsonPayload(
+  values: SubscriptionCustomJsonForm,
+): RuntimeSettingsUpdate {
+  return values;
+}
+
+export function toSubscriptionStatusTextsPayload(
+  values: SubscriptionStatusTextsForm,
 ): RuntimeSettingsUpdate {
   return values;
 }
@@ -151,6 +189,12 @@ export function toNotificationFormValues(
   settings: RuntimeSettings,
 ): NotificationSettingsForm {
   return notificationSettingsFormSchema.parse(toFormValues(settings));
+}
+
+export function toNotificationEventsFormValues(
+  settings: RuntimeSettings,
+): NotificationEventsForm {
+  return notificationEventsFormSchema.parse(toFormValues(settings));
 }
 
 export function toNotificationPayload(
@@ -168,6 +212,12 @@ export function toNotificationPayload(
   };
 }
 
+export function toNotificationEventsPayload(
+  values: NotificationEventsForm,
+): RuntimeSettingsUpdate {
+  return values;
+}
+
 export function toWebhookFormValues(
   settings: RuntimeSettings,
 ): WebhookSettingsForm {
@@ -177,16 +227,10 @@ export function toWebhookFormValues(
 export function toWebhookPayload(
   values: WebhookSettingsForm,
 ): RuntimeSettingsUpdate {
-  const payload: RuntimeSettingsUpdate = {
+  return {
     ...values,
     webhook_addresses: values.webhook_addresses
       .map((item) => item.value.trim())
       .filter(Boolean),
   };
-
-  if (!values.webhook_secret) {
-    delete payload.webhook_secret;
-  }
-
-  return payload;
 }

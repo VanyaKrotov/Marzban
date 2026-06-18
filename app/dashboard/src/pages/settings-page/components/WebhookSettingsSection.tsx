@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -59,17 +59,6 @@ export function WebhookSettingsSection({
     control: form.control,
     name: "webhook_addresses",
   });
-  const webhookSecret = useWatch({
-    control: form.control,
-    name: "webhook_secret",
-  });
-  const clearWebhookSecret = useWatch({
-    control: form.control,
-    name: "clear_webhook_secret",
-  });
-  const webhookSecretSet =
-    Boolean(webhookSecret) ||
-    (settings.webhook_secret_set && !clearWebhookSecret);
 
   useEffect(() => {
     form.reset(toWebhookFormValues(settings));
@@ -86,21 +75,32 @@ export function WebhookSettingsSection({
   });
 
   const openSecretDialog = () => {
-    setSecretDraft(form.getValues("webhook_secret"));
+    setSecretDraft("");
     setSecretDialogOpen(true);
   };
 
   const saveSecretDraft = () => {
     const nextSecret = secretDraft.trim();
-    form.setValue("webhook_secret", nextSecret, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("clear_webhook_secret", !nextSecret, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setSecretDialogOpen(false);
+    updateSettings.mutate(
+      nextSecret
+        ? { webhook_secret: nextSecret }
+        : { clear_webhook_secret: true },
+      {
+        onSuccess: () => {
+          setSecretDraft("");
+          setSecretDialogOpen(false);
+          generateSuccessMessage(t("settingsPage.saved"));
+        },
+        onError: (error) => generateErrorMessage(error),
+      },
+    );
+  };
+
+  const closeSecretDialog = (open: boolean) => {
+    setSecretDialogOpen(open);
+    if (!open) {
+      setSecretDraft("");
+    }
   };
 
   return (
@@ -142,7 +142,7 @@ export function WebhookSettingsSection({
               <SettingsActionItem
                 title={t("settingsPage.fields.webhookSecret")}
                 description={
-                  webhookSecretSet
+                  settings.webhook_secret_set
                     ? t("settingsPage.webhookSecret.filled")
                     : t("settingsPage.webhookSecret.empty")
                 }
@@ -162,7 +162,7 @@ export function WebhookSettingsSection({
         </Card>
       </form>
 
-      <Dialog open={secretDialogOpen} onOpenChange={setSecretDialogOpen}>
+      <Dialog open={secretDialogOpen} onOpenChange={closeSecretDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -194,11 +194,16 @@ export function WebhookSettingsSection({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setSecretDialogOpen(false)}
+              disabled={updateSettings.isPending}
+              onClick={() => closeSecretDialog(false)}
             >
               {t("cancel")}
             </Button>
-            <Button type="button" onClick={saveSecretDraft}>
+            <Button
+              type="button"
+              disabled={updateSettings.isPending}
+              onClick={saveSecretDraft}
+            >
               {t("settingsPage.webhookSecret.save")}
             </Button>
           </DialogFooter>
