@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  AlertTriangle,
   LoaderCircle,
   RefreshCw,
   Server,
@@ -56,11 +57,24 @@ export function NodeProfilePage() {
   const remove = useDeleteNodeMutation();
   const restart = useRestartNodeMutation();
   const node = query.data;
+  const restartNode = () =>
+    restart.mutate(node!.id!, {
+      onSuccess: () => generateSuccessMessage(t("nodeProfile.restartSuccess")),
+      onError: (error) => generateErrorMessage(error),
+    });
 
   if (query.isLoading) {
     return (
       <Page className="gap-4">
-        <Skeleton className="h-16 w-full" />
+        <Page.Header className="mb-0">
+          <div className="min-w-0">
+            <Skeleton className="h-6 w-40 rounded-xl" />
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Skeleton className="h-6 w-6 md:w-40 rounded-xl" />
+            <Skeleton className="h-6 w-6 md:w-34 rounded-xl" />
+          </div>
+        </Page.Header>
         <Skeleton className="h-72 w-full rounded-xl" />
         <Skeleton className="h-52 w-full rounded-xl" />
       </Page>
@@ -94,22 +108,20 @@ export function NodeProfilePage() {
   }
 
   const profileNode = { ...node, id: node.id };
-
   const nodeActions = (
     <>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
             type="button"
-            variant={node.restart_required ? "default" : "outline"}
+            variant="outline"
             size="sm"
+            disabled={restart.isPending}
           >
-            <RefreshCw />
-            <span className="hidden sm:inline">
-              {node.restart_required
-                ? t("nodeProfile.applyChanges")
-                : t("nodeProfile.restart")}
-            </span>
+            <RefreshCw
+              className={restart.isPending ? "animate-spin" : undefined}
+            />
+            <span className="hidden sm:inline">{t("nodeProfile.restart")}</span>
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
@@ -128,13 +140,7 @@ export function NodeProfilePage() {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={restart.isPending}
-              onClick={() =>
-                restart.mutate(node.id!, {
-                  onSuccess: () =>
-                    generateSuccessMessage(t("nodeProfile.restartSuccess")),
-                  onError: (error) => generateErrorMessage(error),
-                })
-              }
+              onClick={restartNode}
             >
               {restart.isPending && <LoaderCircle className="animate-spin" />}
               {t("nodeProfile.restart")}
@@ -201,6 +207,34 @@ export function NodeProfilePage() {
         </div>
         <div className="ml-auto flex gap-2">{nodeActions}</div>
       </Page.Header>
+
+      {node.restart_required && (
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div className="min-w-0 space-y-1">
+              <p className="font-medium text-foreground">
+                {t("nodeProfile.restartRequiredTitle")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("nodeProfile.restartRequiredDescription")}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={restart.isPending}
+            onClick={restartNode}
+            className="shrink-0"
+          >
+            <RefreshCw
+              className={restart.isPending ? "animate-spin" : undefined}
+            />
+            {t("nodeProfile.applyChanges")}
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 2xl:grid-cols-2">
         <NodeOverviewCard node={profileNode} />

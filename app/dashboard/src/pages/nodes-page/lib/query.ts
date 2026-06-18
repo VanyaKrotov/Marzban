@@ -49,9 +49,8 @@ export function useNodeQuery(
     enabled: Boolean(nodeId) && enabled,
     placeholderData,
     refetchInterval: enabled
-      ? ({ state }) => (state.data?.restart_required ? 3_000 : 10_000)
+      ? ({ state }) => (state.data?.restart_required ? 5_000 : false)
       : false,
-    refetchOnWindowFocus: false,
   });
 }
 

@@ -58,6 +58,12 @@ import {
   generateSuccessMessage,
 } from "utils/toastHandler";
 import { NodeGeoResourcesDialog } from "./geo-resources/NodeGeoResourcesCard";
+import {
+  isEnabledOnNode,
+  isVisibleOnNode,
+  readonlyFirst,
+  updateNodeAssignment,
+} from "../lib/node-assignment";
 
 export function NodeRoutingCard({
   node,
@@ -79,7 +85,13 @@ export function NodeRoutingCard({
     position: "before" | "after";
   } | null>(null);
   const allRules = query.data ?? [];
-  const rules = allRules.filter((rule) => rule.node_ids.includes(node.id));
+  const rules = readonlyFirst(allRules.filter((rule) =>
+    isVisibleOnNode(rule, node.id),
+  ))
+    .map((rule) => ({
+      ...rule,
+      enabled: isEnabledOnNode(rule, node.id),
+    }));
   const pending =
     create.isPending ||
     update.isPending ||
@@ -132,7 +144,9 @@ export function NodeRoutingCard({
     reordered.splice(insertIndex, 0, dragged);
 
     if (sourceIndex !== insertIndex) {
-      const reorderedIds = reordered.map((rule) => rule.id);
+      const reorderedIds = reordered
+        .filter((rule) => rule.node_ids.includes(node.id))
+        .map((rule) => rule.id);
       let nodeRuleIndex = 0;
       const globalOrder = allRules.map((rule) =>
         rule.node_ids.includes(node.id)
@@ -211,19 +225,27 @@ export function NodeRoutingCard({
                 {rules.map((rule) => (
                   <TableRow
                     key={rule.id}
-                    draggable={!pending}
-                    className={`cursor-pointer ${
+                    draggable={!pending && !rule.readonly}
+                    className={`${rule.readonly ? "" : "cursor-pointer"} ${
                       dropTarget?.id === rule.id
                         ? dropTarget.position === "before"
                           ? "border-t-2 border-t-primary"
                           : "border-b-2 border-b-primary"
                         : ""
                     }`}
-                    onDragStart={() => setDraggedId(rule.id)}
+                    onDragStart={() => {
+                      if (!rule.readonly) {
+                        setDraggedId(rule.id);
+                      }
+                    }}
                     onDragEnd={resetDrag}
                     onDragOver={(event) => {
                       event.preventDefault();
-                      if (draggedId == null || draggedId === rule.id) return;
+                      if (
+                        draggedId == null ||
+                        draggedId === rule.id ||
+                        rule.readonly
+                      ) return;
                       const bounds =
                         event.currentTarget.getBoundingClientRect();
                       setDropTarget({
@@ -236,8 +258,10 @@ export function NodeRoutingCard({
                     }}
                     onDrop={() => dropRule(rule.id)}
                     onClick={() => {
-                      setEditing(rule);
-                      setOpen(true);
+                      if (!rule.readonly) {
+                        setEditing(rule);
+                        setOpen(true);
+                      }
                     }}
                   >
                     <TableCell>
@@ -250,7 +274,18 @@ export function NodeRoutingCard({
                         disabled={pending}
                         onCheckedChange={(enabled) =>
                           update.mutate(
-                            { id: rule.id, payload: { enabled } },
+                            {
+                              id: rule.id,
+                              payload: rule.readonly
+                                ? {
+                                    node_ids: updateNodeAssignment(
+                                      rule.node_ids,
+                                      node.id,
+                                      enabled,
+                                    ),
+                                  }
+                                : { enabled },
+                            },
                             {
                               onError: (error) =>
                                 generateErrorMessage(error),

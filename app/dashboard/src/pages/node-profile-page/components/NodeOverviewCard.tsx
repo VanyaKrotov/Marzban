@@ -1,4 +1,4 @@
-import { AlertTriangle, Pencil, RefreshCw } from "lucide-react";
+import { Pencil, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
@@ -62,19 +62,6 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col gap-4">
-          {node.restart_required && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <div className="min-w-0 space-y-1">
-                <p className="font-medium text-foreground">
-                  {t("nodeProfile.restartRequiredTitle")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("nodeProfile.restartRequiredDescription")}
-                </p>
-              </div>
-            </div>
-          )}
           <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
             <NodeValue label={t("nodes.nodeAddress")}>
               <CopyToClipboard text={address} onCopy={addressCopy.onCopy}>

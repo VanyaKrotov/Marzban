@@ -97,14 +97,14 @@ function RoutingRuleDialogContent({
   const inboundTags = useMemo(
     () =>
       (inboundsQuery.data ?? [])
-        .filter((item) => item.node_ids.includes(nodeId))
+        .filter((item) => item.node_ids.includes(nodeId) && item.enabled)
         .map((item) => item.tag),
     [inboundsQuery.data, nodeId],
   );
   const outboundTags = useMemo(
     () =>
       (outboundsQuery.data ?? [])
-        .filter((item) => item.node_ids.includes(nodeId))
+        .filter((item) => item.node_ids.includes(nodeId) && item.enabled)
         .map((item) => item.tag),
     [outboundsQuery.data, nodeId],
   );

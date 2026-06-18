@@ -17,6 +17,12 @@ import {
 } from "utils/toastHandler";
 
 import { ManagedConfigsCard } from "./ManagedConfigsCard";
+import {
+  isEnabledOnNode,
+  isVisibleOnNode,
+  readonlyFirst,
+  updateNodeAssignment,
+} from "../lib/node-assignment";
 
 export function NodeOutboundsCard({
   node,
@@ -30,9 +36,13 @@ export function NodeOutboundsCard({
   const remove = useDeleteOutboundMutation();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OutboundConfig | null>(null);
-  const items = (query.data ?? []).filter((item) =>
-    item.node_ids.includes(node.id),
-  );
+  const items = readonlyFirst((query.data ?? []).filter((item) =>
+    isVisibleOnNode(item, node.id),
+  ))
+    .map((item) => ({
+      ...item,
+      enabled: isEnabledOnNode(item, node.id),
+    }));
   const pending = create.isPending || update.isPending || remove.isPending;
 
   const save = (payload: OutboundPayload) => {
@@ -88,7 +98,18 @@ export function NodeOutboundsCard({
       }}
       onToggle={(item, enabled) =>
         update.mutate(
-          { tag: item.tag, payload: { enabled } },
+          {
+            tag: item.tag,
+            payload: item.readonly
+              ? {
+                  node_ids: updateNodeAssignment(
+                    item.node_ids,
+                    node.id,
+                    enabled,
+                  ),
+                }
+              : { enabled },
+          },
           { onError: (error) => generateErrorMessage(error) },
         )
       }

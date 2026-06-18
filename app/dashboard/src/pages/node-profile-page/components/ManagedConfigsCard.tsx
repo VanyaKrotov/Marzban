@@ -45,6 +45,7 @@ export type ManagedConfig = {
   tag: string;
   enabled: boolean;
   readonly: boolean;
+  content: Record<string, unknown>;
 };
 
 type ManagedConfigsCardProps<T extends ManagedConfig> = {
@@ -138,6 +139,15 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
               <TableHeader className="bg-muted/40">
                 <TableRow className="hover:bg-transparent">
                   <TableHead>{t("inboundsPage.tag")}</TableHead>
+                  <TableHead className="w-32">
+                    {t("nodeProfile.protocol")}
+                  </TableHead>
+                  <TableHead className="w-36">
+                    {t("nodeProfile.connectionType")}
+                  </TableHead>
+                  <TableHead className="w-32">
+                    {t("nodeProfile.securityType")}
+                  </TableHead>
                   <TableHead className="w-28">{t("enabled")}</TableHead>
                   <TableHead className="w-14" />
                 </TableRow>
@@ -146,11 +156,24 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
                 {items.map((item) => (
                   <TableRow
                     key={item.tag}
-                    className="cursor-pointer"
-                    onClick={() => onEdit(item)}
+                    className={item.readonly ? undefined : "cursor-pointer"}
+                    onClick={() => {
+                      if (!item.readonly) {
+                        onEdit(item);
+                      }
+                    }}
                   >
-                    <TableCell className="font-mono text-xs font-medium">
+                    <TableCell className="font-medium">
                       {item.tag}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getConfigValue(item.content, "protocol")}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getStreamValue(item.content, "network")}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getStreamValue(item.content, "security")}
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <Switch
@@ -221,4 +244,18 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
       {dialogs}
     </Card>
   );
+}
+
+function getConfigValue(content: Record<string, unknown>, key: string) {
+  const value = content[key];
+  return typeof value === "string" && value ? value : "-";
+}
+
+function getStreamValue(content: Record<string, unknown>, key: string) {
+  const streamSettings = content.streamSettings;
+  if (!streamSettings || typeof streamSettings !== "object") {
+    return "-";
+  }
+  const value = (streamSettings as Record<string, unknown>)[key];
+  return typeof value === "string" && value ? value : "-";
 }

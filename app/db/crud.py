@@ -177,7 +177,7 @@ def update_inbound(
         content["tag"] = dbinbound.tag
         dbinbound.content = content
     if modified.enabled is not None:
-        dbinbound.enabled = modified.enabled
+        dbinbound.enabled = True if dbinbound.readonly else modified.enabled
     if modified.node_ids is not None:
         nodes = {
             node.id: node
@@ -197,6 +197,8 @@ def update_inbound(
 
 
 def remove_inbound(db: Session, dbinbound: ProxyInbound) -> None:
+    if dbinbound.readonly:
+        raise ValueError("Read-only inbounds cannot be deleted")
     tag = dbinbound.tag
     dbinbound.nodes = []
     dbinbound.node_certificates = []
@@ -301,7 +303,7 @@ def update_outbound(
         content["tag"] = dboutbound.tag
         dboutbound.content = content
     if modified.enabled is not None:
-        dboutbound.enabled = modified.enabled
+        dboutbound.enabled = True if dboutbound.readonly else modified.enabled
     if modified.node_ids is not None:
         nodes = {
             node.id: node
@@ -321,6 +323,8 @@ def update_outbound(
 
 
 def remove_outbound(db: Session, dboutbound: ProxyOutbound) -> None:
+    if dboutbound.readonly:
+        raise ValueError("Read-only outbounds cannot be deleted")
     dboutbound.nodes = []
     db.flush()
     db.delete(dboutbound)
@@ -404,7 +408,7 @@ def update_routing_rule(
             raise ValueError("Content of read-only routing rules cannot be changed")
         dbrule.content = dict(modified.content)
     if modified.enabled is not None:
-        dbrule.enabled = modified.enabled
+        dbrule.enabled = True if dbrule.readonly else modified.enabled
     if modified.position is not None:
         dbrule.position = modified.position
     if modified.node_ids is not None:
@@ -444,6 +448,8 @@ def reorder_routing_rules(
 
 
 def remove_routing_rule(db: Session, dbrule: RoutingRule) -> None:
+    if dbrule.readonly:
+        raise ValueError("Read-only routing rules cannot be deleted")
     dbrule.nodes = []
     db.flush()
     db.delete(dbrule)
@@ -506,7 +512,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             db.delete(inbound)
             continue
         inbound.content = content
-        inbound.nodes = list(nodes)
+        inbound.enabled = True
 
     existing_inbound_tags = {
         row[0]
@@ -546,7 +552,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             db.delete(outbound)
             continue
         outbound.content = content
-        outbound.nodes = list(nodes)
+        outbound.enabled = True
 
     existing_outbound_tags = {
         row[0]
@@ -580,7 +586,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     ]
     for rule, content in zip(readonly_rules, routing_rules):
         rule.content = content
-        rule.nodes = list(nodes)
+        rule.enabled = True
 
     for rule in readonly_rules[len(routing_rules):]:
         rule.nodes = []
