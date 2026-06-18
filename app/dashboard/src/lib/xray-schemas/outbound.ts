@@ -299,24 +299,17 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
         properties: {
           settings: {
             type: "object",
-            required: ["servers"],
+            required: ["version", "address", "port"],
             additionalProperties: true,
             properties: {
-              servers: {
-                type: "array",
-                minItems: 1,
-                description: "Remote Hysteria servers.",
-                items: {
-                  type: "object",
-                  required: ["address", "port"],
-                  additionalProperties: true,
-                  properties: {
-                    address: { type: "string", minLength: 1 },
-                    port: { type: "integer", minimum: 1, maximum: 65535 },
-                    auth: { type: "string" },
-                  },
-                },
+              version: {
+                type: "integer",
+                enum: [2],
+                default: 2,
+                description: "Hysteria protocol version. Xray currently supports 2.",
               },
+              address: { type: "string", minLength: 1 },
+              port: { type: "integer", minimum: 1, maximum: 65535 },
             },
           },
         },

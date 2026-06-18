@@ -886,15 +886,11 @@ class V2rayJsonConfig(str):
         }
 
     @staticmethod
-    def hysteria_config(address=None, port=None, auth=None) -> dict:
+    def hysteria_config(address=None, port=None) -> dict:
         return {
-            "servers": [
-                {
-                    "address": address,
-                    "port": port,
-                    "auth": auth,
-                }
-            ]
+            "version": 2,
+            "address": address,
+            "port": port,
         }
 
     @staticmethod
@@ -1081,8 +1077,7 @@ class V2rayJsonConfig(str):
 
         elif inbound['protocol'] == 'hysteria':
             outbound["settings"] = self.hysteria_config(address=address,
-                                                        port=port,
-                                                        auth=settings['auth'])
+                                                        port=port)
         else:
             return
 

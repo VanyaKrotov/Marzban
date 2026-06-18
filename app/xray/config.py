@@ -320,8 +320,12 @@ class XRayConfig(dict):
                 settings['network'] = net
 
                 if security == 'tls':
-                    # settings['fp']
-                    # settings['alpn']
+                    settings['fp'] = tls_settings.get('fingerprint', '')
+                    alpn = tls_settings.get('alpn')
+                    if isinstance(alpn, list):
+                        settings['alpn'] = ','.join(alpn)
+                    elif isinstance(alpn, str):
+                        settings['alpn'] = alpn
                     settings['tls'] = 'tls'
                     for certificate in tls_settings.get('certificates', []):
 
