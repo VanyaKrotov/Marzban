@@ -31,10 +31,12 @@ def _supports_runtime_account(proxy_type, proxy_settings: dict) -> bool:
         return False
     if proxy_type.value == "shadowsocks":
         method = proxy_settings.get("method", "")
-        return not (
-            method.startswith("2022-")
-            or method in {"unknown", "none", "plain", "chacha20-poly1305"}
-        )
+        return method in {
+            "aes-128-gcm",
+            "aes-256-gcm",
+            "chacha20-ietf-poly1305",
+            "xchacha20-poly1305",
+        }
     return True
 
 

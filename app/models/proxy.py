@@ -66,7 +66,7 @@ class ProxyTypes(str, Enum):
 
     @property
     def supports_runtime_api(self):
-        return self.value in {"vmess", "vless", "trojan", "shadowsocks", "socks"}
+        return self.value in {"vmess", "vless", "trojan", "shadowsocks", "socks", "hysteria"}
 
 
 class XrayInboundProtocol(str, Enum):

@@ -8,6 +8,8 @@ from ..proto.proxy.shadowsocks.config_pb2 import \
     Account as ShadowsocksAccountPb2
 from ..proto.proxy.shadowsocks.config_pb2 import \
     CipherType as ShadowsocksCiphers
+from ..proto.proxy.hysteria.account.config_pb2 import \
+    Account as HysteriaAccountPb2
 from ..proto.proxy.socks.config_pb2 import Account as SocksAccountPb2
 from ..proto.proxy.trojan.config_pb2 import Account as TrojanAccountPb2
 from ..proto.proxy.vless.account_pb2 import Account as VLESSAccountPb2
@@ -101,4 +103,4 @@ class HysteriaAccount(Account):
 
     @property
     def message(self):
-        raise NotImplementedError("Hysteria runtime AddUser is not supported by the bundled Xray protobufs")
+        return Message(HysteriaAccountPb2(auth=self.auth))
