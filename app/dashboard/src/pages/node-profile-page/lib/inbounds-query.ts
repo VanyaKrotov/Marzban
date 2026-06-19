@@ -13,7 +13,9 @@ export type InboundConfig = {
 export type InboundPayload = Pick<
   InboundConfig,
   "tag" | "enabled" | "content" | "node_ids"
->;
+> & {
+  auto_assign_users?: boolean;
+};
 export type InboundUpdate = Partial<
   Pick<InboundConfig, "enabled" | "content" | "node_ids">
 >;

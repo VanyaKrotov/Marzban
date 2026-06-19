@@ -34,6 +34,7 @@ import X25519Helpers from "./X25519Helpers";
 
 const inboundFormSchema = z.object({
   enabled: z.boolean(),
+  auto_assign_users: z.boolean(),
   content: z.string().superRefine((value, context) => {
     try {
       const parsed = JSON.parse(value);
@@ -132,6 +133,7 @@ function InboundDialogContent({
     resolver: zodResolver(inboundFormSchema),
     defaultValues: {
       enabled: inbound?.enabled ?? true,
+      auto_assign_users: true,
       content: JSON.stringify(inbound?.content ?? defaultContent, null, 2),
     },
   });
@@ -142,6 +144,7 @@ function InboundDialogContent({
     onSubmit({
       tag: String(content.tag).trim(),
       enabled: values.enabled,
+      auto_assign_users: inbound ? undefined : values.auto_assign_users,
       node_ids: inbound?.node_ids ?? [nodeId],
       content,
     });
@@ -188,6 +191,29 @@ function InboundDialogContent({
               </Field>
             )}
           />
+
+          {!inbound && (
+            <Controller
+              control={form.control}
+              name="auto_assign_users"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="min-h-9">
+                  <Switch
+                    id="inbound-auto-assign-users"
+                    checked={field.value}
+                    disabled={pending}
+                    onCheckedChange={field.onChange}
+                  />
+                  <FieldLabel
+                    htmlFor="inbound-auto-assign-users"
+                    className="min-w-0"
+                  >
+                    {t("inboundsPage.autoAssignUsers")}
+                  </FieldLabel>
+                </Field>
+              )}
+            />
+          )}
 
           <div className="flex items-center justify-between gap-4">
             <Controller

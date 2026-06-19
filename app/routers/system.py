@@ -106,6 +106,23 @@ def _validate_outbound_content(tag: str, content: dict) -> dict:
     return normalized
 
 
+def _ensure_inbound_users(db: Session, inbound_tag: str) -> None:
+    inbound = xray.config.inbounds_by_tag.get(inbound_tag)
+    if not inbound:
+        return
+    protocol = inbound["protocol"]
+    crud.ensure_protocol_inbounds_for_users(
+        db,
+        protocol=protocol,
+        included_tags=[inbound_tag],
+        protocol_inbound_tags=[
+            item["tag"]
+            for item in xray.config.inbounds_by_protocol.get(protocol, [])
+        ],
+    )
+    db.commit()
+
+
 @router.get("/system", response_model=SystemStats)
 def get_system_stats(
     db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)
@@ -193,6 +210,15 @@ def create_inbound_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     xray.reload_config()
+    if inbound.auto_assign_users:
+        _ensure_inbound_users(db, created.tag)
+    else:
+        crud.exclude_protocol_inbounds_for_users(
+            db,
+            protocol=created.content.get("protocol"),
+            excluded_tags=[created.tag],
+        )
+        db.commit()
     mark_nodes_pending_restart(node.id for node in created.nodes)
     return _inbound_response(created)
 
@@ -218,6 +244,7 @@ def modify_inbound_config(
         )
 
     affected_node_ids = {node.id for node in dbinbound.nodes}
+    was_enabled = dbinbound.enabled
     if modified.content is not None:
         modified.content = _validate_inbound_content(
             inbound_tag,
@@ -229,6 +256,8 @@ def modify_inbound_config(
         raise HTTPException(status_code=400, detail=str(exc))
     affected_node_ids.update(node.id for node in updated.nodes)
     xray.reload_config()
+    if updated.enabled and not was_enabled:
+        _ensure_inbound_users(db, updated.tag)
     mark_nodes_pending_restart(affected_node_ids)
     return _inbound_response(updated)
 

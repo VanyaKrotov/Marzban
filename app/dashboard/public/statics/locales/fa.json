@@ -410,6 +410,7 @@
   "inboundsPage.dialogDescription": "Configure the inbound state and its complete Xray JSON object.",
   "inboundsPage.tag": "Tag",
   "inboundsPage.enabled": "Enabled",
+  "inboundsPage.autoAssignUsers": "افزودن به همه کاربران",
   "inboundsPage.enabledState": "فعال",
   "inboundsPage.disabledState": "غیرفعال",
   "inboundsPage.nodes": "Nodes",

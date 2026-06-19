@@ -409,6 +409,7 @@
   "inboundsPage.dialogDescription": "Настройте состояние инбаунда и полный JSON-объект конфигурации Xray.",
   "inboundsPage.tag": "Тег",
   "inboundsPage.enabled": "Включён",
+  "inboundsPage.autoAssignUsers": "Добавить всем пользователям",
   "inboundsPage.enabledState": "Включено",
   "inboundsPage.disabledState": "Отключено",
   "inboundsPage.nodes": "Ноды",

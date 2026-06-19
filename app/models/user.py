@@ -186,8 +186,14 @@ class UserCreate(User):
         excluded = {}
         for proxy_type in self.proxies:
             excluded[proxy_type] = []
+            selected_tags = self.inbounds.get(proxy_type)
+            if selected_tags is None:
+                selected_tags = [
+                    inbound["tag"]
+                    for inbound in xray.config.inbounds_by_protocol.get(proxy_type, [])
+                ]
             for inbound in xray.config.inbounds_by_protocol.get(proxy_type, []):
-                if not inbound["tag"] in self.inbounds.get(proxy_type, []):
+                if not inbound["tag"] in selected_tags:
                     excluded[proxy_type].append(inbound["tag"])
 
         return excluded
@@ -195,6 +201,7 @@ class UserCreate(User):
     @field_validator("inbounds", mode="before")
     def validate_inbounds(cls, inbounds, values, **kwargs):
         proxies = values.data.get("proxies", [])
+        inbounds = dict(inbounds or {})
 
         # delete inbounds that are for protocols not activated
         for proxy_type in inbounds.copy():
@@ -205,7 +212,7 @@ class UserCreate(User):
         for proxy_type in proxies:
             tags = inbounds.get(proxy_type)
 
-            if tags:
+            if tags is not None:
                 for tag in tags:
                     if tag not in xray.config.inbounds_by_tag:
                         raise ValueError(f"Inbound {tag} doesn't exist")

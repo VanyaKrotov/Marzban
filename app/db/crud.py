@@ -142,6 +142,103 @@ def get_inbound(db: Session, inbound_tag: str) -> Optional[ProxyInbound]:
     )
 
 
+def ensure_protocol_inbounds_for_users(
+    db: Session,
+    protocol: str,
+    included_tags: List[str],
+    protocol_inbound_tags: List[str],
+) -> List[User]:
+    if not included_tags:
+        return []
+    try:
+        proxy_type = ProxyTypes(protocol)
+    except ValueError:
+        return []
+
+    included_tags = [
+        tag
+        for tag in dict.fromkeys(included_tags)
+        if tag and tag not in XRAY_EXCLUDE_INBOUND_TAGS
+    ]
+    if not included_tags:
+        return []
+
+    excluded_tags = [
+        tag
+        for tag in dict.fromkeys(protocol_inbound_tags)
+        if tag not in included_tags and tag not in XRAY_EXCLUDE_INBOUND_TAGS
+    ]
+    excluded_inbounds = (
+        db.query(ProxyInbound)
+        .filter(ProxyInbound.tag.in_(excluded_tags))
+        .all()
+        if excluded_tags
+        else []
+    )
+    users = (
+        db.query(User)
+        .outerjoin(
+            Proxy,
+            and_(Proxy.user_id == User.id, Proxy.type == proxy_type),
+        )
+        .filter(Proxy.id.is_(None))
+        .all()
+    )
+    for user in users:
+        user.proxies.append(
+            Proxy(
+                type=proxy_type,
+                settings=proxy_type.settings_model().dict(no_obj=True),
+                excluded_inbounds=list(excluded_inbounds),
+            )
+        )
+    return users
+
+
+def exclude_protocol_inbounds_for_users(
+    db: Session,
+    protocol: str,
+    excluded_tags: List[str],
+) -> List[Proxy]:
+    if not excluded_tags:
+        return []
+    try:
+        proxy_type = ProxyTypes(protocol)
+    except ValueError:
+        return []
+
+    excluded_tags = [
+        tag
+        for tag in dict.fromkeys(excluded_tags)
+        if tag and tag not in XRAY_EXCLUDE_INBOUND_TAGS
+    ]
+    if not excluded_tags:
+        return []
+
+    excluded_inbounds = (
+        db.query(ProxyInbound)
+        .filter(ProxyInbound.tag.in_(excluded_tags))
+        .all()
+    )
+    if not excluded_inbounds:
+        return []
+
+    proxies = (
+        db.query(Proxy)
+        .options(joinedload(Proxy.excluded_inbounds))
+        .filter(Proxy.type == proxy_type)
+        .all()
+    )
+    for proxy in proxies:
+        current_tags = {inbound.tag for inbound in proxy.excluded_inbounds}
+        proxy.excluded_inbounds.extend(
+            inbound
+            for inbound in excluded_inbounds
+            if inbound.tag not in current_tags
+        )
+    return proxies
+
+
 def create_inbound(db: Session, inbound: InboundCreate) -> ProxyInbound:
     content = dict(inbound.content)
     content["tag"] = inbound.tag
@@ -521,7 +618,10 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         .all()
     } if inbound_contents else set()
     next_host_position = get_next_host_position(db)
+    new_inbound_tags_by_protocol: Dict[str, List[str]] = {}
     for tag in inbound_contents.keys() - existing_inbound_tags:
+        protocol = inbound_contents[tag].get("protocol")
+        new_inbound_tags_by_protocol.setdefault(protocol, []).append(tag)
         inbound = ProxyInbound(
             tag=tag,
             content=inbound_contents[tag],
@@ -538,6 +638,18 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         )
         next_host_position += 1
         db.add(inbound)
+    if new_inbound_tags_by_protocol:
+        db.flush()
+        protocol_tags: Dict[str, List[str]] = {}
+        for tag, content in inbound_contents.items():
+            protocol_tags.setdefault(content.get("protocol"), []).append(tag)
+        for protocol, included_tags in new_inbound_tags_by_protocol.items():
+            ensure_protocol_inbounds_for_users(
+                db,
+                protocol=protocol,
+                included_tags=included_tags,
+                protocol_inbound_tags=protocol_tags.get(protocol, []),
+            )
 
     readonly_outbounds = (
         db.query(ProxyOutbound)
@@ -1083,7 +1195,7 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
         for proxy in dbuser.proxies:
             if proxy.type not in modify.proxies:
                 db.delete(proxy)
-    if modify.inbounds:
+    if "inbounds" in modify.model_fields_set:
         for proxy_type, tags in modify.excluded_inbounds.items():
             dbproxy = db.query(Proxy) \
                 .where(Proxy.user == dbuser, Proxy.type == proxy_type) \

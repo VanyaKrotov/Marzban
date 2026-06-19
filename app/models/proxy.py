@@ -325,6 +325,7 @@ class ProxyInbound(BaseModel):
 class InboundCreate(BaseModel):
     tag: str = Field(min_length=1, max_length=256)
     enabled: bool = True
+    auto_assign_users: bool = True
     content: Dict[str, Any]
     node_ids: List[int] = Field(default_factory=list)
 
