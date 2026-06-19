@@ -68,7 +68,6 @@ const mergeProxies = (
 
 export const toUserPayload = (values: UserFormValues): UserCreate => {
   const selectedProxies = Object.entries(values.inbounds)
-    .filter(([, inbounds]) => inbounds.length > 0)
     .map(([protocol]) => protocol as keyof ProxyType);
 
   return {
@@ -121,15 +120,9 @@ const baseSchema = {
   inbounds: z
     .record(z.string(), z.array(z.string()))
     .refine(
-      (value) => Object.values(value).some((inbounds) => inbounds.length > 0),
+      (value) => Object.keys(value).length > 0,
       { message: "userDialog.selectOneProtocol" },
-    )
-    .transform((value) => {
-      Object.keys(value).forEach((protocol) => {
-        if (!value[protocol]?.length) delete value[protocol];
-      });
-      return value;
-    }),
+    ),
 };
 
 export const userFormSchema = z.discriminatedUnion("status", [

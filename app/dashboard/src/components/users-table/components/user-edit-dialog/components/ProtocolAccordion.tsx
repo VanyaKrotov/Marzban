@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { shadowsocksMethods, XTLSFlows } from "constants/Proxies";
 import {
@@ -83,8 +84,8 @@ export function ProtocolAccordion({
       {options.map(({ title, description }) => {
         const protocolInbounds = availableInbounds.get(title) ?? [];
         const canEnable = protocolInbounds.length > 0;
+        const protocolEnabled = Array.isArray(selectedInbounds[title]);
         const selectedCount = selectedInbounds[title]?.length ?? 0;
-        const enabled = selectedCount > 0;
 
         return (
           <AccordionItem
@@ -93,7 +94,7 @@ export function ProtocolAccordion({
             className={cn(
               "overflow-hidden rounded-lg border bg-card transition-colors not-last:border-b",
               {
-                ["border-primary/40 bg-primary/3"]: enabled,
+                ["border-primary/40 bg-primary/3"]: protocolEnabled,
                 ["opacity-55"]: !canEnable,
               },
             )}
@@ -106,7 +107,7 @@ export function ProtocolAccordion({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 capitalize">
                     {title}
-                    {enabled && (
+                    {protocolEnabled && (
                       <Badge variant="secondary" className="font-normal">
                         {selectedCount}/{protocolInbounds.length}
                       </Badge>
@@ -121,8 +122,17 @@ export function ProtocolAccordion({
 
             <AccordionContent className="border-t bg-muted/20 px-3 pt-3">
               <div className="space-y-4">
+                <ProtocolSwitch
+                  protocol={title}
+                  disabled={disabled}
+                  checked={protocolEnabled}
+                  inboundTags={protocolInbounds.map((inbound) => inbound.tag)}
+                />
+
                 <FieldSet className="gap-3">
-                  <FieldLegend variant="label">{t("inbound")}</FieldLegend>
+                  <FieldLegend variant="label">
+                    {t("userDialog.inbounds")}
+                  </FieldLegend>
                   <Controller
                     name={`inbounds.${title}`}
                     control={form.control}
@@ -137,8 +147,8 @@ export function ProtocolAccordion({
                             <InboundOption
                               key={inbound.tag}
                               inbound={inbound}
-                              disabled={disabled}
                               checked={checked}
+                              disabled={disabled || !protocolEnabled}
                               onBlur={field.onBlur}
                               onCheckedChange={(enabled) => {
                                 const current = field.value ?? [];
@@ -160,7 +170,7 @@ export function ProtocolAccordion({
                   />
                 </FieldSet>
 
-                {enabled && (
+                {protocolEnabled && (
                   <ProtocolFields protocol={title} disabled={disabled} />
                 )}
               </div>
@@ -169,6 +179,60 @@ export function ProtocolAccordion({
         );
       })}
     </Accordion>
+  );
+}
+
+function ProtocolSwitch({
+  protocol,
+  checked,
+  disabled,
+  inboundTags,
+}: {
+  protocol: ProtocolType;
+  checked: boolean;
+  disabled: boolean;
+  inboundTags: string[];
+}) {
+  const { t } = useTranslation();
+  const form = useFormContext<UserFormValues>();
+  const id = `protocol-${protocol}-enabled`;
+
+  return (
+    <Field orientation="horizontal" className="justify-between gap-4">
+      <FieldLabel htmlFor={id} className="min-w-0">
+        {t(
+          checked
+            ? "userDialog.protocolEnabled"
+            : "userDialog.protocolDisabled",
+        )}
+      </FieldLabel>
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(enabled) => {
+          const current = form.getValues("inbounds") ?? {};
+
+          if (enabled) {
+            form.setValue(
+              "inbounds",
+              {
+                ...current,
+                [protocol]: inboundTags,
+              },
+              { shouldDirty: true, shouldValidate: true },
+            );
+            return;
+          }
+
+          const { [protocol]: _removed, ...next } = current;
+          form.setValue("inbounds", next, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }}
+      />
+    </Field>
   );
 }
 
