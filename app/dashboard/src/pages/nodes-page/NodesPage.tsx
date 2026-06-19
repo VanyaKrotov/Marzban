@@ -113,14 +113,11 @@ export function NodesPage() {
                       <NodeCardValue
                         label={t("nodes.nodeAddress")}
                         value={`${node.address}:${node.port}`}
-                        mono
                       />
                       <NodeCardValue
                         label={t("nodesPage.coreVersion")}
                         value={
-                          node.xray_version
-                            ? `Xray ${node.xray_version}`
-                            : t("nodesPage.versionUnknown")
+                          node.xray_version ? `v${node.xray_version}` : "-"
                         }
                       />
                     </div>
@@ -163,23 +160,11 @@ export function NodesPage() {
   );
 }
 
-function NodeCardValue({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function NodeCardValue({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={mono ? "truncate font-mono text-xs" : "truncate font-medium"}
-      >
-        {value}
-      </p>
+      <p className="truncate font-medium mt-0.5">{value}</p>
     </div>
   );
 }

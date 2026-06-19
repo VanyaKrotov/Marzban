@@ -31,7 +31,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -64,12 +69,9 @@ import {
   readonlyFirst,
   updateNodeAssignment,
 } from "../lib/node-assignment";
+import { cn } from "@/lib/utils";
 
-export function NodeRoutingCard({
-  node,
-}: {
-  node: NodeType & { id: number };
-}) {
+export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
   const { t } = useTranslation();
   const query = useRoutingRulesQuery();
   const create = useCreateRoutingRuleMutation();
@@ -85,13 +87,12 @@ export function NodeRoutingCard({
     position: "before" | "after";
   } | null>(null);
   const allRules = query.data ?? [];
-  const rules = readonlyFirst(allRules.filter((rule) =>
-    isVisibleOnNode(rule, node.id),
-  ))
-    .map((rule) => ({
-      ...rule,
-      enabled: isEnabledOnNode(rule, node.id),
-    }));
+  const rules = readonlyFirst(
+    allRules.filter((rule) => isVisibleOnNode(rule, node.id)),
+  ).map((rule) => ({
+    ...rule,
+    enabled: isEnabledOnNode(rule, node.id),
+  }));
   const pending =
     create.isPending ||
     update.isPending ||
@@ -138,8 +139,7 @@ export function NodeRoutingCard({
 
     const reordered = [...rules];
     const [dragged] = reordered.splice(sourceIndex, 1);
-    let insertIndex =
-      targetIndex + (dropTarget.position === "after" ? 1 : 0);
+    let insertIndex = targetIndex + (dropTarget.position === "after" ? 1 : 0);
     if (sourceIndex < insertIndex) insertIndex -= 1;
     reordered.splice(insertIndex, 0, dragged);
 
@@ -188,7 +188,9 @@ export function NodeRoutingCard({
             aria-label={t("routingPage.refresh")}
             onClick={() => void query.refetch()}
           >
-            <RefreshCw className={query.isFetching ? "animate-spin" : undefined} />
+            <RefreshCw
+              className={query.isFetching ? "animate-spin" : undefined}
+            />
           </Button>
           <Button
             type="button"
@@ -226,13 +228,16 @@ export function NodeRoutingCard({
                   <TableRow
                     key={rule.id}
                     draggable={!pending && !rule.readonly}
-                    className={`${rule.readonly ? "" : "cursor-pointer"} ${
+                    className={cn(
+                      {
+                        ["cursor-default hover:bg-transparent"]: rule.readonly,
+                      },
                       dropTarget?.id === rule.id
                         ? dropTarget.position === "before"
                           ? "border-t-2 border-t-primary"
                           : "border-b-2 border-b-primary"
-                        : ""
-                    }`}
+                        : "",
+                    )}
                     onDragStart={() => {
                       if (!rule.readonly) {
                         setDraggedId(rule.id);
@@ -245,7 +250,8 @@ export function NodeRoutingCard({
                         draggedId == null ||
                         draggedId === rule.id ||
                         rule.readonly
-                      ) return;
+                      )
+                        return;
                       const bounds =
                         event.currentTarget.getBoundingClientRect();
                       setDropTarget({
@@ -265,7 +271,12 @@ export function NodeRoutingCard({
                     }}
                   >
                     <TableCell>
-                      <GripVertical className="size-4 cursor-grab text-muted-foreground" />
+                      <GripVertical
+                        className={cn("size-4 text-muted-foreground", {
+                          ["opacity-20"]: rule.readonly,
+                          ["cursor-grab"]: !rule.readonly,
+                        })}
+                      />
                     </TableCell>
                     <TableCell className="font-medium">{rule.name}</TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
@@ -287,8 +298,7 @@ export function NodeRoutingCard({
                                 : { enabled },
                             },
                             {
-                              onError: (error) =>
-                                generateErrorMessage(error),
+                              onError: (error) => generateErrorMessage(error),
                             },
                           )
                         }

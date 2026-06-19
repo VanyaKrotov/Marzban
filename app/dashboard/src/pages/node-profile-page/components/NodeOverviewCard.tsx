@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useCopy } from "@/hooks/use-copy";
 import { NodeStatusBadge } from "@/pages/nodes-page/components/NodeStatusBadge";
 import { useReconnectNodeMutation } from "@/pages/nodes-page/lib/query";
@@ -30,17 +31,18 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
   const address = `${node.address}:${node.port}`;
   const addressCopy = useCopy(address);
   const AddressCopyIcon = addressCopy.Icon;
-  const status = node.status === "error" ? (
-    <button
-      type="button"
-      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      onClick={() => setErrorOpen(true)}
-    >
+  const status =
+    node.status === "error" ? (
+      <button
+        type="button"
+        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setErrorOpen(true)}
+      >
+        <NodeStatusBadge status={node.status} />
+      </button>
+    ) : (
       <NodeStatusBadge status={node.status} />
-    </button>
-  ) : (
-    <NodeStatusBadge status={node.status} />
-  );
+    );
 
   return (
     <>
@@ -69,7 +71,7 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-auto min-w-0 justify-start gap-2 px-0 py-0 font-mono text-xs font-medium hover:bg-transparent"
+                  className="h-auto min-w-0 justify-start gap-2 px-0 py-0 font-medium hover:bg-transparent"
                   aria-label={addressCopy.copied ? t("copied") : address}
                 >
                   <span className="truncate">{address}</span>
@@ -77,16 +79,18 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
                 </Button>
               </CopyToClipboard>
             </NodeValue>
-            <NodeValue label={t("nodes.nodeAPIPort")} mono>
+            <NodeValue label={t("nodes.nodeAPIPort")}>
               {String(node.api_port)}
             </NodeValue>
             <NodeValue label={t("nodes.usageCoefficient")}>
               {String(node.usage_coefficient)}
             </NodeValue>
             <NodeValue label={t("nodesPage.coreVersion")}>
-              {node.xray_version
-                ? `Xray ${node.xray_version}`
-                : t("nodesPage.versionUnknown")}
+              {node.xray_version ? (
+                <Badge variant="outline"> v{node.xray_version}</Badge>
+              ) : (
+                "-"
+              )}
             </NodeValue>
           </div>
         </CardContent>
@@ -135,20 +139,14 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
 function NodeValue({
   label,
   children,
-  mono = false,
 }: {
   label: string;
   children: ReactNode;
-  mono?: boolean;
 }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <div
-        className={`truncate font-medium ${mono ? "font-mono text-xs" : ""}`}
-      >
-        {children}
-      </div>
+      <div className={`truncate font-medium mt-0.5`}>{children}</div>
     </div>
   );
 }

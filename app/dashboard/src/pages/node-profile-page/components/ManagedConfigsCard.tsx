@@ -156,16 +156,16 @@ export function ManagedConfigsCard<T extends ManagedConfig>({
                 {items.map((item) => (
                   <TableRow
                     key={item.tag}
-                    className={item.readonly ? undefined : "cursor-pointer"}
+                    className={
+                      item.readonly ? "hover:bg-transparent" : "cursor-pointer"
+                    }
                     onClick={() => {
                       if (!item.readonly) {
                         onEdit(item);
                       }
                     }}
                   >
-                    <TableCell className="font-medium">
-                      {item.tag}
-                    </TableCell>
+                    <TableCell className="font-medium">{item.tag}</TableCell>
                     <TableCell className="font-medium">
                       {getConfigValue(item.content, "protocol")}
                     </TableCell>
