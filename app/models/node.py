@@ -102,6 +102,25 @@ class NodeCertificateIssue(BaseModel):
         return value
 
 
+class NodeCertificateImport(BaseModel):
+    domain: str = Field(min_length=1, max_length=253)
+    certificate_file: str = Field(min_length=1, max_length=2048)
+    key_file: str = Field(min_length=1, max_length=2048)
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, value: str) -> str:
+        return NodeCertificateIssue.validate_domain(value)
+
+    @field_validator("certificate_file", "key_file")
+    @classmethod
+    def validate_file_path(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith("/"):
+            raise ValueError("Path must be absolute")
+        return value
+
+
 class NodeCertificateModify(BaseModel):
     active: Optional[bool] = None
 

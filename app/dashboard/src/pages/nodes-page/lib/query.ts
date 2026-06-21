@@ -155,6 +155,33 @@ export function useIssueCertificateMutation(nodeId: number) {
   });
 }
 
+export function useImportCertificateMutation(nodeId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      domain,
+      certificate_file,
+      key_file,
+    }: {
+      domain: string;
+      certificate_file: string;
+      key_file: string;
+    }) =>
+      api.post<NodeCertificate>(`/node/${nodeId}/certificates/import`, {
+        domain,
+        certificate_file,
+        key_file,
+      }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: nodeCertificatesQueryKey(nodeId),
+        }),
+        queryClient.invalidateQueries({ queryKey: nodesQueryKey }),
+      ]),
+  });
+}
+
 export function useDeleteCertificateMutation(nodeId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -23,6 +23,7 @@ import {
 import { generateErrorMessage } from "utils/toastHandler";
 
 import { CertificateRow } from "./CertificateRow";
+import { ImportCertificateDialog } from "./ImportCertificateDialog";
 import { IssueCertificateDialog } from "./IssueCertificateDialog";
 
 export function NodeCertificatesDialog({
@@ -55,16 +56,19 @@ function NodeCertificatesContent({
   const { t } = useTranslation();
   const query = useNodeCertificatesQuery(nodeId);
   const remove = useDeleteCertificateMutation(nodeId);
-  const createAction = (
-    <IssueCertificateDialog nodeId={nodeId} nodeName={nodeName} />
+  const createActions = (
+    <>
+      <ImportCertificateDialog nodeId={nodeId} nodeName={nodeName} />
+      <IssueCertificateDialog nodeId={nodeId} nodeName={nodeName} />
+    </>
   );
   const controls = (
-    <div className="flex justify-end">
-      {createAction}
+    <div className="flex flex-wrap justify-end gap-2">
+      {createActions}
     </div>
   );
   const emptyControls = (
-    <div className="flex justify-center">{createAction}</div>
+    <div className="flex flex-wrap justify-center gap-2">{createActions}</div>
   );
 
   return (

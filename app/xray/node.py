@@ -216,6 +216,11 @@ class ReSTXRayNode:
             self.connect()
         return self.make_request("/certificates/issue", timeout=180, **params)
 
+    def import_certificate(self, **params):
+        if not self.connected:
+            self.connect()
+        return self.make_request("/certificates/import", timeout=30, **params)
+
     def list_geo_resources(self):
         if not self.connected:
             self.connect()
@@ -471,6 +476,9 @@ class RPyCXRayNode:
 
     def issue_certificate(self, **params):
         return self.remote.issue_certificate(**params)
+
+    def import_certificate(self, **params):
+        return self.remote.import_certificate(**params)
 
     def list_geo_resources(self):
         return self.remote.list_geo_resources()

@@ -24,6 +24,7 @@ from app.dependencies import get_dbnode, validate_dates
 from app.models.admin import Admin
 from app.models.node import (
     NodeCreate,
+    NodeCertificateImport,
     NodeCertificateIssue,
     NodeCertificateModify,
     NodeCertificateResponse,
@@ -529,29 +530,12 @@ def get_node_certificates(
     return crud.get_node_certificates(db, dbnode.id)
 
 
-@router.post(
-    "/node/{node_id}/certificates/issue",
-    response_model=NodeCertificateResponse,
-)
-def issue_node_certificate(
-    request: NodeCertificateIssue,
-    dbnode: NodeResponse = Depends(get_node),
-    db: Session = Depends(get_db),
-    _: Admin = Depends(Admin.check_sudo_admin),
+def _upsert_node_certificate_from_result(
+    db: Session,
+    node_id: int,
+    domain: str,
+    result: dict,
 ):
-    try:
-        node = xray.nodes.get(dbnode.id) or xray.operations.add_node(dbnode)
-        result = node.issue_certificate(**request.model_dump())
-    except NodeAPIError as exc:
-        raise HTTPException(
-            status_code=exc.status_code or 502,
-            detail=f"Node certificate request failed: {exc.detail}",
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502, detail=f"Node certificate request failed: {exc}"
-        )
-
     certificate = result.get("certificate") or result.get("fullchain")
     private_key = result.get("private_key") or result.get("key")
     if (
@@ -578,10 +562,10 @@ def issue_node_certificate(
             status_code=502, detail="Node returned invalid certificate expiry"
         )
 
-    dbcertificate = crud.upsert_node_certificate(
+    return crud.upsert_node_certificate(
         db,
-        node_id=dbnode.id,
-        domain=request.domain,
+        node_id=node_id,
+        domain=domain,
         certificate=certificate,
         private_key=private_key,
         certificate_file=(
@@ -597,6 +581,70 @@ def issue_node_certificate(
             or result.get("privateKeyFile")
         ),
         expires_at=expires_at,
+    )
+
+
+@router.post(
+    "/node/{node_id}/certificates/issue",
+    response_model=NodeCertificateResponse,
+)
+def issue_node_certificate(
+    request: NodeCertificateIssue,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        node = xray.nodes.get(dbnode.id) or xray.operations.add_node(dbnode)
+        result = node.issue_certificate(**request.model_dump())
+    except NodeAPIError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=f"Node certificate request failed: {exc.detail}",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Node certificate request failed: {exc}"
+        )
+
+    dbcertificate = _upsert_node_certificate_from_result(
+        db,
+        node_id=dbnode.id,
+        domain=request.domain,
+        result=result,
+    )
+    mark_nodes_pending_restart([dbnode.id])
+    return dbcertificate
+
+
+@router.post(
+    "/node/{node_id}/certificates/import",
+    response_model=NodeCertificateResponse,
+)
+def import_node_certificate(
+    request: NodeCertificateImport,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        node = xray.nodes.get(dbnode.id) or xray.operations.add_node(dbnode)
+        result = node.import_certificate(**request.model_dump())
+    except NodeAPIError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=f"Node certificate import failed: {exc.detail}",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Node certificate import failed: {exc}"
+        )
+
+    dbcertificate = _upsert_node_certificate_from_result(
+        db,
+        node_id=dbnode.id,
+        domain=request.domain,
+        result=result,
     )
     mark_nodes_pending_restart([dbnode.id])
     return dbcertificate
