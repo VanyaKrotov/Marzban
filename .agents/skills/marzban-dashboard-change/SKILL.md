@@ -1,9 +1,9 @@
 ---
 name: marzban-dashboard-change
-description: Implement Marzban dashboard features and fixes using React 18, TypeScript, Tailwind CSS, shadcn as the primary UI library, Zustand, TanStack Query, react-hook-form, Zod, i18next, and the shared Axios clients. Use for components, dialogs, forms, dashboard state, API calls, types, styling, routing, or translations under `app/dashboard`.
+description: Implement MarzbanNext dashboard features and fixes using React 18, TypeScript, Tailwind CSS, shadcn as the primary UI library, Zustand, TanStack Query, react-hook-form, Zod, i18next, and the shared Axios clients. Use for components, dialogs, forms, dashboard state, API calls, types, styling, routing, or translations under `app/dashboard`.
 ---
 
-# Marzban Dashboard Change
+# MarzbanNext Dashboard Change
 
 ## Follow the existing frontend shape
 

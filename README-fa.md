@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="لوگوی MarzbanNext">
+  <a href="https://github.com/VanyaKrotov/MarzbanNextNext">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/app/dashboard/src/assets/logo.svg" width="140" alt="لوگوی MarzbanNext">
   </a>
 </p>
 
@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/Marzban/build.yml?style=flat-square" alt="وضعیت ساخت"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/Marzban?style=flat-square" alt="آخرین نسخه"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/Marzban?style=flat-square" alt="مجوز"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/Marzban?style=flat-square" alt="ستاره‌ها"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/MarzbanNext/build.yml?style=flat-square" alt="وضعیت ساخت"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/MarzbanNext?style=flat-square" alt="آخرین نسخه"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/MarzbanNext?style=flat-square" alt="مجوز"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/MarzbanNext?style=flat-square" alt="ستاره‌ها"></a>
 </p>
 
 <p align="center">
@@ -149,20 +149,20 @@ react-hook-form و Monaco Editor ساخته شده است.
 ### SQLite
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install
 ```
 
 ### MySQL یا MariaDB
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mysql
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mariadb
 ```
 
 ### نصب نسخه مشخص
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --version v0.10.1
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --version v0.10.1
 ```
 
 اسکریپت فایل مناسب معماری را از GitHub Releases دریافت کرده، با `docker load`
@@ -199,7 +199,7 @@ ssh -L 8000:localhost:8000 user@server
 3. روی سرور Linux نود اجرا کنید:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban-node.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban-node.sh)" @ install
 ```
 
 image از

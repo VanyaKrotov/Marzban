@@ -30,7 +30,7 @@ cp -a /var/lib/marzban /root/marzban-data-backup
 
 ```bash
 curl -fsSL \
-  https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh \
+  https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh \
   -o /usr/local/bin/marzban
 
 chmod 755 /usr/local/bin/marzban
@@ -45,7 +45,7 @@ grep PROJECT_REPO /usr/local/bin/marzban
 В выводе должно присутствовать:
 
 ```text
-PROJECT_REPO="VanyaKrotov/Marzban"
+PROJECT_REPO="VanyaKrotov/MarzbanNext"
 ```
 
 ## 3. Запустить обновление

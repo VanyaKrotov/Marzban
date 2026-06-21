@@ -1,4 +1,4 @@
 interface:
-  display_name: "Marzban Refactoring"
-  short_description: "Refactor Marzban while preserving behavior"
-  default_prompt: "Use $marzban-refactoring to refactor this Marzban code without changing behavior."
+  display_name: "MarzbanNext Refactoring"
+  short_description: "Refactor MarzbanNext while preserving behavior"
+  default_prompt: "Use $marzban-refactoring to refactor this MarzbanNext code without changing behavior."

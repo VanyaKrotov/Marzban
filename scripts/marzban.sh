@@ -187,7 +187,7 @@ get_latest_release_tag() {
         | jq -r ".tag_name")
 
     if [ -z "$release_tag" ] || [ "$release_tag" == "null" ]; then
-        colorized_echo red "Unable to determine the latest Marzban release."
+        colorized_echo red "Unable to determine the latest MarzbanNext release."
         return 1
     fi
 
@@ -233,7 +233,7 @@ install_marzban_image() {
     temp_directory=$(mktemp -d)
     archive_path="$temp_directory/marzban-linux-$architecture.tar.gz"
 
-    colorized_echo blue "Downloading Marzban image for $architecture"
+    colorized_echo blue "Downloading MarzbanNext image for $architecture"
     if ! curl --fail --show-error --location --retry 3 \
         "$download_url" -o "$archive_path"; then
         rm -rf "$temp_directory"
@@ -241,7 +241,7 @@ install_marzban_image() {
         return 1
     fi
 
-    colorized_echo blue "Loading Marzban image into Docker"
+    colorized_echo blue "Loading MarzbanNext image into Docker"
     if ! gzip -dc "$archive_path" | docker load; then
         rm -rf "$temp_directory"
         colorized_echo red "Unable to load the downloaded Docker image"
@@ -253,7 +253,7 @@ install_marzban_image() {
     fi
 
     rm -rf "$temp_directory"
-    colorized_echo green "Marzban Docker image loaded successfully"
+    colorized_echo green "MarzbanNext Docker image loaded successfully"
 }
 
 is_marzban_installed() {
@@ -805,14 +805,14 @@ get_xray_core() {
     rm "${xray_filename}"
 }
 
-# Function to update the Marzban Main core
+# Function to update the MarzbanNext Main core
 update_core_command() {
     check_running_as_root
     get_xray_core
-    # Change the Marzban core
+    # Change the MarzbanNext core
     xray_executable_path="XRAY_EXECUTABLE_PATH=\"/var/lib/marzban/xray-core/xray\""
     
-    echo "Changing the Marzban core..."
+    echo "Changing the MarzbanNext core..."
     # Check if the XRAY_EXECUTABLE_PATH string already exists in the .env file
     if ! grep -q "^XRAY_EXECUTABLE_PATH=" "$ENV_FILE"; then
         # If the string does not exist, add it
@@ -822,12 +822,12 @@ update_core_command() {
         sed -i "s~^XRAY_EXECUTABLE_PATH=.*~${xray_executable_path}~" "$ENV_FILE"
     fi
     
-    # Restart Marzban
-    colorized_echo red "Restarting Marzban..."
+    # Restart MarzbanNext
+    colorized_echo red "Restarting MarzbanNext..."
     if restart_command -n >/dev/null 2>&1; then
-        colorized_echo green "Marzban successfully restarted!"
+        colorized_echo green "MarzbanNext successfully restarted!"
     else
-        colorized_echo red "Marzban restart failed!"
+        colorized_echo red "MarzbanNext restart failed!"
     fi
     colorized_echo blue "Installation of Xray-core version $selected_version completed."
 }
@@ -1063,7 +1063,7 @@ EOF
     download_project_file "xray_config.json" "$DATA_DIR/xray_config.json"
     colorized_echo green "File saved in $DATA_DIR/xray_config.json"
     
-    colorized_echo green "Marzban's files downloaded successfully"
+    colorized_echo green "MarzbanNext's files downloaded successfully"
 }
 
 up_marzban() {
@@ -1167,7 +1167,7 @@ install_command() {
 
     # Check if marzban is already installed
     if is_marzban_installed; then
-        colorized_echo red "Marzban is already installed at $APP_DIR"
+        colorized_echo red "MarzbanNext is already installed at $APP_DIR"
         read -p "Do you want to override the previous installation? (y/n) "
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             colorized_echo red "Aborted installation"
@@ -1329,11 +1329,11 @@ uninstall_command() {
     check_running_as_root
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
-    read -p "Do you really want to uninstall Marzban? (y/n) "
+    read -p "Do you really want to uninstall MarzbanNext? (y/n) "
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         colorized_echo red "Aborted"
         exit 1
@@ -1347,12 +1347,12 @@ uninstall_command() {
     uninstall_marzban
     uninstall_marzban_docker_images
     
-    read -p "Do you want to remove Marzban's data files too ($DATA_DIR)? (y/n) "
+    read -p "Do you want to remove MarzbanNext's data files too ($DATA_DIR)? (y/n) "
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        colorized_echo green "Marzban uninstalled successfully"
+        colorized_echo green "MarzbanNext uninstalled successfully"
     else
         uninstall_marzban_data_files
-        colorized_echo green "Marzban uninstalled successfully"
+        colorized_echo green "MarzbanNext uninstalled successfully"
     fi
 }
 
@@ -1374,7 +1374,7 @@ uninstall_marzban_docker_images() {
     images=$(docker images | grep marzban | awk '{print $3}')
     
     if [ -n "$images" ]; then
-        colorized_echo yellow "Removing Docker images of Marzban"
+        colorized_echo yellow "Removing Docker images of MarzbanNext"
         for image in $images; do
             if docker rmi "$image" >/dev/null 2>&1; then
                 colorized_echo yellow "Image $image removed"
@@ -1420,7 +1420,7 @@ restart_command() {
     
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
@@ -1431,7 +1431,7 @@ restart_command() {
     if [ "$no_logs" = false ]; then
         follow_marzban_logs
     fi
-    colorized_echo green "Marzban successfully restarted!"
+    colorized_echo green "MarzbanNext successfully restarted!"
 }
 logs_command() {
     help() {
@@ -1463,14 +1463,14 @@ logs_command() {
     
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
     detect_compose
     
     if ! is_marzban_up; then
-        colorized_echo red "Marzban is not up."
+        colorized_echo red "MarzbanNext is not up."
         exit 1
     fi
     
@@ -1485,14 +1485,14 @@ down_command() {
     
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
     detect_compose
     
     if ! is_marzban_up; then
-        colorized_echo red "Marzban's already down"
+        colorized_echo red "MarzbanNext's already down"
         exit 1
     fi
     
@@ -1502,14 +1502,14 @@ down_command() {
 cli_command() {
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
     detect_compose
     
     if ! is_marzban_up; then
-        colorized_echo red "Marzban is not up."
+        colorized_echo red "MarzbanNext is not up."
         exit 1
     fi
     
@@ -1546,14 +1546,14 @@ up_command() {
     
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
     detect_compose
     
     if is_marzban_up; then
-        colorized_echo red "Marzban's already up"
+        colorized_echo red "MarzbanNext's already up"
         exit 1
     fi
     
@@ -1567,7 +1567,7 @@ update_command() {
     check_running_as_root
     # Check if marzban is installed
     if ! is_marzban_installed; then
-        colorized_echo red "Marzban's not installed!"
+        colorized_echo red "MarzbanNext's not installed!"
         exit 1
     fi
     
@@ -1577,11 +1577,11 @@ update_command() {
     colorized_echo blue "Pulling latest version"
     update_marzban
     
-    colorized_echo blue "Restarting Marzban's services"
+    colorized_echo blue "Restarting MarzbanNext's services"
     down_marzban
     up_marzban
     
-    colorized_echo blue "Marzban updated successfully"
+    colorized_echo blue "MarzbanNext updated successfully"
 }
 
 update_marzban_script() {
@@ -1635,7 +1635,7 @@ edit_env_command() {
 usage() {
     local script_name="${0##*/}"
     colorized_echo blue "=============================="
-    colorized_echo magenta "           Marzban Help"
+    colorized_echo magenta "           MarzbanNext Help"
     colorized_echo blue "=============================="
     colorized_echo cyan "Usage:"
     echo "  ${script_name} [command]"
@@ -1647,11 +1647,11 @@ usage() {
     colorized_echo yellow "  restart         - Restart services"
     colorized_echo yellow "  status          - Show status"
     colorized_echo yellow "  logs            - Show logs"
-    colorized_echo yellow "  cli             - Marzban CLI"
-    colorized_echo yellow "  install         - Install Marzban"
+    colorized_echo yellow "  cli             - MarzbanNext CLI"
+    colorized_echo yellow "  install         - Install MarzbanNext"
     colorized_echo yellow "  update          - Update to latest version"
-    colorized_echo yellow "  uninstall       - Uninstall Marzban"
-    colorized_echo yellow "  install-script  - Install Marzban script"
+    colorized_echo yellow "  uninstall       - Uninstall MarzbanNext"
+    colorized_echo yellow "  install-script  - Install MarzbanNext script"
     colorized_echo yellow "  backup          - Manual backup launch"
     colorized_echo yellow "  backup-service  - Configure Telegram backups"
     colorized_echo yellow "  core-update     - Update/Change Xray core"

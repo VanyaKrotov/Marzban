@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="Логотип MarzbanNext">
+  <a href="https://github.com/VanyaKrotov/MarzbanNext">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/app/dashboard/src/assets/logo.svg" width="140" alt="Логотип MarzbanNext">
   </a>
 </p>
 
@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/Marzban/build.yml?style=flat-square" alt="Статус сборки"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/Marzban?style=flat-square" alt="Последний релиз"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/Marzban?style=flat-square" alt="Лицензия"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/Marzban?style=flat-square" alt="Звёзды"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/MarzbanNext/build.yml?style=flat-square" alt="Статус сборки"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/MarzbanNext?style=flat-square" alt="Последний релиз"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/MarzbanNext?style=flat-square" alt="Лицензия"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/MarzbanNext?style=flat-square" alt="Звёзды"></a>
 </p>
 
 <p align="center">
@@ -170,20 +170,20 @@ react-hook-form и Monaco Editor.
 ### SQLite
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install
 ```
 
 ### MySQL или MariaDB
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mysql
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mariadb
 ```
 
 ### Конкретная версия
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --version v0.10.1
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --version v0.10.1
 ```
 
 Установщик скачивает `marzban-linux-amd64.tar.gz` или
@@ -230,7 +230,7 @@ ssh -L 8000:localhost:8000 user@server
 3. На удалённом Linux-сервере выполните:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban-node.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban-node.sh)" @ install
 ```
 
 Образ скачивается из

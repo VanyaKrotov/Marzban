@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext 标志">
+  <a href="https://github.com/VanyaKrotov/MarzbanNext">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext 标志">
   </a>
 </p>
 
@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/Marzban/build.yml?style=flat-square" alt="构建状态"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/Marzban?style=flat-square" alt="最新版本"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/Marzban?style=flat-square" alt="许可证"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/Marzban?style=flat-square" alt="Stars"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/MarzbanNext/build.yml?style=flat-square" alt="构建状态"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/MarzbanNext?style=flat-square" alt="最新版本"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/MarzbanNext?style=flat-square" alt="许可证"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/MarzbanNext?style=flat-square" alt="Stars"></a>
 </p>
 
 <p align="center">
@@ -148,20 +148,20 @@ Compose v2。不支持旧版 `docker-compose` v1。
 ### SQLite
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install
 ```
 
 ### MySQL 或 MariaDB
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mysql
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mariadb
 ```
 
 ### 安装指定版本
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --version v0.10.1
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --version v0.10.1
 ```
 
 安装脚本从 GitHub Releases 下载当前架构对应的镜像压缩包，通过
@@ -198,7 +198,7 @@ ssh -L 8000:localhost:8000 user@server
 3. 在远程 Linux 节点服务器运行：
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban-node.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban-node.sh)" @ install
 ```
 
 镜像来自

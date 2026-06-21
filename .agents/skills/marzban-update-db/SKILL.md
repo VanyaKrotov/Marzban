@@ -1,9 +1,9 @@
 ---
 name: marzban-update-db
-description: Change Marzban SQLAlchemy models, CRUD behavior, Pydantic exposure, and Alembic migrations while preserving SQLite and MySQL/MariaDB compatibility. Use for columns, tables, relationships, indexes, constraints, enums, defaults, data backfills, or migration graph repairs.
+description: Change MarzbanNext SQLAlchemy models, CRUD behavior, Pydantic exposure, and Alembic migrations while preserving SQLite and MySQL/MariaDB compatibility. Use for columns, tables, relationships, indexes, constraints, enums, defaults, data backfills, or migration graph repairs.
 ---
 
-# Marzban Update Database
+# MarzbanNext Update Database
 
 ## Inspect the full data contract
 

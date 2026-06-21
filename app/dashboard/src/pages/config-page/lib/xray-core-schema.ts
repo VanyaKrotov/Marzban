@@ -151,7 +151,7 @@ export const xrayCoreSchema: MonacoJsonSchema = {
   $schema: "http://json-schema.org/draft-07/schema#",
   title: "Xray-core configuration",
   description:
-    "Complete Xray-core configuration used by Marzban as the base configuration.",
+    "Complete Xray-core configuration used by MarzbanNext as the base configuration.",
   type: "object",
   additionalProperties: true,
   properties: {
@@ -321,7 +321,7 @@ export const xrayCoreSchema: MonacoJsonSchema = {
     },
     inbounds: {
       type: "array",
-      description: "Inbound listeners. Supported managed protocols are synchronized with Marzban.",
+      description: "Inbound listeners. Supported managed protocols are synchronized with MarzbanNext.",
       items: xrayCoreInboundSchema,
     },
     outbounds: {

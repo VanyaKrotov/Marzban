@@ -1,4 +1,4 @@
 interface:
-  display_name: "Marzban Project Overview"
-  short_description: "Navigate Marzban architecture and conventions"
-  default_prompt: "Use $marzban-project-overview to orient this change in the Marzban codebase."
+  display_name: "MarzbanNext Project Overview"
+  short_description: "Navigate MarzbanNext architecture and conventions"
+  default_prompt: "Use $marzban-project-overview to orient this change in the MarzbanNext codebase."

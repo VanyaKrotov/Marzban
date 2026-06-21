@@ -1,9 +1,9 @@
 ---
 name: marzban-xray-change
-description: Modify Marzban's Xray integration across config parsing, generated runtime config, process lifecycle, node synchronization, subscriptions, account models, and gRPC wrappers. Use for protocols, transports, inbound settings, Xray users, core or node operations, stats, protobuf APIs, or client share-link behavior.
+description: Modify MarzbanNext's Xray integration across config parsing, generated runtime config, process lifecycle, node synchronization, subscriptions, account models, and gRPC wrappers. Use for protocols, transports, inbound settings, Xray users, core or node operations, stats, protobuf APIs, or client share-link behavior.
 ---
 
-# Marzban Xray Change
+# MarzbanNext Xray Change
 
 ## Trace both control planes
 

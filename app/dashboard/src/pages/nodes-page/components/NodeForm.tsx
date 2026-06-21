@@ -54,7 +54,7 @@ export function NodeForm({
           <FieldLabel htmlFor="node-name">{t("nodes.nodeName")}</FieldLabel>
           <Input
             id="node-name"
-            placeholder="Marzban-S2"
+            placeholder="MarzbanNext-S2"
             disabled={pending}
             {...form.register("name")}
           />

@@ -2,12 +2,13 @@ import { ChevronRight, Plus, RefreshCw, Server } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 
 import Page from "@/components/page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -116,10 +117,13 @@ export function NodesPage() {
                       />
                       <NodeCardValue
                         label={t("nodesPage.coreVersion")}
-                        value={
-                          node.xray_version ? `v${node.xray_version}` : "-"
-                        }
-                      />
+                      >
+                        {node.xray_version ? (
+                          <Badge variant="outline">v{node.xray_version}</Badge>
+                        ) : (
+                          "-"
+                        )}
+                      </NodeCardValue>
                     </div>
                     <div className="flex justify-between gap-x-6 pt-3 text-muted-foreground">
                       <NodeStatusBadge status={node.status} />{" "}
@@ -160,11 +164,19 @@ export function NodesPage() {
   );
 }
 
-function NodeCardValue({ label, value }: { label: string; value: string }) {
+function NodeCardValue({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="truncate font-medium mt-0.5">{value}</p>
+      <div className="truncate font-medium mt-0.5">{children ?? value}</div>
     </div>
   );
 }

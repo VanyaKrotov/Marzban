@@ -106,11 +106,11 @@ const GLOBAL_NAVIGATION = [
     labelKey: "navigation.repository",
     href: REPO_URL,
   },
-  {
-    icon: BookOpen,
-    labelKey: "navigation.documentation",
-    href: DOCUMENTATION_URL,
-  },
+  // {
+  //   icon: BookOpen,
+  //   labelKey: "navigation.documentation",
+  //   href: DOCUMENTATION_URL,
+  // },
 ] as const;
 
 const Layout: FC = () => {

@@ -6,9 +6,9 @@ import { LANGUAGES } from "@/lib/languages";
 
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -26,12 +26,13 @@ export const Language: FC = () => {
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
           {LANGUAGES.map(({ label, value }) => (
-            <DropdownMenuItem
+            <DropdownMenuCheckboxItem
               key={value}
+              checked={value === i18n.language}
               onSelect={() => i18n.changeLanguage(value)}
             >
               {label}
-            </DropdownMenuItem>
+            </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>

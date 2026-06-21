@@ -1,9 +1,9 @@
 ---
 name: marzban-refactoring
-description: Refactor Marzban Python or TypeScript code while preserving API contracts, database behavior, scheduler registration, reports, Xray synchronization, dashboard state, and deployment output. Use for extracting helpers, splitting modules, removing duplication, simplifying control flow, renaming internals, or reorganizing code without intended feature changes.
+description: Refactor MarzbanNext Python or TypeScript code while preserving API contracts, database behavior, scheduler registration, reports, Xray synchronization, dashboard state, and deployment output. Use for extracting helpers, splitting modules, removing duplication, simplifying control flow, renaming internals, or reorganizing code without intended feature changes.
 ---
 
-# Marzban Refactoring
+# MarzbanNext Refactoring
 
 ## Define the behavioral boundary
 
@@ -31,7 +31,7 @@ Use `git diff` and nearby call sites to reconstruct behavior where tests are abs
 
 ## Avoid initialization regressions
 
-Marzban relies heavily on import side effects:
+MarzbanNext relies heavily on import side effects:
 
 - `app/__init__.py` imports routers, jobs, dashboard, and Telegram after creating `app`, `scheduler`, and `logger`.
 - `app/jobs/__init__.py` dynamically imports every non-private Python module.

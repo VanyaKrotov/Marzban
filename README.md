@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban">
-    <img src="https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext logo">
+  <a href="https://github.com/VanyaKrotov/MarzbanNext">
+    <img src="https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/app/dashboard/src/assets/logo.svg" width="140" alt="MarzbanNext logo">
   </a>
 </p>
 
@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/VanyaKrotov/Marzban/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/Marzban/build.yml?style=flat-square" alt="Build status"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/Marzban?style=flat-square" alt="Latest release"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/Marzban?style=flat-square" alt="License"></a>
-  <a href="https://github.com/VanyaKrotov/Marzban/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/Marzban?style=flat-square" alt="Stars"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/actions"><img src="https://img.shields.io/github/actions/workflow/status/VanyaKrotov/MarzbanNext/build.yml?style=flat-square" alt="Build status"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/releases"><img src="https://img.shields.io/github/v/release/VanyaKrotov/MarzbanNext?style=flat-square" alt="Latest release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/VanyaKrotov/MarzbanNext?style=flat-square" alt="License"></a>
+  <a href="https://github.com/VanyaKrotov/MarzbanNext/stargazers"><img src="https://img.shields.io/github/stars/VanyaKrotov/MarzbanNext?style=flat-square" alt="Stars"></a>
 </p>
 
 <p align="center">
@@ -171,20 +171,20 @@ Legacy `docker-compose` v1 is not supported.
 ### Install with SQLite
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install
 ```
 
 ### Install with MySQL or MariaDB
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mysql
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --database mariadb
 ```
 
 ### Install a specific version
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban.sh)" @ install --version v0.10.1
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban.sh)" @ install --version v0.10.1
 ```
 
 The installer downloads `marzban-linux-amd64.tar.gz` or
@@ -235,7 +235,7 @@ Then open `http://127.0.0.1:8000/dashboard/`.
 3. Run the node installer on the remote Linux server:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/Marzban/master/scripts/marzban-node.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/VanyaKrotov/MarzbanNext/master/scripts/marzban-node.sh)" @ install
 ```
 
 The node image is downloaded from

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Marzban Add Endpoint"
-  short_description: "Add FastAPI endpoints using Marzban patterns"
-  default_prompt: "Use $marzban-add-endpoint to add or modify a Marzban REST API endpoint."
+  display_name: "MarzbanNext Add Endpoint"
+  short_description: "Add FastAPI endpoints using MarzbanNext patterns"
+  default_prompt: "Use $marzban-add-endpoint to add or modify a MarzbanNext REST API endpoint."

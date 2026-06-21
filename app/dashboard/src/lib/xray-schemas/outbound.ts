@@ -12,7 +12,7 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
       type: "string",
       minLength: 1,
       description:
-        "Unique outbound tag. Marzban synchronizes this value with the tag field outside the editor.",
+        "Unique outbound tag. MarzbanNext synchronizes this value with the tag field outside the editor.",
     },
     protocol: {
       type: "string",

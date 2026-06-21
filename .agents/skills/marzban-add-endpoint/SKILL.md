@@ -1,9 +1,9 @@
 ---
 name: marzban-add-endpoint
-description: Add or modify Marzban FastAPI REST endpoints, request and response models, authentication dependencies, CRUD calls, reports, logging, and runtime side effects. Use for new `/api` routes, endpoint parameters, response schemas, authorization rules, HTTP errors, or API behavior changes in `app/routers`.
+description: Add or modify MarzbanNext FastAPI REST endpoints, request and response models, authentication dependencies, CRUD calls, reports, logging, and runtime side effects. Use for new `/api` routes, endpoint parameters, response schemas, authorization rules, HTTP errors, or API behavior changes in `app/routers`.
 ---
 
-# Marzban Add Endpoint
+# MarzbanNext Add Endpoint
 
 ## Trace the domain first
 

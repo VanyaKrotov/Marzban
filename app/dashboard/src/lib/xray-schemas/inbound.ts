@@ -173,7 +173,7 @@ const socksAccountsSchema: MonacoJsonSchema = {
     },
   },
   description:
-    "SOCKS username/password accounts. Managed Marzban users are injected here at runtime.",
+    "SOCKS username/password accounts. Managed MarzbanNext users are injected here at runtime.",
 };
 
 const httpHeaderSchema: MonacoJsonSchema = {
@@ -545,14 +545,14 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
         "Canonical WebSocket transport.",
         "HTTPUpgrade transport.",
         "Hysteria transport.",
-        "Legacy alias for RAW used by existing Marzban configurations.",
+        "Legacy alias for RAW used by existing MarzbanNext configurations.",
         "Legacy alias for mKCP.",
         "Legacy alias for WebSocket.",
         "Legacy predecessor or alias used by older SplitHTTP configurations.",
       ],
       default: "raw",
       description:
-        "Transport method. Canonical Xray names and legacy Marzban-compatible aliases are accepted.",
+        "Transport method. Canonical Xray names and legacy MarzbanNext-compatible aliases are accepted.",
     },
     security: {
       type: "string",
@@ -807,7 +807,7 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
     wsSettings: {
       type: "object",
       description:
-        "WebSocket settings. The ws key is retained for Xray and Marzban compatibility.",
+        "WebSocket settings. The ws key is retained for Xray and MarzbanNext compatibility.",
       additionalProperties: true,
       properties: {
         acceptProxyProtocol: { type: "boolean", default: false },
@@ -963,7 +963,7 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
           minLength: 43,
           maxLength: 43,
           description:
-            "Derived X25519 public key stored by Marzban for generated client links.",
+            "Derived X25519 public key stored by MarzbanNext for generated client links.",
         },
         minClientVer: {
           type: "string",
@@ -1352,7 +1352,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
   $schema: "http://json-schema.org/draft-07/schema#",
   title: "Xray inbound",
   description:
-    "Managed Xray-core inbound configuration. The schema follows the official InboundObject while retaining legacy Marzban aliases.",
+    "Managed Xray-core inbound configuration. The schema follows the official InboundObject while retaining legacy MarzbanNext aliases.",
   type: "object",
   required: ["protocol", "settings"],
   additionalProperties: true,
@@ -1361,7 +1361,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
       type: "string",
       minLength: 1,
       description:
-        "Unique inbound tag. Marzban synchronizes this value with the tag field outside the editor.",
+        "Unique inbound tag. MarzbanNext synchronizes this value with the tag field outside the editor.",
     },
     listen: {
       type: "string",
@@ -1405,17 +1405,17 @@ export const xrayInboundSchema: MonacoJsonSchema = {
       enumDescriptions: [
         "Tunnel inbound, historically named dokodemo-door.",
         "HTTP proxy inbound.",
-        "Shadowsocks inbound managed by Marzban.",
+        "Shadowsocks inbound managed by MarzbanNext.",
         "SOCKS proxy inbound.",
-        "Trojan inbound managed by Marzban.",
-        "VLESS inbound managed by Marzban.",
-        "VMess inbound managed by Marzban.",
+        "Trojan inbound managed by MarzbanNext.",
+        "VLESS inbound managed by MarzbanNext.",
+        "VMess inbound managed by MarzbanNext.",
         "WireGuard inbound.",
         "Hysteria inbound.",
         "TUN inbound.",
       ],
       description:
-        "Inbound protocol. User accounts are injected only for protocols supported by Marzban accounts.",
+        "Inbound protocol. User accounts are injected only for protocols supported by MarzbanNext accounts.",
     },
     settings: {
       type: "object",
@@ -1483,13 +1483,13 @@ export const xrayInboundSchema: MonacoJsonSchema = {
               clients: {
                 type: "array",
                 description:
-                  "Marzban-compatible static client list. Managed users are injected here at runtime.",
+                  "MarzbanNext-compatible static client list. Managed users are injected here at runtime.",
                 items: vlessUserSchema,
               },
               users: {
                 type: "array",
                 description:
-                  "Official Xray static user list. Prefer clients for managed Marzban accounts.",
+                  "Official Xray static user list. Prefer clients for managed MarzbanNext accounts.",
                 items: vlessUserSchema,
               },
               decryption: {
@@ -1522,7 +1522,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
               clients: {
                 type: "array",
                 description:
-                  "Marzban-compatible static client list. Managed users are injected here at runtime.",
+                  "MarzbanNext-compatible static client list. Managed users are injected here at runtime.",
                 items: idUserSchema,
               },
               users: {
@@ -1567,7 +1567,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
               clients: {
                 type: "array",
                 description:
-                  "Marzban-compatible static client list. Managed users are injected here at runtime.",
+                  "MarzbanNext-compatible static client list. Managed users are injected here at runtime.",
                 items: trojanUserSchema,
               },
               users: {
@@ -1617,7 +1617,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
               clients: {
                 type: "array",
                 description:
-                  "Marzban-compatible static client list. Managed users are injected here at runtime.",
+                  "MarzbanNext-compatible static client list. Managed users are injected here at runtime.",
                 items: shadowsocksUserSchema,
               },
               users: {
@@ -1646,7 +1646,7 @@ export const xrayInboundSchema: MonacoJsonSchema = {
                 enum: ["noauth", "password"],
                 default: "password",
                 description:
-                  "SOCKS authentication mode. Managed Marzban accounts require password.",
+                  "SOCKS authentication mode. Managed MarzbanNext accounts require password.",
               },
               accounts: socksAccountsSchema,
               users: socksAccountsSchema,

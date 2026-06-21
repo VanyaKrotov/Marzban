@@ -1,9 +1,9 @@
 ---
 name: marzban-project-overview
-description: Orient work in the Marzban repository and explain its architecture, runtime flow, code conventions, ownership boundaries, and verification strategy. Use when starting an unfamiliar Marzban task, locating where a change belongs, reviewing cross-cutting behavior, or deciding which backend, dashboard, CLI, database, job, subscription, or Xray modules must change.
+description: Orient work in the MarzbanNext repository and explain its architecture, runtime flow, code conventions, ownership boundaries, and verification strategy. Use when starting an unfamiliar MarzbanNext task, locating where a change belongs, reviewing cross-cutting behavior, or deciding which backend, dashboard, CLI, database, job, subscription, or Xray modules must change.
 ---
 
-# Marzban Project Overview
+# MarzbanNext Project Overview
 
 ## Establish context
 
