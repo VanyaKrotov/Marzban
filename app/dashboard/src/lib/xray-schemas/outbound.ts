@@ -1,5 +1,116 @@
 import type { MonacoJsonSchema } from "@/components/MonacoJsonEditor";
 
+const serverAddressProperties: Record<string, MonacoJsonSchema> = {
+  address: {
+    type: "string",
+    minLength: 1,
+    description: "Remote server hostname or IP address.",
+  },
+  port: {
+    type: "integer",
+    minimum: 1,
+    maximum: 65535,
+    description: "Remote server port.",
+  },
+};
+
+const usersProperty: MonacoJsonSchema = {
+  type: "array",
+  minItems: 1,
+  description: "Accounts used to authenticate to the server.",
+  items: {
+    type: "object",
+    additionalProperties: true,
+  },
+};
+
+const directProxyProperties: Record<string, MonacoJsonSchema> = {
+  ...serverAddressProperties,
+  user: {
+    type: "string",
+    description: "Username for HTTP or Socks authentication.",
+  },
+  pass: {
+    type: "string",
+    description: "Password for HTTP or Socks authentication.",
+  },
+  password: {
+    type: "string",
+    description: "Password or pre-shared key used by this outbound.",
+  },
+  method: {
+    type: "string",
+    description: "Shadowsocks encryption method.",
+  },
+  level: {
+    type: "integer",
+    minimum: 0,
+    description: "User level used for local policy selection.",
+  },
+  email: {
+    type: "string",
+    description: "Optional account email used for traffic statistics.",
+  },
+  headers: {
+    type: "object",
+    additionalProperties: { type: "string" },
+    description: "HTTP headers sent to the remote HTTP proxy.",
+  },
+};
+
+const legacyServerItemSchema: MonacoJsonSchema = {
+  type: "object",
+  required: ["address", "port"],
+  additionalProperties: true,
+  properties: directProxyProperties,
+};
+
+const legacyVnextItemSchema: MonacoJsonSchema = {
+  type: "object",
+  required: ["address", "port", "users"],
+  additionalProperties: true,
+  properties: {
+    ...serverAddressProperties,
+    users: usersProperty,
+  },
+};
+
+const directVlessVmessProperties: Record<string, MonacoJsonSchema> = {
+  ...serverAddressProperties,
+  id: {
+    type: "string",
+    minLength: 1,
+    description: "VLESS or VMess user ID.",
+  },
+  encryption: {
+    type: "string",
+    description: "VLESS encryption setting.",
+  },
+  security: {
+    type: "string",
+    description: "VMess security setting.",
+  },
+  flow: {
+    type: "string",
+    description: "VLESS flow control mode.",
+  },
+  level: directProxyProperties.level,
+  alterId: {
+    type: "integer",
+    minimum: 0,
+    description: "Legacy VMess alterId.",
+  },
+  experiments: {
+    type: "string",
+    description: "VMess experiments setting.",
+  },
+  reverse: {
+    type: "object",
+    additionalProperties: true,
+    description: "VLESS minimalist reverse proxy configuration.",
+  },
+};
+
 export const xrayOutboundSchema: MonacoJsonSchema = {
   $schema: "http://json-schema.org/draft-07/schema#",
   title: "Xray outbound",
@@ -184,31 +295,20 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
         properties: {
           settings: {
             type: "object",
-            required: ["servers"],
             additionalProperties: true,
+            anyOf: [
+              { required: ["servers"] },
+              { required: ["address", "port"] },
+            ],
             properties: {
+              ...directProxyProperties,
+              users: usersProperty,
               servers: {
                 type: "array",
                 minItems: 1,
-                description: "Remote proxy servers used by this outbound.",
-                items: {
-                  type: "object",
-                  required: ["address", "port"],
-                  additionalProperties: true,
-                  properties: {
-                    address: {
-                      type: "string",
-                      minLength: 1,
-                      description: "Remote server hostname or IP address.",
-                    },
-                    port: {
-                      type: "integer",
-                      minimum: 1,
-                      maximum: 65535,
-                      description: "Remote server port.",
-                    },
-                  },
-                },
+                description:
+                  "Legacy remote proxy servers list. Newer Xray-core versions also accept address and port directly in settings.",
+                items: legacyServerItemSchema,
               },
             },
           },
@@ -228,40 +328,29 @@ export const xrayOutboundSchema: MonacoJsonSchema = {
         properties: {
           settings: {
             type: "object",
-            required: ["vnext"],
             additionalProperties: true,
+            anyOf: [
+              { required: ["vnext"] },
+              { required: ["address", "port", "id"] },
+            ],
             properties: {
+              ...directVlessVmessProperties,
+              address: {
+                ...directVlessVmessProperties.address,
+                description:
+                  "Remote server hostname or IP address for the direct VLESS or VMess settings format.",
+              },
+              port: {
+                ...directVlessVmessProperties.port,
+                description:
+                  "Remote server port for the direct VLESS or VMess settings format.",
+              },
               vnext: {
                 type: "array",
                 minItems: 1,
-                description: "Remote VLESS or VMess servers.",
-                items: {
-                  type: "object",
-                  required: ["address", "port", "users"],
-                  additionalProperties: true,
-                  properties: {
-                    address: {
-                      type: "string",
-                      minLength: 1,
-                      description: "Remote server hostname or IP address.",
-                    },
-                    port: {
-                      type: "integer",
-                      minimum: 1,
-                      maximum: 65535,
-                      description: "Remote server port.",
-                    },
-                    users: {
-                      type: "array",
-                      minItems: 1,
-                      description: "Accounts used to authenticate to the server.",
-                      items: {
-                        type: "object",
-                        additionalProperties: true,
-                      },
-                    },
-                  },
-                },
+                description:
+                  "Legacy remote VLESS or VMess servers list. Newer Xray-core versions also accept address, port and id directly in settings.",
+                items: legacyVnextItemSchema,
               },
             },
           },
