@@ -94,3 +94,51 @@ export function useUpdateSubscriptionTemplateMutation() {
   });
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function timestamp() {
+  return new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "");
+}
+
+export async function downloadFullBackup() {
+  const blob = await api.get<Blob>("/settings/backups/full", {
+    responseType: "blob",
+  });
+  downloadBlob(blob, `marzbannext_full_backup_${timestamp()}.zip`);
+}
+
+export async function downloadDatabaseBackup() {
+  const blob = await api.get<Blob>("/settings/backups/database", {
+    responseType: "blob",
+  });
+  downloadBlob(blob, `marzbannext_database_${timestamp()}.sql`);
+}
+
+export function useRestoreFullBackupMutation() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return api.post("/settings/backups/full", formData);
+    },
+  });
+}
+
+export function useRestoreDatabaseBackupMutation() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return api.post("/settings/backups/database", formData);
+    },
+  });
+}

@@ -9,6 +9,7 @@ import {
   generateSuccessMessage,
 } from "@/utils/toastHandler";
 
+import { BackupSettingsSection } from "./components/BackupSettingsSection";
 import { LoadError } from "./components/LoadError";
 import { NotificationSettingsSection } from "./components/NotificationSettingsSection";
 import { SubscriptionSettingsSection } from "./components/SubscriptionSettingsSection";
@@ -86,6 +87,7 @@ export function SettingsPage() {
           )}
           <NotificationSettingsSection settings={settingsQuery.data} />
           <WebhookSettingsSection settings={settingsQuery.data} />
+          <BackupSettingsSection />
         </div>
       )}
     </Page>
