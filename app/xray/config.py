@@ -62,6 +62,8 @@ def load_xray_config(
                 if isinstance(content, str):
                     content = json.loads(content)
                 if isinstance(content, dict):
+                    content = deepcopy(content)
+                    content["tag"] = tag
                     db_inbounds.append(content)
 
         payload["inbounds"] = [
@@ -91,6 +93,8 @@ def load_xray_config(
                 if isinstance(content, str):
                     content = json.loads(content)
                 if isinstance(content, dict):
+                    content = deepcopy(content)
+                    content["tag"] = tag
                     db_outbounds.append(content)
 
         payload["outbounds"] = [
@@ -245,14 +249,24 @@ class XRayConfig(dict):
         if not self.get("outbounds"):
             raise ValueError("config doesn't have outbounds")
 
+        inbound_tags = set()
         for inbound in self['inbounds']:
-            if not inbound.get("tag"):
+            tag = inbound.get("tag")
+            if not tag:
+                raise ValueError("all inbounds must have a tag")
+            if tag in inbound_tags:
                 raise ValueError("all inbounds must have a unique tag")
-            if ',' in inbound.get("tag"):
+            inbound_tags.add(tag)
+            if ',' in tag:
                 raise ValueError("character «,» is not allowed in inbound tag")
+        outbound_tags = set()
         for outbound in self['outbounds']:
-            if not outbound.get("tag"):
+            tag = outbound.get("tag")
+            if not tag:
+                raise ValueError("all outbounds must have a tag")
+            if tag in outbound_tags:
                 raise ValueError("all outbounds must have a unique tag")
+            outbound_tags.add(tag)
 
     def _resolve_inbounds(self):
         for inbound in self['inbounds']:
