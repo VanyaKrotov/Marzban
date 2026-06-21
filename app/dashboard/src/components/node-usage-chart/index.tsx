@@ -97,12 +97,12 @@ export function NodeUsageChart({
 
   return (
     <Card className={cn(className)}>
-      <CardHeader>
+      <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle>{title ?? t("statsPage.nodeUsageTitle")}</CardTitle>
         <CardDescription>
           {description ?? t("statsPage.nodeUsageDescription")}
         </CardDescription>
-        <CardAction>
+        <CardAction className="col-start-1 row-start-3 row-span-1 mt-1 justify-self-start sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:mt-0 sm:justify-self-end">
           <NodeUsageDateRangeFilter
             range={range}
             preset={preset}
@@ -189,3 +189,4 @@ export {
   type NodeUsageDateRange,
   type NodeUsagePeriodPreset,
 } from "./lib";
+export { NodeUsageDateRangeFilter } from "./DateRangeFilter";

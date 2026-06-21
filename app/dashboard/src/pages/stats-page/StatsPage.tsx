@@ -33,7 +33,7 @@ export function StatsPage() {
     [defaults.from, defaults.to, searchParams],
   );
   const granularity = parseGranularity(searchParams.get("granularity"));
-  const historyQuery = useStatsHistoryQuery(granularity);
+  const historyQuery = useStatsHistoryQuery(granularity, pieRange);
 
   useEffect(() => {
     const from = formatDateParam(pieRange.from);

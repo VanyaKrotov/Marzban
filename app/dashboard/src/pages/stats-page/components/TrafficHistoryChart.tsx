@@ -92,10 +92,10 @@ export function TrafficHistoryChart({
 
   return (
     <Card className="lg:col-span-2">
-      <CardHeader>
+      <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle>{t("statsPage.trafficTitle")}</CardTitle>
         <CardDescription>{t("statsPage.trafficDescription")}</CardDescription>
-        <CardAction className="flex gap-2">
+        <CardAction className="col-start-1 row-start-3 row-span-1 mt-1 flex flex-wrap justify-start gap-2 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:mt-0 sm:justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="sm">
