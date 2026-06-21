@@ -2,14 +2,13 @@ import json
 import os
 import shutil
 import sqlite3
-import subprocess
 import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 
 from fastapi import HTTPException
+from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 
 from app.db.base import engine
@@ -66,47 +65,78 @@ def _dump_sqlite_database() -> bytes:
     return sql.encode("utf-8")
 
 
-def _mysql_command(binary_names: Iterable[str]) -> str:
-    for binary_name in binary_names:
-        binary = shutil.which(binary_name)
-        if binary:
-            return binary
-    raise HTTPException(
-        status_code=500,
-        detail="MySQL client tools are not installed",
+def _quote_mysql_identifier(value: str) -> str:
+    return f"`{value.replace('`', '``')}`"
+
+
+def _mysql_literal(value) -> str:
+    if value is None:
+        return "NULL"
+    if isinstance(value, bytes):
+        return f"X'{value.hex()}'"
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float)):
+        return str(value)
+
+    text = str(value)
+    text = (
+        text.replace("\\", "\\\\")
+        .replace("'", "\\'")
+        .replace("\0", "\\0")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\x1a", "\\Z")
     )
-
-
-def _mysql_env_and_args(command: str) -> tuple[dict[str, str], list[str]]:
-    url = make_url(SQLALCHEMY_DATABASE_URL)
-    database = url.database
-    if not database:
-        raise HTTPException(status_code=500, detail="Database name is not configured")
-
-    env = os.environ.copy()
-    if url.password:
-        env["MYSQL_PWD"] = url.password
-
-    args = [command, "-h", url.host or "127.0.0.1", "-u", url.username or "root"]
-    if url.port:
-        args.extend(["-P", str(url.port)])
-    return env, args
+    return f"'{text}'"
 
 
 def _dump_mysql_database() -> bytes:
-    command = _mysql_command(("mariadb-dump", "mysqldump"))
-    env, args = _mysql_env_and_args(command)
-    database = make_url(SQLALCHEMY_DATABASE_URL).database
-    result = subprocess.run(
-        [*args, "--single-transaction", "--routines", "--triggers", database],
-        env=env,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        detail = result.stderr.decode("utf-8", errors="ignore").strip()
-        raise HTTPException(status_code=500, detail=detail or "Database dump failed")
-    return result.stdout
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    lines = [
+        "-- MarzbanNext database backup",
+        "SET FOREIGN_KEY_CHECKS=0;",
+        "SET NAMES utf8mb4;",
+        "",
+    ]
+
+    with engine.connect() as connection:
+        for table_name in table_names:
+            quoted_table = _quote_mysql_identifier(table_name)
+            create_row = connection.exec_driver_sql(
+                f"SHOW CREATE TABLE {quoted_table}"
+            ).first()
+            if not create_row:
+                continue
+
+            lines.extend(
+                [
+                    f"DROP TABLE IF EXISTS {quoted_table};",
+                    f"{create_row[1]};",
+                    "",
+                ]
+            )
+
+            columns = [column["name"] for column in inspector.get_columns(table_name)]
+            if not columns:
+                continue
+
+            quoted_columns = ", ".join(
+                _quote_mysql_identifier(column) for column in columns
+            )
+            rows = connection.exec_driver_sql(
+                f"SELECT {quoted_columns} FROM {quoted_table}"
+            )
+            for row in rows:
+                values = ", ".join(_mysql_literal(value) for value in row)
+                lines.append(
+                    f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({values});"
+                )
+            lines.append("")
+
+    lines.append("SET FOREIGN_KEY_CHECKS=1;")
+    return ("\n".join(lines) + "\n").encode("utf-8")
 
 
 def dump_database_sql() -> bytes:
@@ -137,20 +167,77 @@ def _restore_sqlite_database(sql_content: bytes) -> None:
         raise
 
 
+def _split_sql_statements(sql: str) -> list[str]:
+    statements = []
+    buffer = []
+    quote = None
+    escaped = False
+    index = 0
+
+    while index < len(sql):
+        char = sql[index]
+        next_char = sql[index + 1] if index + 1 < len(sql) else ""
+
+        if quote:
+            buffer.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            index += 1
+            continue
+
+        if char == "-" and next_char == "-":
+            index = sql.find("\n", index)
+            if index == -1:
+                break
+            continue
+
+        if char == "#":
+            index = sql.find("\n", index)
+            if index == -1:
+                break
+            continue
+
+        if char == "/" and next_char == "*":
+            end = sql.find("*/", index + 2)
+            if end == -1:
+                break
+            index = end + 2
+            continue
+
+        if char in {"'", '"', "`"}:
+            quote = char
+            buffer.append(char)
+            index += 1
+            continue
+
+        if char == ";":
+            statement = "".join(buffer).strip()
+            if statement:
+                statements.append(statement)
+            buffer = []
+            index += 1
+            continue
+
+        buffer.append(char)
+        index += 1
+
+    statement = "".join(buffer).strip()
+    if statement:
+        statements.append(statement)
+    return statements
+
+
 def _restore_mysql_database(sql_content: bytes) -> None:
-    command = _mysql_command(("mariadb", "mysql"))
-    env, args = _mysql_env_and_args(command)
-    database = make_url(SQLALCHEMY_DATABASE_URL).database
-    result = subprocess.run(
-        [*args, database],
-        input=sql_content,
-        env=env,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        detail = result.stderr.decode("utf-8", errors="ignore").strip()
-        raise HTTPException(status_code=500, detail=detail or "Database restore failed")
+    statements = _split_sql_statements(sql_content.decode("utf-8"))
+    with engine.begin() as connection:
+        connection.exec_driver_sql("SET FOREIGN_KEY_CHECKS=0")
+        for statement in statements:
+            connection.exec_driver_sql(statement)
+        connection.exec_driver_sql("SET FOREIGN_KEY_CHECKS=1")
     engine.dispose()
 
 
