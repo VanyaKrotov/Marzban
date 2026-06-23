@@ -93,6 +93,9 @@ export function StatsPage() {
         next.set("from", formatDateParam(range.from));
         next.set("to", formatDateParam(range.to));
         next.set("period", preset);
+        if (isHourPeriodPreset(preset)) {
+          next.set("granularity", "hour");
+        }
         return next;
       },
       { replace: true },
@@ -172,6 +175,15 @@ export function StatsPage() {
   );
 }
 
+function isHourPeriodPreset(preset: NodeUsagePeriodPreset) {
+  return (
+    preset === "lastHour" ||
+    preset === "last3Hours" ||
+    preset === "last6Hours" ||
+    preset === "last12Hours"
+  );
+}
+
 const PERIOD_PRESETS: NodeUsagePeriodPreset[] = [
   "lastHour",
   "last3Hours",
@@ -201,15 +213,14 @@ function parseGranularity(value: string | null): StatsGranularity {
 
 function parseDate(value: string | null, fallback: Date, endOfDate: boolean) {
   if (!value) return fallback;
-  const date = new Date(`${value}T00:00:00`);
+  const date = value.includes("T")
+    ? new Date(value)
+    : new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return fallback;
-  if (endOfDate) date.setHours(23, 59, 59, 999);
+  if (endOfDate && !value.includes("T")) date.setHours(23, 59, 59, 999);
   return date;
 }
 
 function formatDateParam(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return value.toISOString();
 }

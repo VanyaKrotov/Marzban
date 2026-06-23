@@ -17,13 +17,26 @@ export function formatPeriod(
   locale: string,
 ) {
   const date = new Date(value);
+  if (granularity === "hour") {
+    return formatHourRange(date, locale);
+  }
+
   const options: Intl.DateTimeFormatOptions =
-    granularity === "hour"
-      ? { day: "numeric", hour: "2-digit", month: "short" }
-      : granularity === "month"
+    granularity === "month"
       ? { month: "short", year: "numeric" }
       : { day: "numeric", month: "short" };
   return new Intl.DateTimeFormat(locale, options).format(date);
+}
+
+function formatHourRange(date: Date, locale: string) {
+  const nextHour = new Date(date);
+  nextHour.setHours(nextHour.getHours() + 1);
+  const formatter = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+  });
+  return `${formatter.format(date)}-${formatter.format(nextHour)}`;
 }
 
 export function formatCompactBytes(value: number) {
