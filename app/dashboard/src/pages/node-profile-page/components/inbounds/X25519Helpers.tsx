@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dices } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { api } from "@/service/http";
 
@@ -40,6 +41,7 @@ function X25519Helpers({ onSet }: Props) {
 }
 
 function Content({ onSet }: Props) {
+  const { t } = useTranslation();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["x25519"],
     queryFn: ({ signal }) =>
@@ -52,11 +54,11 @@ function Content({ onSet }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <Field>
-        <FieldLabel>Public key</FieldLabel>
+        <FieldLabel>{t("inboundsPage.helpers.publicKey")}</FieldLabel>
         <Input readOnly value={data?.public_key ?? ""} />
       </Field>
       <Field>
-        <FieldLabel>Private key</FieldLabel>
+        <FieldLabel>{t("inboundsPage.helpers.privateKey")}</FieldLabel>
         <Input readOnly value={data?.private_key ?? ""} />
       </Field>
       <div className="flex gap-1 items-center justify-end">
@@ -67,7 +69,7 @@ function Content({ onSet }: Props) {
           onClick={() => onSet(data!.public_key, data!.private_key)}
           disabled={isFetching || !data}
         >
-          Setup
+          {t("inboundsPage.helpers.setup")}
         </Button>
       </div>
     </div>

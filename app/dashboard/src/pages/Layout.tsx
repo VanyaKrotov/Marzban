@@ -55,7 +55,7 @@ import { api } from "@/service/http";
 
 const NAVIGATION = [
   {
-    title: "Panel options",
+    titleKey: "navigation.panelOptions",
     children: [
       {
         icon: ChartArea,
@@ -149,9 +149,9 @@ const Layout: FC = () => {
           )}
         </SidebarHeader>
         <SidebarContent>
-          {navigation.map(({ children, title }) => (
-            <SidebarGroup key={title}>
-              <SidebarGroupLabel>{title}</SidebarGroupLabel>
+          {navigation.map(({ children, titleKey }) => (
+            <SidebarGroup key={titleKey}>
+              <SidebarGroupLabel>{t(titleKey)}</SidebarGroupLabel>
               <SidebarGroupContent className="flex flex-col gap-1">
                 {children.map(({ icon: Icon, labelKey, to }) => (
                   <SidebarMenuItem key={to}>
@@ -228,7 +228,7 @@ const Layout: FC = () => {
               <div className="flex flex-col gap-y-0.5 ml-0.5">
                 <p className="text-md font-medium">{username}</p>
                 <p className="text-xs text-muted-foreground">
-                  {is_sudo ? "Super" : "Basic"} admin
+                  {t(is_sudo ? "adminRole.super" : "adminRole.basic")}
                 </p>
               </div>
               <Button size="icon" asChild className="ml-auto" variant="ghost">

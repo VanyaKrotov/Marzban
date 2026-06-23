@@ -232,7 +232,7 @@ function RoutingRuleDialogContent({
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending && <LoaderCircle className="animate-spin" />}
-              {t(rule ? "save" : "create")}
+              {t(rule ? "core.save" : "create")}
             </Button>
           </div>
         </form>

@@ -326,7 +326,9 @@ function ProtocolFields({ protocol, disabled }: ProtocolFieldsProps) {
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor={`${fieldPrefix}-flow`}>Flow</FieldLabel>
+          <FieldLabel htmlFor={`${fieldPrefix}-flow`}>
+            {t("userDialog.flow")}
+          </FieldLabel>
           <Controller
             control={form.control}
             name="proxies.vless.flow"

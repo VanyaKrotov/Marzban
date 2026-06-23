@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Dices } from "lucide-react";
 import shuffle from "lodash/shuffle";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ function ShortIdsHelper({ onSet }: Props) {
 
 function Content({ onSet }: Props) {
   const [ids, setIds] = useState<string[]>(generateShortIds);
+  const { t } = useTranslation();
 
   function generateShortIds(length: number = 8) {
     return shuffle(
@@ -57,7 +59,9 @@ function Content({ onSet }: Props) {
         >
           <Dices />
         </Button>
-        <Button onClick={() => onSet(ids)}>Setup</Button>
+        <Button onClick={() => onSet(ids)}>
+          {t("inboundsPage.helpers.setup")}
+        </Button>
       </div>
     </div>
   );

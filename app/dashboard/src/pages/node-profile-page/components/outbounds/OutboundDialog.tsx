@@ -196,7 +196,7 @@ function OutboundDialogContent({
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending && <LoaderCircle className="animate-spin" />}
-              {t(outbound ? "save" : "create")}
+              {t(outbound ? "core.save" : "create")}
             </Button>
           </div>
         </form>

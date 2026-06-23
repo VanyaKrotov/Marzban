@@ -226,7 +226,9 @@ export function UserFormSection({
                     field.onChange(event);
                   }}
                 />
-                <InputGroupAddon align="inline-end">Days</InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  {t("userDialog.days")}
+                </InputGroupAddon>
               </InputGroup>
             )}
           />
