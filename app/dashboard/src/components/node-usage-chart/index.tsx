@@ -31,9 +31,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   chartTooltipContentStyle,
   chartTooltipItemStyle,
-  chartTooltipLabelStyle,
 } from "@/lib/chart-tooltip";
 import { cn } from "@/lib/utils";
+import { formatCompactPercent } from "@/pages/stats-page/lib/chart";
 
 import { NodeUsageDateRangeFilter } from "./DateRangeFilter";
 import {
@@ -179,17 +179,13 @@ export function NodeUsageChart({
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => {
-                    const numericValue = Number(value);
-                    return `${formatCompactBytes(numericValue)} (${formatPercent(
-                      numericValue,
-                      totalTraffic,
-                      i18n.language,
-                    )})`;
-                  }}
-                  contentStyle={chartTooltipContentStyle}
-                  itemStyle={chartTooltipItemStyle}
-                  labelStyle={chartTooltipLabelStyle}
+                  content={(props) => (
+                    <NodeUsageTooltip
+                      {...props}
+                      locale={i18n.language}
+                      total={totalTraffic}
+                    />
+                  )}
                 />
                 <Legend />
               </PieChart>
@@ -208,10 +204,65 @@ export {
 } from "./lib";
 export { NodeUsageDateRangeFilter } from "./DateRangeFilter";
 
-function formatPercent(value: number, total: number, locale: string) {
-  const percent = total > 0 ? value / total : 0;
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 1,
-    style: "percent",
-  }).format(percent);
+type NodeUsageTooltipProps = {
+  active?: boolean;
+  payload?: ReadonlyArray<{
+    color?: string;
+    name?: string | number;
+    value?: number | string | ReadonlyArray<string | number>;
+  }>;
+  locale: string;
+  total: number;
+};
+
+function NodeUsageTooltip({
+  active,
+  payload,
+  locale,
+  total,
+}: NodeUsageTooltipProps) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div
+      className="min-w-64 rounded-md border p-3 text-xs shadow-md"
+      style={chartTooltipContentStyle}
+    >
+      <div className="grid gap-1.5">
+        {payload.map((item, index) => {
+          const value = getTooltipValue(item.value);
+          const color =
+            item.color ??
+            NODE_USAGE_CHART_COLORS[index % NODE_USAGE_CHART_COLORS.length];
+
+          return (
+            <div
+              key={`${String(item.name ?? index)}-${index}`}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+              style={chartTooltipItemStyle}
+            >
+              <span
+                className="size-2.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <span className="truncate">{item.name}</span>
+              <span className="font-medium tabular-nums">
+                {formatCompactBytes(value)}
+                {" ("}
+                {formatCompactPercent(value, total, locale)}
+                {")"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getTooltipValue(
+  value?: number | string | ReadonlyArray<string | number>,
+) {
+  if (Array.isArray(value)) return Number(value[0] ?? 0);
+  return Number(value ?? 0);
 }

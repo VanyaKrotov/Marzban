@@ -3,6 +3,7 @@ import {
   startOfDay,
   startOfWeek,
   subDays,
+  subHours,
 } from "date-fns";
 
 export type NodeUsageDateRange = {
@@ -11,12 +12,26 @@ export type NodeUsageDateRange = {
 };
 
 export type NodeUsagePeriodPreset =
+  | "lastHour"
+  | "last3Hours"
+  | "last6Hours"
+  | "last12Hours"
   | "today"
   | "thisWeek"
   | "last7Days"
   | "last30Days"
   | "last90Days"
   | "custom";
+
+type HourPeriodPreset = Extract<
+  NodeUsagePeriodPreset,
+  "lastHour" | "last3Hours" | "last6Hours" | "last12Hours"
+>;
+
+type DayPeriodPreset = Extract<
+  NodeUsagePeriodPreset,
+  "last7Days" | "last30Days" | "last90Days"
+>;
 
 export const NODE_USAGE_CHART_COLORS = [
   "var(--chart-2)",
@@ -33,6 +48,16 @@ export function createNodeUsagePresetRange(
   preset: Exclude<NodeUsagePeriodPreset, "custom">,
 ): NodeUsageDateRange {
   const now = new Date();
+  const hoursByPreset: Record<HourPeriodPreset, number> = {
+    lastHour: 1,
+    last3Hours: 3,
+    last6Hours: 6,
+    last12Hours: 12,
+  };
+
+  if (isHourPeriodPreset(preset)) {
+    return { from: subHours(now, hoursByPreset[preset]), to: now };
+  }
 
   if (preset === "today") {
     return { from: startOfDay(now), to: endOfDay(now) };
@@ -45,16 +70,38 @@ export function createNodeUsagePresetRange(
     };
   }
 
-  const days = {
+  const daysByPreset: Record<DayPeriodPreset, number> = {
     last7Days: 7,
     last30Days: 30,
     last90Days: 90,
-  }[preset];
+  };
+  const days = isDayPeriodPreset(preset) ? daysByPreset[preset] : 30;
 
   return {
     from: startOfDay(subDays(now, days - 1)),
     to: endOfDay(now),
   };
+}
+
+function isHourPeriodPreset(
+  preset: Exclude<NodeUsagePeriodPreset, "custom">,
+): preset is HourPeriodPreset {
+  return (
+    preset === "lastHour" ||
+    preset === "last3Hours" ||
+    preset === "last6Hours" ||
+    preset === "last12Hours"
+  );
+}
+
+function isDayPeriodPreset(
+  preset: Exclude<NodeUsagePeriodPreset, "custom">,
+): preset is DayPeriodPreset {
+  return (
+    preset === "last7Days" ||
+    preset === "last30Days" ||
+    preset === "last90Days"
+  );
 }
 
 export function createDefaultNodeUsageRange() {

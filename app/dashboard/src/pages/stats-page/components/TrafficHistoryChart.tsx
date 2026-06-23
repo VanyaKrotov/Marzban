@@ -41,7 +41,12 @@ import {
   chartTooltipLabelStyle,
 } from "@/lib/chart-tooltip";
 
-import { CHART_COLORS, formatCompactBytes, formatPeriod } from "../lib/chart";
+import {
+  CHART_COLORS,
+  formatCompactBytes,
+  formatCompactPercent,
+  formatPeriod,
+} from "../lib/chart";
 import type { StatsGranularity, StatsHistory } from "../lib/query";
 import { ChartState } from "./ChartState";
 
@@ -287,7 +292,7 @@ function TrafficTooltip({
               <span className="font-medium tabular-nums">
                 {formatCompactBytes(value)}
                 {" ("}
-                {formatTrafficPercent(value, total, locale)}
+                {formatCompactPercent(value, total, locale)}
                 {")"}
               </span>
             </div>
@@ -296,14 +301,6 @@ function TrafficTooltip({
       </div>
     </div>
   );
-}
-
-function formatTrafficPercent(value: number, total: number, locale: string) {
-  const percent = total > 0 ? value / total : 0;
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 1,
-    style: "percent",
-  }).format(percent);
 }
 
 function getTooltipValue(

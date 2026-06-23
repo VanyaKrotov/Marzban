@@ -91,6 +91,10 @@ export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
   };
 
   const presets: Exclude<NodeUsagePeriodPreset, "custom">[] = [
+    "lastHour",
+    "last3Hours",
+    "last6Hours",
+    "last12Hours",
     "today",
     "thisWeek",
     "last7Days",

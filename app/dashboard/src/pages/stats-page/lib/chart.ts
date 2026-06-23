@@ -36,3 +36,15 @@ export function formatCompactBytes(value: number) {
   const amount = value / 1024 ** index;
   return `${amount >= 10 ? amount.toFixed(0) : amount.toFixed(1)} ${units[index]}`;
 }
+
+export function formatCompactPercent(
+  value: number,
+  total: number,
+  locale: string,
+) {
+  const percent = total > 0 ? (value / total) * 100 : 0;
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  }).format(percent);
+  return `${formatted}%`;
+}

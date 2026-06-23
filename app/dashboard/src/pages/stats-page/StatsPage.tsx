@@ -173,6 +173,10 @@ export function StatsPage() {
 }
 
 const PERIOD_PRESETS: NodeUsagePeriodPreset[] = [
+  "lastHour",
+  "last3Hours",
+  "last6Hours",
+  "last12Hours",
   "today",
   "thisWeek",
   "last7Days",
