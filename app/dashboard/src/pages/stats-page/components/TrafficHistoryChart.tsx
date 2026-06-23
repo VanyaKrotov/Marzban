@@ -64,6 +64,7 @@ export function TrafficHistoryChart({
 }: Props) {
   const { t, i18n } = useTranslation();
   const [hiddenNodes, setHiddenNodes] = useState<Set<number>>(new Set());
+  const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
   const traffic = data?.traffic ?? [];
   const chartData = useMemo(() => {
     const periods = traffic[0]?.points ?? [];
@@ -143,58 +144,173 @@ export function TrafficHistoryChart({
           onRetry={onRetry}
         />
         {!loading && !error && hasData && (
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ left: 8, right: 16 }}>
-                <CartesianGrid vertical={false} stroke="var(--border)" />
-                <XAxis
-                  dataKey="period"
-                  tickFormatter={(value) =>
-                    formatPeriod(String(value), granularity, i18n.language)
-                  }
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={24}
-                />
-                <YAxis
-                  tickFormatter={(value) => formatCompactBytes(Number(value))}
-                  tickLine={false}
-                  axisLine={false}
-                  width={72}
-                />
-                <Tooltip
-                  labelFormatter={(value) =>
-                    formatPeriod(String(value), granularity, i18n.language)
-                  }
-                  formatter={(value, name) => {
-                    const node = traffic.find(
-                      ({ node_id }) => `node_${node_id}` === name,
-                    );
-                    return [formatCompactBytes(Number(value)), node?.node_name];
-                  }}
-                  contentStyle={chartTooltipContentStyle}
-                  itemStyle={chartTooltipItemStyle}
-                  labelStyle={chartTooltipLabelStyle}
-                />
-                {traffic.map((node, index) => (
-                  <Line
-                    key={node.node_id}
-                    type="monotone"
-                    dataKey={`node_${node.node_id}`}
-                    stroke={CHART_COLORS[index % CHART_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    hide={hiddenNodes.has(node.node_id)}
-                    connectNulls
+          <div>
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid vertical={false} stroke="var(--border)" />
+                  <XAxis
+                    dataKey="period"
+                    tickFormatter={(value) =>
+                      formatPeriod(String(value), granularity, i18n.language)
+                    }
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={24}
                   />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+                  <YAxis
+                    tickFormatter={(value) => formatCompactBytes(Number(value))}
+                    tickLine={false}
+                    axisLine={false}
+                    width={72}
+                  />
+                  <Tooltip
+                    content={(props) => (
+                      <TrafficTooltip
+                        {...props}
+                        granularity={granularity}
+                        locale={i18n.language}
+                        traffic={traffic}
+                      />
+                    )}
+                  />
+                  {traffic.map((node, index) => (
+                    <Line
+                      key={node.node_id}
+                      type="monotone"
+                      dataKey={`node_${node.node_id}`}
+                      stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                      strokeWidth={activeNodeId === node.node_id ? 3 : 2}
+                      opacity={
+                        activeNodeId && activeNodeId !== node.node_id ? 0.25 : 1
+                      }
+                      dot={false}
+                      hide={hiddenNodes.has(node.node_id)}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {traffic.map((node, index) => {
+                const hidden = hiddenNodes.has(node.node_id);
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+
+                return (
+                  <button
+                    key={node.node_id}
+                    type="button"
+                    className="inline-flex h-7 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-45"
+                    disabled={hidden}
+                    onMouseEnter={() => setActiveNodeId(node.node_id)}
+                    onMouseLeave={() => setActiveNodeId(null)}
+                    onFocus={() => setActiveNodeId(node.node_id)}
+                    onBlur={() => setActiveNodeId(null)}
+                  >
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="max-w-40 truncate">{node.node_name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+type TrafficTooltipProps = {
+  active?: boolean;
+  label?: string | number;
+  payload?: ReadonlyArray<{
+    color?: string;
+    dataKey?: string | number | ((obj: unknown) => unknown);
+    value?: number | string | ReadonlyArray<string | number>;
+  }>;
+  granularity: StatsGranularity;
+  locale: string;
+  traffic: StatsHistory["traffic"];
+};
+
+function TrafficTooltip({
+  active,
+  label,
+  payload,
+  granularity,
+  locale,
+  traffic,
+}: TrafficTooltipProps) {
+  if (!active || !payload?.length) return null;
+
+  const total = payload.reduce(
+    (sum, item) => sum + getTooltipValue(item.value),
+    0,
+  );
+
+  return (
+    <div
+      className="min-w-72 rounded-md border p-3 text-xs shadow-md"
+      style={chartTooltipContentStyle}
+    >
+      {label && (
+        <div className="mb-2 font-medium" style={chartTooltipLabelStyle}>
+          {formatPeriod(String(label), granularity, locale)}
+        </div>
+      )}
+      <div className="grid gap-1.5">
+        {payload.map((item, index) => {
+          const value = getTooltipValue(item.value);
+          const dataKey =
+            typeof item.dataKey === "function" ? undefined : item.dataKey;
+          const node = traffic.find(
+            ({ node_id }) => `node_${node_id}` === dataKey,
+          );
+          const color =
+            item.color ?? CHART_COLORS[index % CHART_COLORS.length];
+
+          return (
+            <div
+              key={String(dataKey ?? index)}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+              style={chartTooltipItemStyle}
+            >
+              <span
+                className="size-2.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <span className="truncate">{node?.node_name}</span>
+              <span className="font-medium tabular-nums">
+                {formatCompactBytes(value)}
+                {" ("}
+                {formatTrafficPercent(value, total, locale)}
+                {")"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function formatTrafficPercent(value: number, total: number, locale: string) {
+  const percent = total > 0 ? value / total : 0;
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    style: "percent",
+  }).format(percent);
+}
+
+function getTooltipValue(
+  value?: number | string | ReadonlyArray<string | number>,
+) {
+  if (Array.isArray(value)) return Number(value[0] ?? 0);
+  return Number(value ?? 0);
 }
 
 function GranularitySelect({
@@ -215,6 +331,7 @@ function GranularitySelect({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
+          <SelectItem value="hour">{t("statsPage.hours")}</SelectItem>
           <SelectItem value="day">{t("statsPage.days")}</SelectItem>
           <SelectItem value="week">{t("statsPage.weeks")}</SelectItem>
           <SelectItem value="month">{t("statsPage.months")}</SelectItem>

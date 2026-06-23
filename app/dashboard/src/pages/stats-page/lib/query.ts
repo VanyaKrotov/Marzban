@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "service/http";
 import type { NodeUsageDateRange } from "@/components/node-usage-chart";
 
-export type StatsGranularity = "day" | "week" | "month";
+export type StatsGranularity = "hour" | "day" | "week" | "month";
 
 export type NodeTrafficPoint = {
   period: string;
@@ -42,6 +42,17 @@ export type SystemStats = {
   users_expired: number;
 };
 
+export type StatsSummary = {
+  start: string;
+  end: string;
+  total_user: number;
+  online_users: number;
+  users_active: number;
+  users_disabled: number;
+  users_expired: number;
+  users_limited: number;
+};
+
 export const statsHistoryQueryKey = (
   granularity: StatsGranularity,
   range: NodeUsageDateRange,
@@ -54,6 +65,13 @@ export const statsHistoryQueryKey = (
     range.to.toISOString(),
   ] as const;
 export const systemStatsQueryKey = ["statistics-query-key"] as const;
+export const statsSummaryQueryKey = (range: NodeUsageDateRange) =>
+  [
+    "stats",
+    "summary",
+    range.from.toISOString(),
+    range.to.toISOString(),
+  ] as const;
 
 export function useStatsHistoryQuery(
   granularity: StatsGranularity,
@@ -65,6 +83,19 @@ export function useStatsHistoryQuery(
       api.get<StatsHistory>("/stats/history", {
         params: {
           granularity,
+          start: range.from.toISOString(),
+          end: range.to.toISOString(),
+        },
+      }),
+  });
+}
+
+export function useStatsSummaryQuery(range: NodeUsageDateRange) {
+  return useQuery({
+    queryKey: statsSummaryQueryKey(range),
+    queryFn: () =>
+      api.get<StatsSummary>("/stats/summary", {
+        params: {
           start: range.from.toISOString(),
           end: range.to.toISOString(),
         },

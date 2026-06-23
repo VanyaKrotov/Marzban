@@ -67,7 +67,7 @@ export function NodeUsageChart({
   description,
   className,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [internalRange, setInternalRange] = useState(
     createDefaultNodeUsageRange,
   );
@@ -81,7 +81,9 @@ export function NodeUsageChart({
     value:
       usage.used_traffic ?? (usage.uplink ?? 0) + (usage.downlink ?? 0),
   }));
+  const totalTraffic = data.reduce((sum, usage) => sum + usage.value, 0);
   const hasData = data.some(({ value }) => value > 0);
+  const showPeriodFilter = !controlledRange || Boolean(onPeriodChange);
 
   const changePeriod = (
     nextRange: NodeUsageDateRange,
@@ -97,17 +99,25 @@ export function NodeUsageChart({
 
   return (
     <Card className={cn(className)}>
-      <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+      <CardHeader className="has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle>{title ?? t("statsPage.nodeUsageTitle")}</CardTitle>
         <CardDescription>
           {description ?? t("statsPage.nodeUsageDescription")}
         </CardDescription>
-        <CardAction className="col-start-1 row-start-3 row-span-1 mt-1 justify-self-start sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:mt-0 sm:justify-self-end">
-          <NodeUsageDateRangeFilter
-            range={range}
-            preset={preset}
-            onChange={changePeriod}
-          />
+        <CardAction className="row-span-1 text-right">
+          {showPeriodFilter ? (
+            <NodeUsageDateRangeFilter
+              range={range}
+              preset={preset}
+              onChange={changePeriod}
+            />
+          ) : query.isLoading ? (
+            <Skeleton className="h-6 w-20" />
+          ) : (
+            <div className="text-sm font-medium tabular-nums">
+              {formatCompactBytes(totalTraffic)}
+            </div>
+          )}
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -169,7 +179,14 @@ export function NodeUsageChart({
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => formatCompactBytes(Number(value))}
+                  formatter={(value) => {
+                    const numericValue = Number(value);
+                    return `${formatCompactBytes(numericValue)} (${formatPercent(
+                      numericValue,
+                      totalTraffic,
+                      i18n.language,
+                    )})`;
+                  }}
                   contentStyle={chartTooltipContentStyle}
                   itemStyle={chartTooltipItemStyle}
                   labelStyle={chartTooltipLabelStyle}
@@ -190,3 +207,11 @@ export {
   type NodeUsagePeriodPreset,
 } from "./lib";
 export { NodeUsageDateRangeFilter } from "./DateRangeFilter";
+
+function formatPercent(value: number, total: number, locale: string) {
+  const percent = total > 0 ? value / total : 0;
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    style: "percent",
+  }).format(percent);
+}

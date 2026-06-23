@@ -546,6 +546,7 @@
   "statsPage.period.last30Days": "Последние 30 дней",
   "statsPage.period.last90Days": "Последние 90 дней",
   "statsPage.period.custom": "Свой период",
+  "statsPage.hours": "По часам",
   "statsPage.days": "По дням",
   "statsPage.weeks": "По неделям",
   "statsPage.months": "По месяцам",

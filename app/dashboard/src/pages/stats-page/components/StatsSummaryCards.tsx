@@ -15,11 +15,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useSystemStatsQuery } from "../lib/query";
+import type { StatsSummary } from "../lib/query";
 
-export function StatsSummaryCards() {
+type Props = {
+  data?: StatsSummary;
+  loading: boolean;
+};
+
+export function StatsSummaryCards({ data, loading }: Props) {
   const { t, i18n } = useTranslation();
-  const { data, isLoading } = useSystemStatsQuery();
   const totalUsers = data?.total_user ?? 0;
   const cards = [
     {
@@ -72,7 +76,7 @@ export function StatsSummaryCards() {
                 <p className="truncate text-sm text-muted-foreground">
                   {label}
                 </p>
-                {isLoading ? (
+                {loading ? (
                   <Skeleton className="h-6 w-10" />
                 ) : (
                   <p className="text-xl font-semibold tabular-nums">
@@ -80,7 +84,7 @@ export function StatsSummaryCards() {
                   </p>
                 )}
               </div>
-              {isLoading ? (
+              {loading ? (
                 <Skeleton className="mt-1 ml-auto h-4 w-20" />
               ) : (
                 <Tooltip>

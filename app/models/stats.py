@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 
 class StatsGranularity(str, Enum):
+    hour = "hour"
     day = "day"
     week = "week"
     month = "month"
@@ -37,3 +38,14 @@ class StatsHistoryResponse(BaseModel):
     granularity: StatsGranularity
     traffic: List[NodeTrafficSeries]
     users: List[UserGrowthPoint]
+
+
+class StatsSummaryResponse(BaseModel):
+    start: datetime
+    end: datetime
+    total_user: int
+    online_users: int
+    users_active: int
+    users_disabled: int
+    users_expired: int
+    users_limited: int

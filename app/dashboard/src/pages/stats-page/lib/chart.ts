@@ -18,7 +18,9 @@ export function formatPeriod(
 ) {
   const date = new Date(value);
   const options: Intl.DateTimeFormatOptions =
-    granularity === "month"
+    granularity === "hour"
+      ? { day: "numeric", hour: "2-digit", month: "short" }
+      : granularity === "month"
       ? { month: "short", year: "numeric" }
       : { day: "numeric", month: "short" };
   return new Intl.DateTimeFormat(locale, options).format(date);

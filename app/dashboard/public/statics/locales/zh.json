@@ -546,6 +546,7 @@
   "statsPage.period.last30Days": "Last 30 days",
   "statsPage.period.last90Days": "Last 90 days",
   "statsPage.period.custom": "Custom period",
+  "statsPage.hours": "按小时",
   "statsPage.days": "Days",
   "statsPage.weeks": "Weeks",
   "statsPage.months": "Months",

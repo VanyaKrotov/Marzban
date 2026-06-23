@@ -54,6 +54,7 @@ from app.models.stats import (
     NodeTrafficSeries,
     StatsGranularity,
     StatsHistoryResponse,
+    StatsSummaryResponse,
     UserGrowthPoint,
 )
 from app.models.user import (
@@ -2217,6 +2218,8 @@ def get_nodes_usage(db: Session, start: datetime, end: datetime) -> List[NodeUsa
 
 def _stats_bucket_start(value: datetime, granularity: StatsGranularity) -> datetime:
     value = value.replace(tzinfo=None)
+    if granularity == StatsGranularity.hour:
+        return value.replace(minute=0, second=0, microsecond=0)
     if granularity == StatsGranularity.week:
         value -= timedelta(days=value.weekday())
     if granularity == StatsGranularity.month:
@@ -2225,6 +2228,8 @@ def _stats_bucket_start(value: datetime, granularity: StatsGranularity) -> datet
 
 
 def _next_stats_bucket(value: datetime, granularity: StatsGranularity) -> datetime:
+    if granularity == StatsGranularity.hour:
+        return value + timedelta(hours=1)
     if granularity == StatsGranularity.day:
         return value + timedelta(days=1)
     if granularity == StatsGranularity.week:
@@ -2329,6 +2334,36 @@ def get_stats_history(
         granularity=granularity,
         traffic=traffic,
         users=users,
+    )
+
+
+def get_stats_summary(
+    db: Session,
+    start: datetime,
+    end: datetime,
+) -> StatsSummaryResponse:
+    """Return current user status counts for users created in the selected date range."""
+    query_start = start.astimezone(timezone.utc).replace(tzinfo=None)
+    query_end = end.astimezone(timezone.utc).replace(tzinfo=None)
+
+    base_query = db.query(User).filter(
+        User.created_at >= query_start,
+        User.created_at <= query_end,
+    )
+    online_since = datetime.utcnow() - timedelta(hours=24)
+
+    return StatsSummaryResponse(
+        start=start,
+        end=end,
+        total_user=base_query.count(),
+        online_users=base_query.filter(
+            User.online_at.isnot(None),
+            User.online_at >= online_since,
+        ).count(),
+        users_active=base_query.filter(User.status == UserStatus.active).count(),
+        users_disabled=base_query.filter(User.status == UserStatus.disabled).count(),
+        users_expired=base_query.filter(User.status == UserStatus.expired).count(),
+        users_limited=base_query.filter(User.status == UserStatus.limited).count(),
     )
 
 

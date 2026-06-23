@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
@@ -7,6 +8,7 @@ import Page from "@/components/page";
 import {
   createDefaultNodeUsageRange,
   NodeUsageChart,
+  NodeUsageDateRangeFilter,
   type NodeUsageDateRange,
   type NodeUsagePeriodPreset,
 } from "@/components/node-usage-chart";
@@ -18,10 +20,12 @@ import { UserGrowthChart } from "./components/UserGrowthChart";
 import {
   type StatsGranularity,
   useStatsHistoryQuery,
+  useStatsSummaryQuery,
 } from "./lib/query";
 
 export function StatsPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const defaults = useMemo(createDefaultNodeUsageRange, []);
   const piePreset = parsePreset(searchParams.get("period"));
@@ -34,6 +38,18 @@ export function StatsPage() {
   );
   const granularity = parseGranularity(searchParams.get("granularity"));
   const historyQuery = useStatsHistoryQuery(granularity, pieRange);
+  const summaryQuery = useStatsSummaryQuery(pieRange);
+  const nodeUsageQueryKey = [
+    "node-usage-chart",
+    "all",
+    pieRange.from.toISOString(),
+    pieRange.to.toISOString(),
+  ] as const;
+  const nodeUsageFetching = useIsFetching({ queryKey: nodeUsageQueryKey });
+  const refreshing =
+    historyQuery.isFetching ||
+    summaryQuery.isFetching ||
+    nodeUsageFetching > 0;
 
   useEffect(() => {
     const from = formatDateParam(pieRange.from);
@@ -94,37 +110,47 @@ export function StatsPage() {
     );
   };
 
+  const refreshStats = () => {
+    void Promise.all([
+      historyQuery.refetch(),
+      summaryQuery.refetch(),
+      queryClient.invalidateQueries({ queryKey: nodeUsageQueryKey }),
+    ]);
+  };
+
   return (
     <Page>
       <Page.Header
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="px-2 sm:px-3"
-            disabled={historyQuery.isFetching}
-            onClick={() => void historyQuery.refetch()}
-            aria-label={t("statsPage.refresh").toString()}
-          >
-            <RefreshCw
-              className={historyQuery.isFetching ? "animate-spin" : undefined}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={refreshing}
+              onClick={refreshStats}
+              aria-label={t("statsPage.refresh").toString()}
+            >
+              <RefreshCw className={refreshing ? "animate-spin" : undefined} />
+            </Button>
+            <NodeUsageDateRangeFilter
+              range={pieRange}
+              preset={piePreset}
+              onChange={updatePeriod}
             />
-            <span className="hidden sm:inline">{t("statsPage.refresh")}</span>
-          </Button>
+          </div>
         }
       >
         <h1 className="font-semibold">{t("statsPage.title")}</h1>
       </Page.Header>
 
       <div className="flex flex-col gap-4">
-        <StatsSummaryCards />
+        <StatsSummaryCards
+          data={summaryQuery.data}
+          loading={summaryQuery.isLoading}
+        />
         <div className="grid gap-4 lg:grid-cols-2">
-          <NodeUsageChart
-            range={pieRange}
-            preset={piePreset}
-            onPeriodChange={updatePeriod}
-          />
+          <NodeUsageChart range={pieRange} preset={piePreset} />
           <UserGrowthChart
             data={historyQuery.data}
             granularity={granularity}
@@ -155,7 +181,7 @@ const PERIOD_PRESETS: NodeUsagePeriodPreset[] = [
   "custom",
 ];
 
-const GRANULARITIES: StatsGranularity[] = ["day", "week", "month"];
+const GRANULARITIES: StatsGranularity[] = ["hour", "day", "week", "month"];
 
 function parsePreset(value: string | null): NodeUsagePeriodPreset {
   return PERIOD_PRESETS.includes(value as NodeUsagePeriodPreset)
