@@ -250,12 +250,39 @@ function TrafficTooltip({
   locale,
   traffic,
 }: TrafficTooltipProps) {
+  const { t } = useTranslation();
+
   if (!active || !payload?.length) return null;
 
   const total = payload.reduce(
     (sum, item) => sum + getTooltipValue(item.value),
     0,
   );
+  const tooltipItems = payload
+    .map((item, index) => {
+      const value = getTooltipValue(item.value);
+      const percent = total > 0 ? value / total : 0;
+      const dataKey =
+        typeof item.dataKey === "function" ? undefined : item.dataKey;
+      const node = traffic.find(
+        ({ node_id }) => `node_${node_id}` === dataKey,
+      );
+      const color = item.color ?? CHART_COLORS[index % CHART_COLORS.length];
+
+      return {
+        color,
+        dataKey,
+        nodeName: node?.node_name,
+        percent,
+        value,
+      };
+    })
+    .sort((first, second) => {
+      if (second.percent !== first.percent) {
+        return second.percent - first.percent;
+      }
+      return second.value - first.value;
+    });
 
   return (
     <div
@@ -263,36 +290,33 @@ function TrafficTooltip({
       style={chartTooltipContentStyle}
     >
       {label && (
-        <div className="mb-2 font-medium" style={chartTooltipLabelStyle}>
-          {formatPeriod(String(label), granularity, locale)}
+        <div
+          className="mb-2 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 font-medium"
+          style={chartTooltipLabelStyle}
+        >
+          <span>{t("statsPage.tooltip.period")}</span>
+          <span className="text-right tabular-nums">
+            {formatPeriod(String(label), granularity, locale)}
+          </span>
         </div>
       )}
       <div className="grid gap-1.5">
-        {payload.map((item, index) => {
-          const value = getTooltipValue(item.value);
-          const dataKey =
-            typeof item.dataKey === "function" ? undefined : item.dataKey;
-          const node = traffic.find(
-            ({ node_id }) => `node_${node_id}` === dataKey,
-          );
-          const color =
-            item.color ?? CHART_COLORS[index % CHART_COLORS.length];
-
+        {tooltipItems.map((item, index) => {
           return (
             <div
-              key={String(dataKey ?? index)}
+              key={String(item.dataKey ?? index)}
               className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
               style={chartTooltipItemStyle}
             >
               <span
                 className="size-2.5 rounded-full"
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: item.color }}
               />
-              <span className="truncate">{node?.node_name}</span>
+              <span className="truncate">{item.nodeName}</span>
               <span className="font-medium tabular-nums">
-                {formatCompactBytes(value)}
+                {formatCompactBytes(item.value)}
                 {" ("}
-                {formatCompactPercent(value, total, locale)}
+                {formatCompactPercent(item.value, total, locale)}
                 {")"}
               </span>
             </div>

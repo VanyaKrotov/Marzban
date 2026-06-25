@@ -571,6 +571,7 @@
   "statsPage.nodeUsageDescription": "Доля трафика каждого узла за выбранный период.",
   "statsPage.trafficTitle": "Изменение трафика",
   "statsPage.trafficDescription": "Суммарный входящий и исходящий трафик каждой ноды.",
+  "statsPage.tooltip.period": "Период",
   "statsPage.usersTitle": "Динамика пользователей",
   "statsPage.usersDescription": "Новые пользователи и прирост относительно прошлого периода.",
   "statsPage.last7Days": "Последние 7 дней",

@@ -571,6 +571,7 @@
   "statsPage.nodeUsageDescription": "Traffic distribution between nodes for the selected period.",
   "statsPage.trafficTitle": "Traffic history",
   "statsPage.trafficDescription": "Total uploaded and downloaded traffic for each node.",
+  "statsPage.tooltip.period": "时间段",
   "statsPage.usersTitle": "User growth",
   "statsPage.usersDescription": "New users and growth compared with the previous period.",
   "statsPage.last7Days": "Last 7 days",
