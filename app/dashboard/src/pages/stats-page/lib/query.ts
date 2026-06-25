@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "service/http";
-import type { NodeUsageDateRange } from "@/components/node-usage-chart";
+import {
+  createNodeUsageApiRange,
+  formatNodeUsageRangeParam,
+  type NodeUsageDateRange,
+  type NodeUsagePeriodPreset,
+} from "@/components/node-usage-chart";
 
 export type StatsGranularity = "hour" | "day" | "week" | "month";
 
@@ -56,50 +61,62 @@ export type StatsSummary = {
 export const statsHistoryQueryKey = (
   granularity: StatsGranularity,
   range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
 ) =>
   [
     "stats",
     "history",
     granularity,
-    range.from.toISOString(),
-    range.to.toISOString(),
+    period,
+    formatNodeUsageRangeParam(range),
   ] as const;
 export const systemStatsQueryKey = ["statistics-query-key"] as const;
-export const statsSummaryQueryKey = (range: NodeUsageDateRange) =>
+export const statsSummaryQueryKey = (
+  range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
+) =>
   [
     "stats",
     "summary",
-    range.from.toISOString(),
-    range.to.toISOString(),
+    period,
+    formatNodeUsageRangeParam(range),
   ] as const;
 
 export function useStatsHistoryQuery(
   granularity: StatsGranularity,
   range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
 ) {
   return useQuery({
-    queryKey: statsHistoryQueryKey(granularity, range),
-    queryFn: () =>
-      api.get<StatsHistory>("/stats/history", {
+    queryKey: statsHistoryQueryKey(granularity, range, period),
+    queryFn: () => {
+      const apiRange = createNodeUsageApiRange(range, period);
+      return api.get<StatsHistory>("/stats/history", {
         params: {
           granularity,
-          start: range.from.toISOString(),
-          end: range.to.toISOString(),
+          start: apiRange.from.toISOString(),
+          end: apiRange.to.toISOString(),
         },
-      }),
+      });
+    },
   });
 }
 
-export function useStatsSummaryQuery(range: NodeUsageDateRange) {
+export function useStatsSummaryQuery(
+  range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
+) {
   return useQuery({
-    queryKey: statsSummaryQueryKey(range),
-    queryFn: () =>
-      api.get<StatsSummary>("/stats/summary", {
+    queryKey: statsSummaryQueryKey(range, period),
+    queryFn: () => {
+      const apiRange = createNodeUsageApiRange(range, period);
+      return api.get<StatsSummary>("/stats/summary", {
         params: {
-          start: range.from.toISOString(),
-          end: range.to.toISOString(),
+          start: apiRange.from.toISOString(),
+          end: apiRange.to.toISOString(),
         },
-      }),
+      });
+    },
   });
 }
 

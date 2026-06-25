@@ -1,5 +1,6 @@
 import {
   endOfDay,
+  format,
   startOfDay,
   startOfWeek,
   subDays,
@@ -12,25 +13,25 @@ export type NodeUsageDateRange = {
 };
 
 export type NodeUsagePeriodPreset =
-  | "lastHour"
-  | "last3Hours"
-  | "last6Hours"
-  | "last12Hours"
+  | "last_hour"
+  | "last_3_hours"
+  | "last_6_hours"
+  | "last_12_hours"
   | "today"
-  | "thisWeek"
-  | "last7Days"
-  | "last30Days"
-  | "last90Days"
+  | "this_week"
+  | "last_7_days"
+  | "last_30_days"
+  | "last_90_days"
   | "custom";
 
 type HourPeriodPreset = Extract<
   NodeUsagePeriodPreset,
-  "lastHour" | "last3Hours" | "last6Hours" | "last12Hours"
+  "last_hour" | "last_3_hours" | "last_6_hours" | "last_12_hours"
 >;
 
 type DayPeriodPreset = Extract<
   NodeUsagePeriodPreset,
-  "last7Days" | "last30Days" | "last90Days"
+  "last_7_days" | "last_30_days" | "last_90_days"
 >;
 
 export const NODE_USAGE_CHART_COLORS = [
@@ -49,10 +50,10 @@ export function createNodeUsagePresetRange(
 ): NodeUsageDateRange {
   const now = new Date();
   const hoursByPreset: Record<HourPeriodPreset, number> = {
-    lastHour: 1,
-    last3Hours: 3,
-    last6Hours: 6,
-    last12Hours: 12,
+    last_hour: 1,
+    last_3_hours: 3,
+    last_6_hours: 6,
+    last_12_hours: 12,
   };
 
   if (isHourPeriodPreset(preset)) {
@@ -63,7 +64,7 @@ export function createNodeUsagePresetRange(
     return { from: startOfDay(now), to: endOfDay(now) };
   }
 
-  if (preset === "thisWeek") {
+  if (preset === "this_week") {
     return {
       from: startOfWeek(now, { weekStartsOn: 1 }),
       to: endOfDay(now),
@@ -71,9 +72,9 @@ export function createNodeUsagePresetRange(
   }
 
   const daysByPreset: Record<DayPeriodPreset, number> = {
-    last7Days: 7,
-    last30Days: 30,
-    last90Days: 90,
+    last_7_days: 7,
+    last_30_days: 30,
+    last_90_days: 90,
   };
   const days = isDayPeriodPreset(preset) ? daysByPreset[preset] : 30;
 
@@ -87,10 +88,10 @@ function isHourPeriodPreset(
   preset: Exclude<NodeUsagePeriodPreset, "custom">,
 ): preset is HourPeriodPreset {
   return (
-    preset === "lastHour" ||
-    preset === "last3Hours" ||
-    preset === "last6Hours" ||
-    preset === "last12Hours"
+    preset === "last_hour" ||
+    preset === "last_3_hours" ||
+    preset === "last_6_hours" ||
+    preset === "last_12_hours"
   );
 }
 
@@ -98,14 +99,43 @@ function isDayPeriodPreset(
   preset: Exclude<NodeUsagePeriodPreset, "custom">,
 ): preset is DayPeriodPreset {
   return (
-    preset === "last7Days" ||
-    preset === "last30Days" ||
-    preset === "last90Days"
+    preset === "last_7_days" ||
+    preset === "last_30_days" ||
+    preset === "last_90_days"
   );
 }
 
 export function createDefaultNodeUsageRange() {
-  return createNodeUsagePresetRange("last30Days");
+  return createNodeUsageDateOnlyRange(createNodeUsagePresetRange("last_30_days"));
+}
+
+export function createNodeUsageApiRange(
+  range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
+) {
+  if (period !== "custom") return createNodeUsagePresetRange(period);
+
+  return {
+    from: startOfDay(range.from),
+    to: endOfDay(range.to),
+  };
+}
+
+export function createNodeUsageDateOnlyRange(
+  range: NodeUsageDateRange,
+): NodeUsageDateRange {
+  return {
+    from: startOfDay(range.from),
+    to: startOfDay(range.to),
+  };
+}
+
+export function formatNodeUsageRangeParam(range: NodeUsageDateRange) {
+  return `${formatNodeUsageDateParam(range.from)}_${formatNodeUsageDateParam(range.to)}`;
+}
+
+export function formatNodeUsageDateParam(value: Date) {
+  return format(value, "yyyy-MM-dd");
 }
 
 export function formatCompactBytes(value: number) {

@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "service/http";
 
-import type { NodeUsageDateRange } from "./lib";
+import {
+  createNodeUsageApiRange,
+  formatNodeUsageRangeParam,
+  type NodeUsageDateRange,
+  type NodeUsagePeriodPreset,
+} from "./lib";
 
 type NodeUsageResponse = {
   node_id: number | null;
@@ -19,23 +24,28 @@ type UsageResponse = {
 export function useNodeUsageChartQuery(
   range: NodeUsageDateRange,
   username?: string,
+  period: NodeUsagePeriodPreset = "custom",
 ) {
   return useQuery({
     queryKey: [
       "node-usage-chart",
       username ?? "all",
-      range.from.toISOString(),
-      range.to.toISOString(),
+      period,
+      formatNodeUsageRangeParam(range),
     ],
-    queryFn: () =>
-      api.get<UsageResponse>(
-        username ? `/user/${encodeURIComponent(username)}/usage` : "/nodes/usage",
+    queryFn: () => {
+      const apiRange = createNodeUsageApiRange(range, period);
+      return api.get<UsageResponse>(
+        username
+          ? `/user/${encodeURIComponent(username)}/usage`
+          : "/nodes/usage",
         {
           params: {
-            start: range.from.toISOString(),
-            end: range.to.toISOString(),
+            start: apiRange.from.toISOString(),
+            end: apiRange.to.toISOString(),
           },
         },
-      ),
+      );
+    },
   });
 }

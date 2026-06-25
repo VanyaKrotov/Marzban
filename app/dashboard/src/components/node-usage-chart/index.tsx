@@ -72,10 +72,10 @@ export function NodeUsageChart({
     createDefaultNodeUsageRange,
   );
   const [internalPreset, setInternalPreset] =
-    useState<NodeUsagePeriodPreset>("last30Days");
+    useState<NodeUsagePeriodPreset>("last_30_days");
   const range = controlledRange ?? internalRange;
   const preset = controlledPreset ?? internalPreset;
-  const query = useNodeUsageChartQuery(range, username);
+  const query = useNodeUsageChartQuery(range, username, preset);
   const data = (query.data?.usages ?? []).map((usage) => ({
     name: usage.node_name,
     value:
@@ -198,7 +198,12 @@ export function NodeUsageChart({
 }
 
 export {
+  createNodeUsagePresetRange,
+  createNodeUsageApiRange,
+  createNodeUsageDateOnlyRange,
   createDefaultNodeUsageRange,
+  formatNodeUsageDateParam,
+  formatNodeUsageRangeParam,
   type NodeUsageDateRange,
   type NodeUsagePeriodPreset,
 } from "./lib";

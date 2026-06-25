@@ -1,4 +1,4 @@
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import {
   enUS as dateEnUS,
   faIR as dateFaIR,
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/popover";
 
 import {
+  createNodeUsageDateOnlyRange,
   createNodeUsagePresetRange,
   type NodeUsageDateRange,
   type NodeUsagePeriodPreset,
@@ -79,27 +80,33 @@ export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
   }, [open, preset, range.from, range.to]);
 
   const applyRange = () => {
+    if (draftPreset !== "custom") {
+      onChange(
+        createNodeUsageDateOnlyRange(createNodeUsagePresetRange(draftPreset)),
+        draftPreset,
+      );
+      setOpen(false);
+      return;
+    }
+
     if (!draftRange.from) return;
-    onChange(
-      {
-        from: startOfDay(draftRange.from),
-        to: endOfDay(draftRange.to ?? draftRange.from),
-      },
-      draftPreset,
-    );
+    onChange({
+      from: startOfDay(draftRange.from),
+      to: startOfDay(draftRange.to ?? draftRange.from),
+    }, draftPreset);
     setOpen(false);
   };
 
   const presets: Exclude<NodeUsagePeriodPreset, "custom">[] = [
-    "lastHour",
-    "last3Hours",
-    "last6Hours",
-    "last12Hours",
+    "last_hour",
+    "last_3_hours",
+    "last_6_hours",
+    "last_12_hours",
     "today",
-    "thisWeek",
-    "last7Days",
-    "last30Days",
-    "last90Days",
+    "this_week",
+    "last_7_days",
+    "last_30_days",
+    "last_90_days",
   ];
 
   return (
@@ -120,7 +127,9 @@ export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
               variant={draftPreset === item ? "secondary" : "ghost"}
               className="justify-start"
               onClick={() => {
-                setDraftRange(createNodeUsagePresetRange(item));
+                setDraftRange(
+                  createNodeUsageDateOnlyRange(createNodeUsagePresetRange(item)),
+                );
                 setDraftPreset(item);
               }}
             >

@@ -1,12 +1,16 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import Page from "@/components/page";
 import {
   createDefaultNodeUsageRange,
+  createNodeUsageDateOnlyRange,
+  createNodeUsagePresetRange,
+  formatNodeUsageRangeParam,
   NodeUsageChart,
   NodeUsageDateRangeFilter,
   type NodeUsageDateRange,
@@ -29,21 +33,22 @@ export function StatsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const defaults = useMemo(createDefaultNodeUsageRange, []);
   const piePreset = parsePreset(searchParams.get("period"));
+  const urlRange = useMemo(
+    () => parseRange(searchParams, defaults),
+    [defaults, searchParams],
+  );
   const pieRange = useMemo(
-    () => ({
-      from: parseDate(searchParams.get("from"), defaults.from, false),
-      to: parseDate(searchParams.get("to"), defaults.to, true),
-    }),
-    [defaults.from, defaults.to, searchParams],
+    () => getEffectiveRange(piePreset, urlRange),
+    [piePreset, urlRange],
   );
   const granularity = parseGranularity(searchParams.get("granularity"));
-  const historyQuery = useStatsHistoryQuery(granularity, pieRange);
-  const summaryQuery = useStatsSummaryQuery(pieRange);
+  const historyQuery = useStatsHistoryQuery(granularity, pieRange, piePreset);
+  const summaryQuery = useStatsSummaryQuery(pieRange, piePreset);
   const nodeUsageQueryKey = [
     "node-usage-chart",
     "all",
-    pieRange.from.toISOString(),
-    pieRange.to.toISOString(),
+    piePreset,
+    formatNodeUsageRangeParam(pieRange),
   ] as const;
   const nodeUsageFetching = useIsFetching({ queryKey: nodeUsageQueryKey });
   const refreshing =
@@ -52,11 +57,9 @@ export function StatsPage() {
     nodeUsageFetching > 0;
 
   useEffect(() => {
-    const from = formatDateParam(pieRange.from);
-    const to = formatDateParam(pieRange.to);
+    const range = formatNodeUsageRangeParam(pieRange);
     if (
-      searchParams.get("from") === from &&
-      searchParams.get("to") === to &&
+      searchParams.get("range") === range &&
       searchParams.get("period") === piePreset &&
       searchParams.get("granularity") === granularity
     ) {
@@ -66,8 +69,9 @@ export function StatsPage() {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
-        next.set("from", from);
-        next.set("to", to);
+        next.delete("from");
+        next.delete("to");
+        next.set("range", range);
         next.set("period", piePreset);
         next.set("granularity", granularity);
         return next;
@@ -77,8 +81,7 @@ export function StatsPage() {
   }, [
     granularity,
     piePreset,
-    pieRange.from,
-    pieRange.to,
+    pieRange,
     searchParams,
     setSearchParams,
   ]);
@@ -90,8 +93,9 @@ export function StatsPage() {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
-        next.set("from", formatDateParam(range.from));
-        next.set("to", formatDateParam(range.to));
+        next.delete("from");
+        next.delete("to");
+        next.set("range", formatNodeUsageRangeParam(range));
         next.set("period", preset);
         if (isHourPeriodPreset(preset)) {
           next.set("granularity", "hour");
@@ -177,32 +181,33 @@ export function StatsPage() {
 
 function isHourPeriodPreset(preset: NodeUsagePeriodPreset) {
   return (
-    preset === "lastHour" ||
-    preset === "last3Hours" ||
-    preset === "last6Hours" ||
-    preset === "last12Hours"
+    preset === "last_hour" ||
+    preset === "last_3_hours" ||
+    preset === "last_6_hours" ||
+    preset === "last_12_hours"
   );
 }
 
 const PERIOD_PRESETS: NodeUsagePeriodPreset[] = [
-  "lastHour",
-  "last3Hours",
-  "last6Hours",
-  "last12Hours",
+  "last_hour",
+  "last_3_hours",
+  "last_6_hours",
+  "last_12_hours",
   "today",
-  "thisWeek",
-  "last7Days",
-  "last30Days",
-  "last90Days",
+  "this_week",
+  "last_7_days",
+  "last_30_days",
+  "last_90_days",
   "custom",
 ];
 
 const GRANULARITIES: StatsGranularity[] = ["hour", "day", "week", "month"];
 
 function parsePreset(value: string | null): NodeUsagePeriodPreset {
-  return PERIOD_PRESETS.includes(value as NodeUsagePeriodPreset)
-    ? (value as NodeUsagePeriodPreset)
-    : "last30Days";
+  const normalized = normalizePreset(value);
+  return PERIOD_PRESETS.includes(normalized as NodeUsagePeriodPreset)
+    ? (normalized as NodeUsagePeriodPreset)
+    : "last_30_days";
 }
 
 function parseGranularity(value: string | null): StatsGranularity {
@@ -211,16 +216,52 @@ function parseGranularity(value: string | null): StatsGranularity {
     : "day";
 }
 
-function parseDate(value: string | null, fallback: Date, endOfDate: boolean) {
+function normalizePreset(value: string | null) {
+  const legacyPresets: Record<string, NodeUsagePeriodPreset> = {
+    lastHour: "last_hour",
+    last3Hours: "last_3_hours",
+    last6Hours: "last_6_hours",
+    last12Hours: "last_12_hours",
+    thisWeek: "this_week",
+    last7Days: "last_7_days",
+    last30Days: "last_30_days",
+    last90Days: "last_90_days",
+  };
+  return value ? (legacyPresets[value] ?? value) : null;
+}
+
+function parseRange(
+  searchParams: URLSearchParams,
+  fallback: NodeUsageDateRange,
+) {
+  const range = searchParams.get("range");
+  if (range) {
+    const [from, to] = range.split("_");
+    return {
+      from: parseDate(from, fallback.from),
+      to: parseDate(to, fallback.to),
+    };
+  }
+
+  return {
+    from: parseDate(searchParams.get("from"), fallback.from),
+    to: parseDate(searchParams.get("to"), fallback.to),
+  };
+}
+
+function getEffectiveRange(
+  preset: NodeUsagePeriodPreset,
+  range: NodeUsageDateRange,
+) {
+  if (preset === "custom") return createNodeUsageDateOnlyRange(range);
+  return createNodeUsageDateOnlyRange(createNodeUsagePresetRange(preset));
+}
+
+function parseDate(value: string | null | undefined, fallback: Date) {
   if (!value) return fallback;
   const date = value.includes("T")
     ? new Date(value)
     : new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return fallback;
-  if (endOfDate && !value.includes("T")) date.setHours(23, 59, 59, 999);
-  return date;
-}
-
-function formatDateParam(value: Date) {
-  return value.toISOString();
+  return startOfDay(date);
 }
