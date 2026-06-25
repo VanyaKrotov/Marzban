@@ -1,13 +1,18 @@
 import re
 from distutils.version import LooseVersion
+from typing import Union
 
-from fastapi import APIRouter, Depends, Header, Path, Request, Response
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
 from fastapi.responses import HTMLResponse
 
 from app.db import Session, crud, get_db
 from app.dependencies import get_validated_sub, validate_dates
 from app.models.user import SubscriptionUserResponse, UserResponse
-from app.subscription.share import encode_title, generate_subscription
+from app.subscription.share import (
+    encode_title,
+    generate_subscription,
+    generate_subscription_from_hosts,
+)
 from app.templates import render_template
 from app.utils.runtime_settings import get_runtime_settings
 from config import (
@@ -26,6 +31,16 @@ client_config = {
 }
 
 router = APIRouter(tags=['Subscription'], prefix=f'/{XRAY_SUBSCRIPTION_PATH}')
+
+
+def parse_groups_query(groups: Union[str, None]) -> list[str]:
+    if not groups:
+        return []
+    return [
+        group.strip()
+        for group in groups.split(",")
+        if group.strip()
+    ]
 
 
 def get_subscription_user_info(user: UserResponse) -> dict:
@@ -172,6 +187,7 @@ def user_subscription_with_client_type(
     request: Request,
     dbuser: UserResponse = Depends(get_validated_sub),
     client_type: str = Path(..., regex="sing-box|clash-meta|clash|outline|v2ray|v2ray-json"),
+    groups: Union[str, None] = Query(None),
     db: Session = Depends(get_db),
     user_agent: str = Header(default="")
 ):
@@ -181,9 +197,13 @@ def user_subscription_with_client_type(
     response_headers = get_subscription_response_headers(request, user)
 
     config = client_config.get(client_type)
-    conf = generate_subscription(user=user,
-                                 config_format=config["config_format"],
-                                 as_base64=config["as_base64"],
-                                 reverse=config["reverse"])
+    hosts = crud.get_hosts_v2(db, group_ids=parse_groups_query(groups))
+    conf = generate_subscription_from_hosts(
+        user=user,
+        hosts=hosts,
+        config_format=config["config_format"],
+        as_base64=config["as_base64"],
+        reverse=config["reverse"],
+    )
 
     return Response(content=conf, media_type=config["media_type"], headers=response_headers)

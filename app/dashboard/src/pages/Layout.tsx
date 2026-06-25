@@ -228,7 +228,7 @@ const Layout: FC = () => {
               <div className="flex flex-col gap-y-0.5 ml-0.5">
                 <p className="text-md font-medium">{username}</p>
                 <p className="text-xs text-muted-foreground">
-                  {t(is_sudo ? "adminRole.super" : "adminRole.basic")}
+                  {is_sudo ? "Super admin" : "Admin"}
                 </p>
               </div>
               <Button size="icon" asChild className="ml-auto" variant="ghost">

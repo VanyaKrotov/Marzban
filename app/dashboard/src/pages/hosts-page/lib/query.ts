@@ -19,9 +19,9 @@ export function useHostsQuery(groupIds: string[] = [], search = "") {
     queryKey: [...hostsQueryKey, groupIds, search],
     queryFn: () => {
       const params = new URLSearchParams();
-      groupIds.forEach((groupId) => {
-        params.append("group_ids", groupId);
-      });
+      if (groupIds.length) {
+        params.set("groups", groupIds.join(","));
+      }
       const trimmedSearch = search.trim();
       if (trimmedSearch) {
         params.set("search", trimmedSearch);

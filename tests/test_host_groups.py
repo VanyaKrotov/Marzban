@@ -8,6 +8,7 @@ from app.db import crud
 from app.db.base import Base
 from app.db.models import ProxyInbound, host_group_hosts_association
 from app.models.proxy import HostGroupCreate, HostGroupModify, ProxyHostCreate, ProxyHostV2
+from app.subscription.share import build_subscription_hosts_by_inbound, filter_subscription_inbounds_by_hosts
 
 
 class HostGroupTests(TestCase):
@@ -89,6 +90,25 @@ class HostGroupTests(TestCase):
         self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="germany")], [host.id])
         self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="berlin")], [host.id])
         self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="1080")], [host.id])
+
+    def test_subscription_hosts_are_built_from_filtered_hosts(self):
+        self.create_group("eu", "Europe")
+        self.create_host(group_ids=["eu"], address="berlin.example.com")
+        disabled_host = self.create_host("Disabled", group_ids=["eu"], address="disabled.example.com")
+        disabled_host.is_disabled = True
+        self.db.commit()
+
+        hosts = crud.get_hosts_v2(self.db, group_ids=["eu"])
+        hosts_by_inbound = build_subscription_hosts_by_inbound(hosts)
+        self.assertEqual(list(hosts_by_inbound), ["VLESS TCP"])
+        self.assertEqual([host["remark"] for host in hosts_by_inbound["VLESS TCP"]], ["Germany"])
+        self.assertEqual(
+            filter_subscription_inbounds_by_hosts(
+                {"vless": ["VLESS TCP", "VLESS WS"]},
+                hosts_by_inbound,
+            ),
+            {"vless": ["VLESS TCP"]},
+        )
 
     def test_attach_detach_and_missing_group(self):
         host = self.create_host()

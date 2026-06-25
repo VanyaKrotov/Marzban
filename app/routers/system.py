@@ -44,6 +44,16 @@ from app.utils.system import cpu_usage, memory_usage, realtime_bandwidth
 router = APIRouter(tags=["System"], prefix="/api", responses={401: responses._401})
 
 
+def parse_groups_query(groups: Union[str, None]) -> List[str]:
+    if not groups:
+        return []
+    return [
+        group.strip()
+        for group in groups.split(",")
+        if group.strip()
+    ]
+
+
 def _inbound_response(inbound) -> InboundResponse:
     return InboundResponse(
         tag=inbound.tag,
@@ -541,7 +551,7 @@ def delete_host_group(
 )
 def get_hosts(
     group_id: Union[str, None] = Query(None),
-    group_ids: List[str] = Query(default_factory=list),
+    groups: Union[str, None] = Query(None),
     search: Union[str, None] = Query(None),
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
@@ -552,7 +562,7 @@ def get_hosts(
             db,
             tag,
             group_id=group_id,
-            group_ids=group_ids,
+            group_ids=parse_groups_query(groups),
             search=search,
         )
         for tag in xray.config.inbounds_by_tag
@@ -565,7 +575,7 @@ def get_hosts(
 )
 def get_hosts_v2(
     group_id: Union[str, None] = Query(None),
-    group_ids: List[str] = Query(default_factory=list),
+    groups: Union[str, None] = Query(None),
     search: Union[str, None] = Query(None),
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
@@ -574,7 +584,7 @@ def get_hosts_v2(
     return crud.get_hosts_v2(
         db,
         group_id=group_id,
-        group_ids=group_ids,
+        group_ids=parse_groups_query(groups),
         search=search,
     )
 

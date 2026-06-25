@@ -4,11 +4,12 @@ import secrets
 from collections import defaultdict
 from datetime import datetime as dt
 from datetime import timedelta
-from typing import TYPE_CHECKING, List, Literal, Union
+from typing import TYPE_CHECKING, List, Literal, Optional, Sequence, Union
 
 from jdatetime import date as jd
 
 from app import xray
+from app.models.proxy import ProxyHostSecurity
 from app.utils.system import get_public_ip, get_public_ipv6, readable_size
 
 from . import *
@@ -40,14 +41,27 @@ def get_status_texts() -> dict:
     }
 
 
-def generate_v2ray_links(proxies: dict, inbounds: dict, extra_data: dict, reverse: bool) -> list:
+def generate_v2ray_links(
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        reverse: bool,
+        hosts_by_inbound: Optional[dict] = None,
+) -> list:
     format_variables = setup_format_variables(extra_data)
     conf = V2rayShareLink()
-    return process_inbounds_and_tags(inbounds, proxies, format_variables, conf=conf, reverse=reverse)
+    return process_inbounds_and_tags(
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse, hosts_by_inbound=hosts_by_inbound
+    )
 
 
 def generate_clash_subscription(
-        proxies: dict, inbounds: dict, extra_data: dict, reverse: bool, is_meta: bool = False
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        reverse: bool,
+        is_meta: bool = False,
+        hosts_by_inbound: Optional[dict] = None,
 ) -> str:
     if is_meta is True:
         conf = ClashMetaConfiguration()
@@ -56,40 +70,52 @@ def generate_clash_subscription(
 
     format_variables = setup_format_variables(extra_data)
     return process_inbounds_and_tags(
-        inbounds, proxies, format_variables, conf=conf, reverse=reverse
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse, hosts_by_inbound=hosts_by_inbound
     )
 
 
 def generate_singbox_subscription(
-        proxies: dict, inbounds: dict, extra_data: dict, reverse: bool
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        reverse: bool,
+        hosts_by_inbound: Optional[dict] = None,
 ) -> str:
     conf = SingBoxConfiguration()
 
     format_variables = setup_format_variables(extra_data)
     return process_inbounds_and_tags(
-        inbounds, proxies, format_variables, conf=conf, reverse=reverse
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse, hosts_by_inbound=hosts_by_inbound
     )
 
 
 def generate_outline_subscription(
-        proxies: dict, inbounds: dict, extra_data: dict, reverse: bool,
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        reverse: bool,
+        hosts_by_inbound: Optional[dict] = None,
 ) -> str:
     conf = OutlineConfiguration()
 
     format_variables = setup_format_variables(extra_data)
     return process_inbounds_and_tags(
-        inbounds, proxies, format_variables, conf=conf, reverse=reverse
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse, hosts_by_inbound=hosts_by_inbound
     )
 
 
 def generate_v2ray_json_subscription(
-        proxies: dict, inbounds: dict, extra_data: dict, reverse: bool,
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        reverse: bool,
+        hosts_by_inbound: Optional[dict] = None,
 ) -> str:
     conf = V2rayJsonConfig()
 
     format_variables = setup_format_variables(extra_data)
     return process_inbounds_and_tags(
-        inbounds, proxies, format_variables, conf=conf, reverse=reverse
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse, hosts_by_inbound=hosts_by_inbound
     )
 
 
@@ -99,11 +125,51 @@ def generate_subscription(
         as_base64: bool,
         reverse: bool,
 ) -> str:
+    return generate_subscription_config(
+        proxies=user.proxies,
+        inbounds=user.inbounds,
+        extra_data=user.__dict__,
+        config_format=config_format,
+        as_base64=as_base64,
+        reverse=reverse,
+    )
+
+
+def generate_subscription_from_hosts(
+        user: "UserResponse",
+        hosts: Sequence,
+        config_format: Literal["v2ray", "clash-meta", "clash", "sing-box", "outline", "v2ray-json"],
+        as_base64: bool,
+        reverse: bool,
+) -> str:
+    hosts_by_inbound = build_subscription_hosts_by_inbound(hosts)
+    inbounds = filter_subscription_inbounds_by_hosts(user.inbounds, hosts_by_inbound)
+    return generate_subscription_config(
+        proxies=user.proxies,
+        inbounds=inbounds,
+        extra_data=user.__dict__,
+        config_format=config_format,
+        as_base64=as_base64,
+        reverse=reverse,
+        hosts_by_inbound=hosts_by_inbound,
+    )
+
+
+def generate_subscription_config(
+        proxies: dict,
+        inbounds: dict,
+        extra_data: dict,
+        config_format: Literal["v2ray", "clash-meta", "clash", "sing-box", "outline", "v2ray-json"],
+        as_base64: bool,
+        reverse: bool,
+        hosts_by_inbound: Optional[dict] = None,
+) -> str:
     kwargs = {
-        "proxies": user.proxies,
-        "inbounds": user.inbounds,
-        "extra_data": user.__dict__,
+        "proxies": proxies,
+        "inbounds": inbounds,
+        "extra_data": extra_data,
         "reverse": reverse,
+        "hosts_by_inbound": hosts_by_inbound,
     }
 
     if config_format == "v2ray":
@@ -125,6 +191,61 @@ def generate_subscription(
         config = base64.b64encode(config.encode()).decode()
 
     return config
+
+
+def build_subscription_hosts_by_inbound(hosts: Sequence) -> dict:
+    hosts_by_inbound = defaultdict(list)
+    for host in hosts:
+        if host.is_disabled:
+            continue
+        inbound_tag = host.inbound_tag
+        if not inbound_tag:
+            continue
+
+        hosts_by_inbound[inbound_tag].append(
+            {
+                "id": host.id,
+                "position": host.position,
+                "remark": host.remark,
+                "address": [item.strip() for item in host.address.split(",")] if host.address else [],
+                "port": host.port,
+                "path": host.path if host.path else None,
+                "sni": [item.strip() for item in host.sni.split(",")] if host.sni else [],
+                "host": [item.strip() for item in host.host.split(",")] if host.host else [],
+                "alpn": _enum_value(host.alpn),
+                "fingerprint": _enum_value(host.fingerprint),
+                "tls": _host_tls_value(host.security),
+                "allowinsecure": host.allowinsecure,
+                "mux_enable": host.mux_enable,
+                "fragment_setting": host.fragment_setting,
+                "noise_setting": host.noise_setting,
+                "random_user_agent": host.random_user_agent,
+                "use_sni_as_host": host.use_sni_as_host,
+            }
+        )
+    return dict(hosts_by_inbound)
+
+
+def filter_subscription_inbounds_by_hosts(inbounds: dict, hosts_by_inbound: dict) -> dict:
+    available_inbound_tags = set(hosts_by_inbound)
+    return {
+        protocol: [
+            tag for tag in tags
+            if tag in available_inbound_tags
+        ]
+        for protocol, tags in inbounds.items()
+        if any(tag in available_inbound_tags for tag in tags)
+    }
+
+
+def _enum_value(value):
+    return getattr(value, "value", value)
+
+
+def _host_tls_value(security):
+    if security == ProxyHostSecurity.inbound_default:
+        return None
+    return _enum_value(security)
 
 
 def format_time_left(seconds_left: int) -> str:
@@ -242,10 +363,12 @@ def process_inbounds_and_tags(
             OutlineConfiguration
         ],
         reverse=False,
+        hosts_by_inbound: Optional[dict] = None,
 ) -> Union[List, str]:
     inbound_order = {
         tag: index for index, tag in enumerate(xray.config.inbounds_by_tag.keys())
     }
+    host_source = xray.hosts if hosts_by_inbound is None else hosts_by_inbound
     targets = []
     sequence = 0
     for protocol, tags in inbounds.items():
@@ -258,7 +381,7 @@ def process_inbounds_and_tags(
             if not inbound:
                 continue
 
-            for host_index, host in enumerate(xray.hosts.get(tag, [])):
+            for host_index, host in enumerate(host_source.get(tag, [])):
                 targets.append(
                     (
                         _host_order_value(host.get("position")),

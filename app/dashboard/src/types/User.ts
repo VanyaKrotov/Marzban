@@ -58,7 +58,7 @@ export type User = {
   subscription_url: string;
   inbounds: UserInbounds;
   note: string;
-  online_at: string;
+  online_at: string | null;
 };
 
 export type UserCreate = Pick<
