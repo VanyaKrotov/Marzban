@@ -1,3 +1,14 @@
+export type HostGroupRef = {
+  id: string;
+  name: string;
+  tags: string[];
+};
+
+export type HostGroupType = HostGroupRef & {
+  description: string | null;
+  created_at: string;
+};
+
 export type HostType = {
   id: number;
   inbound_id: number;
@@ -19,14 +30,16 @@ export type HostType = {
   alpn: string;
   fingerprint: string;
   use_sni_as_host: boolean;
+  groups: HostGroupRef[];
 };
 
 export type HostPayload = Omit<
   HostType,
-  "id" | "inbound_id" | "inbound_tag" | "position"
+  "id" | "inbound_id" | "inbound_tag" | "position" | "groups"
 > & {
   inbound_tag: string;
   position?: number | null;
+  group_ids: string[];
 };
 
 export type HostsSchema = HostType[];

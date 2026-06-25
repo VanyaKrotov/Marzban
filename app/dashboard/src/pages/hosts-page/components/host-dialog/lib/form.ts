@@ -20,6 +20,7 @@ export const hostFormSchema = z.object({
   alpn: z.string(),
   fingerprint: z.string(),
   use_sni_as_host: z.boolean(),
+  group_ids: z.array(z.string()),
 });
 
 export type HostFormValues = z.infer<typeof hostFormSchema>;
@@ -30,23 +31,29 @@ export function getHostFormValues(
 ): HostFormValues {
   return {
     inboundTag,
-    ...(host ?? {
-      remark: "",
-      address: "",
-      port: null,
-      path: "",
-      sni: "",
-      host: "",
-      mux_enable: false,
-      allowinsecure: false,
-      is_disabled: false,
-      fragment_setting: "",
-      noise_setting: "",
-      random_user_agent: false,
-      security: "inbound_default",
-      alpn: "",
-      fingerprint: "",
-      use_sni_as_host: false,
-    }),
+    ...(host
+      ? {
+          ...host,
+          group_ids: host.groups.map((group) => group.id),
+        }
+      : {
+          remark: "",
+          address: "",
+          port: null,
+          path: "",
+          sni: "",
+          host: "",
+          mux_enable: false,
+          allowinsecure: false,
+          is_disabled: false,
+          fragment_setting: "",
+          noise_setting: "",
+          random_user_agent: false,
+          security: "inbound_default",
+          alpn: "",
+          fingerprint: "",
+          use_sni_as_host: false,
+          group_ids: [],
+        }),
   };
 }

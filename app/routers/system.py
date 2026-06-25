@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import Dict, List, Union
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 
 from app import __version__, xray
@@ -12,6 +12,10 @@ from app.models.proxy import (
     InboundCreate,
     InboundModify,
     InboundResponse,
+    HostGroupAttachRequest,
+    HostGroupCreate,
+    HostGroupModify,
+    HostGroupResponse,
     OutboundCreate,
     OutboundModify,
     OutboundResponse,
@@ -446,13 +450,104 @@ def get_node_certificates(
 
 
 @router.get(
+    "/host-groups",
+    response_model=List[HostGroupResponse],
+    responses={403: responses._403},
+    summary="Get host groups",
+)
+def get_host_groups(
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+):
+    """Get all host groups ordered by name."""
+    return crud.get_host_groups(db)
+
+
+@router.post(
+    "/host-groups",
+    response_model=HostGroupResponse,
+    responses={403: responses._403, 409: responses._409},
+    summary="Create a host group",
+)
+def create_host_group(
+    group: HostGroupCreate,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Create a host group with an operator-provided slug id."""
+    try:
+        return crud.create_host_group(db, group)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Host group already exists") from exc
+
+
+@router.get(
+    "/host-groups/{group_id}",
+    response_model=HostGroupResponse,
+    responses={403: responses._403, 404: responses._404},
+    summary="Get a host group",
+)
+def get_host_group(
+    group_id: str,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Get a host group by id."""
+    dbgroup = crud.get_host_group(db, group_id)
+    if not dbgroup:
+        raise HTTPException(status_code=404, detail="Host group not found")
+    return dbgroup
+
+
+@router.put(
+    "/host-groups/{group_id}",
+    response_model=HostGroupResponse,
+    responses={403: responses._403, 404: responses._404},
+    summary="Update a host group",
+)
+def update_host_group(
+    group_id: str,
+    group: HostGroupModify,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update host group metadata without changing its id."""
+    dbgroup = crud.get_host_group(db, group_id)
+    if not dbgroup:
+        raise HTTPException(status_code=404, detail="Host group not found")
+    return crud.update_host_group(db, dbgroup, group)
+
+
+@router.delete(
+    "/host-groups/{group_id}",
+    responses={403: responses._403, 404: responses._404},
+    summary="Delete a host group",
+)
+def delete_host_group(
+    group_id: str,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Delete a host group and detach it from all hosts."""
+    dbgroup = crud.get_host_group(db, group_id)
+    if not dbgroup:
+        raise HTTPException(status_code=404, detail="Host group not found")
+    crud.delete_host_group(db, dbgroup)
+    return {}
+
+
+@router.get(
     "/hosts", response_model=Dict[str, List[ProxyHost]], responses={403: responses._403}
 )
 def get_hosts(
+    group_id: Union[str, None] = Query(None),
     db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
 ):
     """Get a list of proxy hosts grouped by inbound tag."""
-    hosts = {tag: crud.get_hosts(db, tag) for tag in xray.config.inbounds_by_tag}
+    hosts = {
+        tag: crud.get_hosts(db, tag, group_id=group_id)
+        for tag in xray.config.inbounds_by_tag
+    }
     return hosts
 
 
@@ -460,10 +555,11 @@ def get_hosts(
     "/hosts/v2", response_model=List[ProxyHostV2], responses={403: responses._403}
 )
 def get_hosts_v2(
+    group_id: Union[str, None] = Query(None),
     db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
 ):
     """Get a flat list of proxy hosts ordered by position."""
-    return crud.get_hosts_v2(db)
+    return crud.get_hosts_v2(db, group_id=group_id)
 
 
 @router.post(
@@ -479,7 +575,10 @@ def create_host_v2(
         raise HTTPException(
             status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
         )
-    dbhost = crud.create_host_v2(db, host)
+    try:
+        dbhost = crud.create_host_v2(db, host)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     xray.hosts.update()
     return dbhost
 
@@ -522,9 +621,56 @@ def update_host_v2(
     dbhost = crud.get_host_v2(db, host_id)
     if not dbhost:
         raise HTTPException(status_code=404, detail="Host not found")
-    dbhost = crud.update_host_v2(db, dbhost, host)
+    try:
+        dbhost = crud.update_host_v2(db, dbhost, host)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     xray.hosts.update()
     return dbhost
+
+
+@router.post(
+    "/hosts/v2/{host_id}/groups",
+    response_model=ProxyHostV2,
+    responses={403: responses._403, 404: responses._404},
+    summary="Attach a host to groups",
+)
+def attach_host_groups(
+    host_id: int,
+    payload: HostGroupAttachRequest,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Attach a proxy host to one or more host groups."""
+    dbhost = crud.get_host_v2(db, host_id)
+    if not dbhost:
+        raise HTTPException(status_code=404, detail="Host not found")
+    try:
+        return crud.attach_host_groups(db, dbhost, payload.group_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete(
+    "/hosts/v2/{host_id}/groups",
+    response_model=ProxyHostV2,
+    responses={403: responses._403, 404: responses._404},
+    summary="Detach a host from groups",
+)
+def detach_host_groups(
+    host_id: int,
+    payload: HostGroupAttachRequest,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Detach a proxy host from one or more host groups."""
+    dbhost = crud.get_host_v2(db, host_id)
+    if not dbhost:
+        raise HTTPException(status_code=404, detail="Host not found")
+    try:
+        return crud.detach_host_groups(db, dbhost, payload.group_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete(

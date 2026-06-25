@@ -188,6 +188,13 @@ node_certificate_inbounds_association = Table(
     Column("inbound_tag", ForeignKey("inbounds.tag"), primary_key=True),
 )
 
+host_group_hosts_association = Table(
+    "host_group_hosts",
+    Base.metadata,
+    Column("host_id", Integer, ForeignKey("hosts.id", ondelete="CASCADE"), primary_key=True),
+    Column("group_id", String(64), ForeignKey("host_groups.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class NextPlan(Base):
     __tablename__ = 'next_plans'
@@ -333,6 +340,11 @@ class ProxyHost(Base):
 
     inbound_id = Column(Integer, ForeignKey("inbounds.id"), nullable=False)
     inbound = relationship("ProxyInbound", back_populates="hosts")
+    groups = relationship(
+        "HostGroup",
+        secondary=host_group_hosts_association,
+        back_populates="hosts",
+    )
     position = Column(Integer, nullable=False, default=0, server_default="0", index=True)
     allowinsecure = Column(Boolean, nullable=True)
     is_disabled = Column(Boolean, nullable=True, default=False)
@@ -345,6 +357,21 @@ class ProxyHost(Base):
     @property
     def inbound_tag(self):
         return self.inbound.tag if self.inbound else None
+
+
+class HostGroup(Base):
+    __tablename__ = "host_groups"
+
+    id = Column(String(64), primary_key=True)
+    name = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    tags = Column(JSON, nullable=False, default=list)
+    hosts = relationship(
+        "ProxyHost",
+        secondary=host_group_hosts_association,
+        back_populates="groups",
+    )
 
 
 class System(Base):

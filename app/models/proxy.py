@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
@@ -293,21 +294,64 @@ class ProxyHost(BaseModel):
         return v
 
 
+class HostGroupBase(BaseModel):
+    name: str = Field(min_length=1, max_length=256)
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return []
+        if any(not isinstance(tag, str) for tag in v):
+            raise ValueError("Tags must be strings")
+        return v
+
+
+class HostGroupCreate(HostGroupBase):
+    id: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+
+
+class HostGroupModify(HostGroupBase):
+    pass
+
+
+class HostGroupRef(BaseModel):
+    id: str
+    name: str
+    tags: List[str] = Field(default_factory=list)
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HostGroupResponse(HostGroupBase):
+    id: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HostGroupAttachRequest(BaseModel):
+    group_ids: List[str] = Field(default_factory=list)
+
+
 class ProxyHostV2(ProxyHost):
     id: int
     inbound_id: int
     inbound_tag: str
     position: int
+    groups: List[HostGroupRef] = Field(default_factory=list)
 
 
 class ProxyHostCreate(ProxyHost):
     inbound_tag: str = Field(min_length=1, max_length=256)
     position: Optional[int] = None
+    group_ids: List[str] = Field(default_factory=list)
 
 
 class ProxyHostModify(ProxyHost):
     inbound_tag: str = Field(min_length=1, max_length=256)
     position: Optional[int] = None
+    group_ids: List[str] = Field(default_factory=list)
 
 
 class ProxyHostReorder(BaseModel):

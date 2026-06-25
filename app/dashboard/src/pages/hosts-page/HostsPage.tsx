@@ -34,6 +34,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -60,17 +68,21 @@ import {
 import {
   useCreateHostMutation,
   useDeleteHostMutation,
+  useHostGroupsQuery,
   useHostsQuery,
   useReorderHostsMutation,
   useUpdateHostMutation,
 } from "./lib/query";
-import type { HostsSchema } from "./types";
+import type { HostGroupRef, HostsSchema } from "./types";
+
+const ALL_GROUPS_VALUE = "__all__";
 
 export function HostsPage() {
   const { t } = useTranslation();
   const [hosts, setHosts] = useState<HostsSchema>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<HostRow | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [draggedRow, setDraggedRow] = useState<HostRow | null>(null);
   const [dropTarget, setDropTarget] = useState<{
     rowId: number;
@@ -82,7 +94,8 @@ export function HostsPage() {
     isFetching,
     isError,
     refetch,
-  } = useHostsQuery();
+  } = useHostsQuery(selectedGroupId);
+  const { data: hostGroups = [] } = useHostGroupsQuery();
   const createHost = useCreateHostMutation();
   const updateHostMutation = useUpdateHostMutation();
   const deleteHost = useDeleteHostMutation();
@@ -93,6 +106,7 @@ export function HostsPage() {
     deleteHost.isPending ||
     reorderHosts.isPending;
   const rows = useMemo(() => hosts, [hosts]);
+  const reorderDisabled = Boolean(selectedGroupId);
 
   useEffect(() => {
     if (hostsData) setHosts(cloneHosts(hostsData));
@@ -147,7 +161,7 @@ export function HostsPage() {
     if (editingRow) {
       persistUpdate(
         editingRow.id,
-        updateHost(hosts, editingRow.id, payload),
+        updateHost(hosts, editingRow.id, payload, hostGroups),
         values,
         t("hostsDialog.savedSuccess"),
       );
@@ -170,6 +184,7 @@ export function HostsPage() {
         ...toHostPayload({
           ...row,
           inboundTag: row.inbound_tag,
+          group_ids: row.groups.map((group) => group.id),
         }),
         remark: `${row.remark} ${t("hostsPage.copySuffix")}`,
         is_disabled: true,
@@ -185,11 +200,12 @@ export function HostsPage() {
     const values: HostFormValues = {
       ...row,
       inboundTag: row.inbound_tag,
+      group_ids: row.groups.map((group) => group.id),
       is_disabled: !checked,
     };
     persistUpdate(
       row.id,
-      updateHost(hosts, row.id, toHostPayload(values)),
+      updateHost(hosts, row.id, toHostPayload(values), hostGroups),
       values,
     );
   };
@@ -206,7 +222,7 @@ export function HostsPage() {
   };
 
   const drop = (target: HostRow) => {
-    if (!draggedRow || !dropTarget) {
+    if (reorderDisabled || !draggedRow || !dropTarget) {
       setDraggedRow(null);
       setDropTarget(null);
       return;
@@ -235,7 +251,29 @@ export function HostsPage() {
     <Page>
       <Page.Header
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Select
+              value={selectedGroupId ?? ALL_GROUPS_VALUE}
+              onValueChange={(value) =>
+                setSelectedGroupId(value === ALL_GROUPS_VALUE ? null : value)
+              }
+            >
+              <SelectTrigger className="h-9 w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL_GROUPS_VALUE}>
+                    {t("hostsPage.allGroups")}
+                  </SelectItem>
+                  {hostGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               variant="outline"
@@ -282,6 +320,7 @@ export function HostsPage() {
                   <TableHead>{t("hostsPage.addressPort")}</TableHead>
                   <TableHead>{t("hostsPage.enabled")}</TableHead>
                   <TableHead>{t("hostsPage.inbound")}</TableHead>
+                  <TableHead>{t("hostsPage.groups")}</TableHead>
                   <TableHead className="w-28" />
                 </TableRow>
               </TableHeader>
@@ -289,7 +328,7 @@ export function HostsPage() {
                 {rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    draggable
+                    draggable={!reorderDisabled}
                     className={`cursor-pointer ${
                       dropTarget?.rowId === row.id
                         ? dropTarget.position === "before"
@@ -297,14 +336,16 @@ export function HostsPage() {
                           : "border-b-2 border-b-primary"
                         : ""
                     }`}
-                    onDragStart={() => setDraggedRow(row)}
+                    onDragStart={() => {
+                      if (!reorderDisabled) setDraggedRow(row);
+                    }}
                     onDragEnd={() => {
                       setDraggedRow(null);
                       setDropTarget(null);
                     }}
                     onDragOver={(event) => {
                       event.preventDefault();
-                      if (!draggedRow) {
+                      if (reorderDisabled || !draggedRow) {
                         return;
                       }
 
@@ -328,7 +369,11 @@ export function HostsPage() {
                     }}
                   >
                     <TableCell>
-                      <GripVertical className="size-4 cursor-grab text-muted-foreground" />
+                      <GripVertical
+                        className={`size-4 text-muted-foreground ${
+                          reorderDisabled ? "opacity-30" : "cursor-grab"
+                        }`}
+                      />
                     </TableCell>
                     <TableCell className="font-medium">
                       {row.remark}
@@ -352,6 +397,9 @@ export function HostsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{row.inbound_tag}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <HostGroupBadges groups={row.groups} />
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -396,6 +444,9 @@ export function HostsPage() {
                     </p>
                   </div>
                   <Badge variant="outline">{row.inbound_tag}</Badge>
+                </div>
+                <div className="mt-3">
+                  <HostGroupBadges groups={row.groups} />
                 </div>
                 <div
                   className="mt-4 flex items-center justify-between"
@@ -444,12 +495,35 @@ export function HostsPage() {
           open={dialogOpen}
           host={editingRow ?? null}
           inboundTag={editingRow?.inbound_tag ?? null}
+          hostGroups={hostGroups}
           pending={pending}
           onOpenChange={setDialogOpen}
           onSubmit={submitHost}
         />
       )}
     </Page>
+  );
+}
+
+function HostGroupBadges({ groups }: { groups: HostGroupRef[] }) {
+  const { t } = useTranslation();
+
+  if (!groups.length) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        {t("hostsPage.noGroupsShort")}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {groups.map((group) => (
+        <Badge key={group.id} variant="secondary">
+          {group.name}
+        </Badge>
+      ))}
+    </div>
   );
 }
 

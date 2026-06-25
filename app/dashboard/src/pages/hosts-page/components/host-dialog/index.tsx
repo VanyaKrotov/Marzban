@@ -4,13 +4,14 @@ import { useTranslation } from "react-i18next";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { HostType } from "../../types";
+import type { HostGroupType, HostType } from "../../types";
 import { useInboundsQuery } from "../../lib/query";
 
 import { AdvancedFields } from "./components/AdvancedFields";
 import { BasicFields } from "./components/BasicFields";
 import { HostDialogHeader } from "./components/DialogHeader";
 import { FormActions } from "./components/FormActions";
+import { GroupsField } from "./components/GroupsField";
 import {
   getHostFormValues,
   hostFormSchema,
@@ -23,6 +24,7 @@ type HostDialogProps = {
   open: boolean;
   host: HostType | null;
   inboundTag: string | null;
+  hostGroups: HostGroupType[];
   pending: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: HostFormValues) => void;
@@ -32,6 +34,7 @@ export function HostDialog({
   open,
   host,
   inboundTag,
+  hostGroups,
   pending,
   onOpenChange,
   onSubmit,
@@ -42,6 +45,7 @@ export function HostDialog({
         <HostDialogContent
           host={host}
           inboundTag={inboundTag}
+          hostGroups={hostGroups}
           pending={pending}
           onSubmit={onSubmit}
         />
@@ -55,6 +59,7 @@ function HostDialogContent({
   inboundTag,
   pending,
   onSubmit,
+  hostGroups,
 }: Omit<HostDialogProps, "open" | "onOpenChange">) {
   const { t } = useTranslation();
   const {
@@ -96,6 +101,11 @@ function HostDialogContent({
               form={form}
               inbounds={inbounds}
               selectedInbound={selectedInbound}
+              pending={pending}
+            />
+            <GroupsField
+              form={form}
+              groups={hostGroups}
               pending={pending}
             />
             <AdvancedFields form={form} pending={pending} />

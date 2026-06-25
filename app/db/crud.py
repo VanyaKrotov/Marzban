@@ -15,6 +15,7 @@ from app.db.models import (
     TLS,
     Admin,
     AdminUsageLogs,
+    HostGroup,
     NextPlan,
     Node,
     NodeCertificate,
@@ -41,6 +42,8 @@ from app.models.node import NodeCertificateModify
 from app.models.proxy import (
     InboundCreate,
     InboundModify,
+    HostGroupCreate,
+    HostGroupModify,
     OutboundCreate,
     OutboundModify,
     ProxyHost as ProxyHostModify,
@@ -726,7 +729,9 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     db.commit()
 
 
-def get_hosts(db: Session, inbound_tag: str) -> List[ProxyHost]:
+def get_hosts(
+    db: Session, inbound_tag: str, group_id: Optional[str] = None
+) -> List[ProxyHost]:
     """
     Retrieves hosts for a given inbound tag.
 
@@ -738,31 +743,116 @@ def get_hosts(db: Session, inbound_tag: str) -> List[ProxyHost]:
         List[ProxyHost]: List of hosts for the inbound.
     """
     inbound = get_or_create_inbound(db, inbound_tag)
-    return (
+    query = (
         db.query(ProxyHost)
-        .options(joinedload(ProxyHost.inbound))
+        .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
         .filter(ProxyHost.inbound_id == inbound.id)
-        .order_by(ProxyHost.position, ProxyHost.id)
-        .all()
     )
+    if group_id:
+        query = query.join(ProxyHost.groups).filter(HostGroup.id == group_id)
+    return query.order_by(ProxyHost.position, ProxyHost.id).all()
 
 
-def get_hosts_v2(db: Session) -> List[ProxyHost]:
-    return (
+def get_hosts_v2(db: Session, group_id: Optional[str] = None) -> List[ProxyHost]:
+    query = (
         db.query(ProxyHost)
-        .options(joinedload(ProxyHost.inbound))
-        .order_by(ProxyHost.position, ProxyHost.id)
-        .all()
+        .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
     )
+    if group_id:
+        query = query.join(ProxyHost.groups).filter(HostGroup.id == group_id)
+    return query.order_by(ProxyHost.position, ProxyHost.id).all()
 
 
 def get_host_v2(db: Session, host_id: int) -> Optional[ProxyHost]:
     return (
         db.query(ProxyHost)
-        .options(joinedload(ProxyHost.inbound))
+        .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
         .filter(ProxyHost.id == host_id)
         .first()
     )
+
+
+def get_host_groups(db: Session) -> List[HostGroup]:
+    return db.query(HostGroup).order_by(HostGroup.name, HostGroup.id).all()
+
+
+def get_host_group(db: Session, group_id: str) -> Optional[HostGroup]:
+    return db.query(HostGroup).filter(HostGroup.id == group_id).first()
+
+
+def create_host_group(db: Session, group: HostGroupCreate) -> HostGroup:
+    dbgroup = HostGroup(
+        id=group.id,
+        name=group.name,
+        description=group.description,
+        tags=group.tags,
+    )
+    db.add(dbgroup)
+    db.commit()
+    db.refresh(dbgroup)
+    return dbgroup
+
+
+def update_host_group(
+    db: Session, dbgroup: HostGroup, group: HostGroupModify
+) -> HostGroup:
+    dbgroup.name = group.name
+    dbgroup.description = group.description
+    dbgroup.tags = group.tags
+    db.commit()
+    db.refresh(dbgroup)
+    return dbgroup
+
+
+def delete_host_group(db: Session, dbgroup: HostGroup) -> None:
+    db.delete(dbgroup)
+    db.commit()
+
+
+def _get_existing_host_groups(db: Session, group_ids: List[str]) -> List[HostGroup]:
+    unique_ids = list(dict.fromkeys(group_ids))
+    if not unique_ids:
+        return []
+    groups = db.query(HostGroup).filter(HostGroup.id.in_(unique_ids)).all()
+    if len(groups) != len(unique_ids):
+        found_ids = {group.id for group in groups}
+        missing_ids = [
+            group_id for group_id in unique_ids if group_id not in found_ids
+        ]
+        raise ValueError(f"Host group not found: {', '.join(missing_ids)}")
+    groups_by_id = {group.id: group for group in groups}
+    return [groups_by_id[group_id] for group_id in unique_ids]
+
+
+def set_host_groups(db: Session, dbhost: ProxyHost, group_ids: List[str]) -> ProxyHost:
+    dbhost.groups = _get_existing_host_groups(db, group_ids)
+    db.commit()
+    db.refresh(dbhost)
+    return get_host_v2(db, dbhost.id)
+
+
+def attach_host_groups(
+    db: Session, dbhost: ProxyHost, group_ids: List[str]
+) -> ProxyHost:
+    groups = _get_existing_host_groups(db, group_ids)
+    existing_ids = {group.id for group in dbhost.groups}
+    for group in groups:
+        if group.id not in existing_ids:
+            dbhost.groups.append(group)
+    db.commit()
+    db.refresh(dbhost)
+    return get_host_v2(db, dbhost.id)
+
+
+def detach_host_groups(
+    db: Session, dbhost: ProxyHost, group_ids: List[str]
+) -> ProxyHost:
+    _get_existing_host_groups(db, group_ids)
+    remove_ids = set(group_ids)
+    dbhost.groups = [group for group in dbhost.groups if group.id not in remove_ids]
+    db.commit()
+    db.refresh(dbhost)
+    return get_host_v2(db, dbhost.id)
 
 
 def _apply_host_fields(dbhost: ProxyHost, host: ProxyHostModify) -> None:
@@ -791,6 +881,7 @@ def create_host_v2(db: Session, host: ProxyHostCreate) -> ProxyHost:
         position = get_next_host_position(db)
     dbhost = ProxyHost(inbound=inbound, position=position)
     _apply_host_fields(dbhost, host)
+    dbhost.groups = _get_existing_host_groups(db, host.group_ids)
     db.add(dbhost)
     db.commit()
     db.refresh(dbhost)
@@ -805,6 +896,7 @@ def update_host_v2(
     if host.position is not None:
         dbhost.position = host.position
     _apply_host_fields(dbhost, host)
+    dbhost.groups = _get_existing_host_groups(db, host.group_ids)
     db.commit()
     db.refresh(dbhost)
     return get_host_v2(db, dbhost.id)

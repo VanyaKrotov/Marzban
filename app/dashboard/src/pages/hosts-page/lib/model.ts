@@ -1,4 +1,10 @@
-import type { HostPayload, HostType, HostsSchema } from "../types";
+import type {
+  HostGroupRef,
+  HostGroupType,
+  HostPayload,
+  HostType,
+  HostsSchema,
+} from "../types";
 
 export type HostRow = HostType;
 
@@ -19,6 +25,7 @@ export const getDefaultHost = (): Omit<HostPayload, "inbound_tag"> => ({
   alpn: "",
   fingerprint: "",
   use_sni_as_host: false,
+  group_ids: [],
 });
 
 export function toHostPayload(values: {
@@ -42,13 +49,26 @@ export function toHostPayload(values: {
     alpn: values.alpn,
     fingerprint: values.fingerprint,
     use_sni_as_host: values.use_sni_as_host,
+    group_ids: values.group_ids,
   };
+}
+
+export function toHostGroupRefs(
+  groupIds: string[],
+  hostGroups: HostGroupType[],
+): HostGroupRef[] {
+  const groupsById = new Map(hostGroups.map((group) => [group.id, group]));
+  return groupIds.flatMap((groupId) => {
+    const group = groupsById.get(groupId);
+    return group ? [{ id: group.id, name: group.name, tags: group.tags }] : [];
+  });
 }
 
 export function updateHost(
   hosts: HostsSchema,
   hostId: number,
   payload: HostPayload,
+  hostGroups: HostGroupType[] = [],
 ): HostsSchema {
   return hosts.map((host) =>
     host.id === hostId
@@ -57,6 +77,7 @@ export function updateHost(
           ...payload,
           inbound_tag: payload.inbound_tag,
           position: payload.position ?? host.position,
+          groups: toHostGroupRefs(payload.group_ids, hostGroups),
         }
       : host,
   );
@@ -80,5 +101,8 @@ export function reorderHost(
 }
 
 export function cloneHosts(hosts: HostsSchema): HostsSchema {
-  return hosts.map((host) => ({ ...host }));
+  return hosts.map((host) => ({
+    ...host,
+    groups: host.groups.map((group) => ({ ...group })),
+  }));
 }
