@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useInboundsListQuery } from "hooks/useInboundsQuery";
 import type {
   HostGroupType,
+  HostGroupPayload,
+  HostGroupUpdatePayload,
   HostPayload,
   HostType,
   HostsSchema,
@@ -12,13 +14,22 @@ import { api } from "service/http";
 export const hostsQueryKey = ["hosts", "v2"] as const;
 export const hostGroupsQueryKey = ["host-groups"] as const;
 
-export function useHostsQuery(groupId?: string | null) {
+export function useHostsQuery(groupIds: string[] = [], search = "") {
   return useQuery({
-    queryKey: [...hostsQueryKey, groupId ?? null],
-    queryFn: () =>
-      api.get<HostsSchema>("/hosts/v2", {
-        params: groupId ? { group_id: groupId } : undefined,
-      }),
+    queryKey: [...hostsQueryKey, groupIds, search],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      groupIds.forEach((groupId) => {
+        params.append("group_ids", groupId);
+      });
+      const trimmedSearch = search.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+      return api.get<HostsSchema>("/hosts/v2", {
+        params: params.size ? params : undefined,
+      });
+    },
   });
 }
 
@@ -26,6 +37,48 @@ export function useHostGroupsQuery() {
   return useQuery({
     queryKey: hostGroupsQueryKey,
     queryFn: () => api.get<HostGroupType[]>("/host-groups"),
+  });
+}
+
+export function useCreateHostGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (group: HostGroupPayload) =>
+      api.post<HostGroupType>("/host-groups", group),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+  });
+}
+
+export function useUpdateHostGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      group,
+    }: {
+      id: string;
+      group: HostGroupUpdatePayload;
+    }) => api.put<HostGroupType>(`/host-groups/${id}`, group),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: hostsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["users"] }),
+      ]),
+  });
+}
+
+export function useDeleteHostGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/host-groups/${id}`),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: hostsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["users"] }),
+      ]),
   });
 }
 

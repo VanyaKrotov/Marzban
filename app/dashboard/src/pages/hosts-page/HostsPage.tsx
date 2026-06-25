@@ -1,292 +1,41 @@
-import {
-  Copy,
-  GripVertical,
-  Link2,
-  LoaderCircle,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import Page from "@/components/page";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  generateErrorMessage,
-  generateSuccessMessage,
-} from "utils/toastHandler";
 
-import { HostDialog, type HostFormValues } from "./components/host-dialog";
-import {
-  cloneHosts,
-  removeHost,
-  reorderHost,
-  toHostPayload,
-  updateHost,
-  type HostRow,
-} from "./lib/model";
-import {
-  useCreateHostMutation,
-  useDeleteHostMutation,
-  useHostGroupsQuery,
-  useHostsQuery,
-  useReorderHostsMutation,
-  useUpdateHostMutation,
-} from "./lib/query";
-import type { HostGroupRef, HostsSchema } from "./types";
-
-const ALL_GROUPS_VALUE = "__all__";
+import { HostDialog } from "./components/host-dialog";
+import { HostsCards } from "./components/HostsCards";
+import { HostsSkeleton } from "./components/HostsSkeleton";
+import { HostsState } from "./components/HostsState";
+import { HostsTable } from "./components/HostsTable";
+import { HostsToolbar } from "./components/HostsToolbar";
+import { useHostsPageController } from "./hooks/useHostsPageController";
 
 export function HostsPage() {
   const { t } = useTranslation();
-  const [hosts, setHosts] = useState<HostsSchema>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingRow, setEditingRow] = useState<HostRow | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [draggedRow, setDraggedRow] = useState<HostRow | null>(null);
-  const [dropTarget, setDropTarget] = useState<{
-    rowId: number;
-    position: "before" | "after";
-  } | null>(null);
-  const {
-    data: hostsData,
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useHostsQuery(selectedGroupId);
-  const { data: hostGroups = [] } = useHostGroupsQuery();
-  const createHost = useCreateHostMutation();
-  const updateHostMutation = useUpdateHostMutation();
-  const deleteHost = useDeleteHostMutation();
-  const reorderHosts = useReorderHostsMutation();
-  const pending =
-    createHost.isPending ||
-    updateHostMutation.isPending ||
-    deleteHost.isPending ||
-    reorderHosts.isPending;
-  const rows = useMemo(() => hosts, [hosts]);
-  const reorderDisabled = Boolean(selectedGroupId);
-
-  useEffect(() => {
-    if (hostsData) setHosts(cloneHosts(hostsData));
-  }, [hostsData]);
-
-  const persistUpdate = (
-    hostId: number,
-    nextHosts: HostsSchema,
-    values: HostFormValues,
-    successMessage?: string,
-  ) => {
-    if (!hostsData) return;
-    const previousHosts = hosts;
-    const payload = toHostPayload(values);
-    setHosts(nextHosts);
-    updateHostMutation.mutate(
-      { id: hostId, host: payload },
-      {
-        onSuccess: () => {
-          if (successMessage) generateSuccessMessage(successMessage);
-        },
-        onError: (error) => {
-          setHosts(previousHosts);
-          generateErrorMessage(error);
-        },
-      },
-    );
-  };
-
-  const persistReorder = (nextHosts: HostsSchema) => {
-    if (!hostsData) return;
-    const previousHosts = hosts;
-    setHosts(nextHosts);
-    reorderHosts.mutate(nextHosts.map((host) => host.id), {
-      onSuccess: () => {
-        generateSuccessMessage(t("hostsPage.orderSaved"));
-      },
-      onError: (error) => {
-        setHosts(previousHosts);
-        generateErrorMessage(error);
-      },
-    });
-  };
-
-  const openCreate = () => {
-    setEditingRow(null);
-    setDialogOpen(true);
-  };
-
-  const submitHost = (values: HostFormValues) => {
-    const payload = toHostPayload(values);
-    if (editingRow) {
-      persistUpdate(
-        editingRow.id,
-        updateHost(hosts, editingRow.id, payload, hostGroups),
-        values,
-        t("hostsDialog.savedSuccess"),
-      );
-      setDialogOpen(false);
-      return;
-    }
-
-    createHost.mutate(payload, {
-      onSuccess: () => {
-        generateSuccessMessage(t("hostsDialog.savedSuccess"));
-        setDialogOpen(false);
-      },
-      onError: (error) => generateErrorMessage(error),
-    });
-  };
-
-  const duplicate = (row: HostRow) => {
-    createHost.mutate(
-      {
-        ...toHostPayload({
-          ...row,
-          inboundTag: row.inbound_tag,
-          group_ids: row.groups.map((group) => group.id),
-        }),
-        remark: `${row.remark} ${t("hostsPage.copySuffix")}`,
-        is_disabled: true,
-      },
-      {
-        onSuccess: () => generateSuccessMessage(t("hostsPage.copied")),
-        onError: (error) => generateErrorMessage(error),
-      },
-    );
-  };
-
-  const toggleHost = (row: HostRow, checked: boolean) => {
-    const values: HostFormValues = {
-      ...row,
-      inboundTag: row.inbound_tag,
-      group_ids: row.groups.map((group) => group.id),
-      is_disabled: !checked,
-    };
-    persistUpdate(
-      row.id,
-      updateHost(hosts, row.id, toHostPayload(values), hostGroups),
-      values,
-    );
-  };
-
-  const removeHostRow = (row: HostRow) => {
-    const previousHosts = hosts;
-    setHosts(removeHost(hosts, row.id));
-    deleteHost.mutate(row.id, {
-      onError: (error) => {
-        setHosts(previousHosts);
-        generateErrorMessage(error);
-      },
-    });
-  };
-
-  const drop = (target: HostRow) => {
-    if (reorderDisabled || !draggedRow || !dropTarget) {
-      setDraggedRow(null);
-      setDropTarget(null);
-      return;
-    }
-
-    const sourceIndex = rows.findIndex((row) => row.id === draggedRow.id);
-    const targetRowIndex = rows.findIndex((row) => row.id === target.id);
-    if (sourceIndex < 0 || targetRowIndex < 0) {
-      setDraggedRow(null);
-      setDropTarget(null);
-      return;
-    }
-
-    let targetIndex =
-      targetRowIndex + (dropTarget.position === "after" ? 1 : 0);
-    if (sourceIndex < targetIndex) targetIndex -= 1;
-
-    if (sourceIndex !== targetIndex) {
-      persistReorder(reorderHost(hosts, sourceIndex, targetIndex));
-    }
-    setDraggedRow(null);
-    setDropTarget(null);
-  };
+  const controller = useHostsPageController();
 
   return (
     <Page>
       <Page.Header
         actions={
           <div className="flex flex-wrap justify-end gap-2">
-            <Select
-              value={selectedGroupId ?? ALL_GROUPS_VALUE}
-              onValueChange={(value) =>
-                setSelectedGroupId(value === ALL_GROUPS_VALUE ? null : value)
-              }
-            >
-              <SelectTrigger className="h-9 w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={ALL_GROUPS_VALUE}>
-                    {t("hostsPage.allGroups")}
-                  </SelectItem>
-                  {hostGroups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="px-2 sm:px-3"
-              disabled={isFetching}
-              onClick={() => void refetch()}
+              disabled={controller.isFetching}
+              onClick={() => void controller.refetch()}
               aria-label={t("hostsPage.refresh").toString()}
             >
-              <RefreshCw className={isFetching ? "animate-spin" : undefined} />
+              <RefreshCw
+                className={controller.isFetching ? "animate-spin" : undefined}
+              />
               <span className="hidden sm:inline">{t("hostsPage.refresh")}</span>
             </Button>
-            <Button type="button" size="sm" onClick={openCreate}>
+            <Button type="button" size="sm" onClick={controller.openCreate}>
               <Plus />
               {t("create")}
             </Button>
@@ -296,192 +45,59 @@ export function HostsPage() {
         <h1 className="font-semibold">{t("hostsPage.title")}</h1>
       </Page.Header>
 
-      {isLoading ? (
+      <HostsToolbar
+        groups={controller.hostGroups}
+        pending={controller.pending}
+        search={controller.search}
+        selectedGroupIds={controller.selectedGroupIds}
+        onSearchChange={controller.setSearch}
+        onSelectedGroupIdsChange={controller.setSelectedGroupIds}
+      />
+
+      {controller.isLoading ? (
         <HostsSkeleton />
-      ) : isError || !hostsData ? (
+      ) : controller.isError || !controller.hasLoadedHosts ? (
         <HostsState
           title={t("hostsPage.loadErrorTitle")}
           description={t("hostsPage.loadErrorDescription")}
           action={
-            <Button variant="outline" onClick={() => void refetch()}>
+            <Button variant="outline" onClick={() => void controller.refetch()}>
               <RefreshCw />
               {t("hostsPage.refresh")}
             </Button>
           }
         />
-      ) : rows.length ? (
+      ) : controller.rows.length ? (
         <>
-          <div className="hidden overflow-hidden rounded-xl border md:block">
-            <Table>
-              <TableHeader className="bg-muted/40">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-10" />
-                  <TableHead>{t("hostsPage.name")}</TableHead>
-                  <TableHead>{t("hostsPage.addressPort")}</TableHead>
-                  <TableHead>{t("hostsPage.enabled")}</TableHead>
-                  <TableHead>{t("hostsPage.inbound")}</TableHead>
-                  <TableHead>{t("hostsPage.groups")}</TableHead>
-                  <TableHead className="w-28" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    draggable={!reorderDisabled}
-                    className={`cursor-pointer ${
-                      dropTarget?.rowId === row.id
-                        ? dropTarget.position === "before"
-                          ? "border-t-2 border-t-primary"
-                          : "border-b-2 border-b-primary"
-                        : ""
-                    }`}
-                    onDragStart={() => {
-                      if (!reorderDisabled) setDraggedRow(row);
-                    }}
-                    onDragEnd={() => {
-                      setDraggedRow(null);
-                      setDropTarget(null);
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      if (reorderDisabled || !draggedRow) {
-                        return;
-                      }
-
-                      const bounds =
-                        event.currentTarget.getBoundingClientRect();
-                      const position =
-                        event.clientY < bounds.top + bounds.height / 2
-                          ? "before"
-                          : "after";
-                      setDropTarget((current) =>
-                        current?.rowId === row.id &&
-                        current.position === position
-                          ? current
-                          : { rowId: row.id, position },
-                      );
-                    }}
-                    onDrop={() => drop(row)}
-                    onClick={() => {
-                      setEditingRow(row);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <TableCell>
-                      <GripVertical
-                        className={`size-4 text-muted-foreground ${
-                          reorderDisabled ? "opacity-30" : "cursor-grab"
-                        }`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {row.remark}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {row.address}:{row.port ?? "default"}
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className="w-fit"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Switch
-                          checked={!row.is_disabled}
-                          disabled={pending}
-                          onCheckedChange={(checked) =>
-                            toggleHost(row, checked)
-                          }
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{row.inbound_tag}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <HostGroupBadges groups={row.groups} />
-                    </TableCell>
-                    <TableCell onClick={(event) => event.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={pending}
-                          onClick={() => duplicate(row)}
-                          aria-label={t("hostsPage.copy")}
-                        >
-                          <Copy />
-                        </Button>
-                        <DeleteHostButton
-                          pending={pending}
-                          name={row.remark}
-                          onDelete={() => removeHostRow(row)}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="grid gap-3 md:hidden">
-            {rows.map((row) => (
-              <article
-                key={row.id}
-                className="rounded-xl border bg-card p-4 shadow-xs"
-                onClick={() => {
-                  setEditingRow(row);
-                  setDialogOpen(true);
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{row.remark}</p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {row.address}:{row.port ?? "default"}
-                    </p>
-                  </div>
-                  <Badge variant="outline">{row.inbound_tag}</Badge>
-                </div>
-                <div className="mt-3">
-                  <HostGroupBadges groups={row.groups} />
-                </div>
-                <div
-                  className="mt-4 flex items-center justify-between"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Switch
-                    checked={!row.is_disabled}
-                    disabled={pending}
-                    onCheckedChange={(checked) => toggleHost(row, checked)}
-                  />
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => duplicate(row)}
-                    >
-                      <Copy />
-                    </Button>
-                    <DeleteHostButton
-                      pending={pending}
-                      name={row.remark}
-                      onDelete={() => removeHostRow(row)}
-                    />
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+          <HostsTable
+            rows={controller.rows}
+            pending={controller.pending}
+            reorderDisabled={controller.reorderDisabled}
+            dropTarget={controller.dropTarget}
+            onDragStart={controller.dragStart}
+            onDragEnd={controller.dragEnd}
+            onDragOver={controller.dragOver}
+            onDrop={controller.drop}
+            onEdit={controller.openEdit}
+            onDuplicate={controller.duplicate}
+            onToggle={controller.toggleHost}
+            onDelete={controller.removeHostRow}
+          />
+          <HostsCards
+            rows={controller.rows}
+            pending={controller.pending}
+            onEdit={controller.openEdit}
+            onDuplicate={controller.duplicate}
+            onToggle={controller.toggleHost}
+            onDelete={controller.removeHostRow}
+          />
         </>
       ) : (
         <HostsState
           title={t("hostsPage.emptyTitle")}
           description={t("hostsPage.emptyDescription")}
           action={
-            <Button onClick={openCreate}>
+            <Button onClick={controller.openCreate}>
               <Plus />
               {t("create")}
             </Button>
@@ -489,125 +105,20 @@ export function HostsPage() {
         />
       )}
 
-      {hostsData && (
+      {controller.hasLoadedHosts && (
         <HostDialog
-          key={`${editingRow?.id ?? "create"}-${dialogOpen}`}
-          open={dialogOpen}
-          host={editingRow ?? null}
-          inboundTag={editingRow?.inbound_tag ?? null}
-          hostGroups={hostGroups}
-          pending={pending}
-          onOpenChange={setDialogOpen}
-          onSubmit={submitHost}
+          key={`${controller.editingRow?.id ?? "create"}-${
+            controller.dialogOpen
+          }`}
+          open={controller.dialogOpen}
+          host={controller.editingRow ?? null}
+          inboundTag={controller.editingRow?.inbound_tag ?? null}
+          hostGroups={controller.hostGroups}
+          pending={controller.pending}
+          onOpenChange={controller.setDialogOpen}
+          onSubmit={controller.submitHost}
         />
       )}
     </Page>
-  );
-}
-
-function HostGroupBadges({ groups }: { groups: HostGroupRef[] }) {
-  const { t } = useTranslation();
-
-  if (!groups.length) {
-    return (
-      <span className="text-sm text-muted-foreground">
-        {t("hostsPage.noGroupsShort")}
-      </span>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {groups.map((group) => (
-        <Badge key={group.id} variant="secondary">
-          {group.name}
-        </Badge>
-      ))}
-    </div>
-  );
-}
-
-function DeleteHostButton({
-  pending,
-  name,
-  onDelete,
-}: {
-  pending: boolean;
-  name: string;
-  onDelete: () => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="destructive"
-          size="icon-sm"
-          disabled={pending}
-          aria-label={t("delete")}
-        >
-          <Trash2 />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-destructive/10 text-destructive">
-            <Trash2 />
-          </AlertDialogMedia>
-          <AlertDialogTitle>{t("hostsPage.deleteTitle")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("hostsPage.deleteDescription", { name })}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>
-            {t("cancel")}
-          </AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={pending}
-            onClick={onDelete}
-          >
-            {pending && <LoaderCircle className="animate-spin" />}
-            {t("delete")}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-function HostsState({
-  title,
-  description,
-  action,
-}: {
-  title: string;
-  description: string;
-  action?: ReactNode;
-}) {
-  return (
-    <Empty className="min-h-96 rounded-xl">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Link2 />
-        </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
-      </EmptyHeader>
-      {action && <EmptyContent>{action}</EmptyContent>}
-    </Empty>
-  );
-}
-
-function HostsSkeleton() {
-  return (
-    <div className="space-y-3 rounded-xl p-4">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Skeleton key={index} className="h-12 w-full" />
-      ))}
-    </div>
   );
 }

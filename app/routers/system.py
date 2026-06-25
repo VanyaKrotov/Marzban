@@ -541,11 +541,20 @@ def delete_host_group(
 )
 def get_hosts(
     group_id: Union[str, None] = Query(None),
-    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+    group_ids: List[str] = Query(default_factory=list),
+    search: Union[str, None] = Query(None),
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Get a list of proxy hosts grouped by inbound tag."""
     hosts = {
-        tag: crud.get_hosts(db, tag, group_id=group_id)
+        tag: crud.get_hosts(
+            db,
+            tag,
+            group_id=group_id,
+            group_ids=group_ids,
+            search=search,
+        )
         for tag in xray.config.inbounds_by_tag
     }
     return hosts
@@ -556,10 +565,18 @@ def get_hosts(
 )
 def get_hosts_v2(
     group_id: Union[str, None] = Query(None),
-    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
+    group_ids: List[str] = Query(default_factory=list),
+    search: Union[str, None] = Query(None),
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Get a flat list of proxy hosts ordered by position."""
-    return crud.get_hosts_v2(db, group_id=group_id)
+    return crud.get_hosts_v2(
+        db,
+        group_id=group_id,
+        group_ids=group_ids,
+        search=search,
+    )
 
 
 @router.post(

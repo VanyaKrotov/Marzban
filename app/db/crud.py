@@ -4,9 +4,9 @@ Functions for managing proxy hosts, users, user templates, nodes, and administra
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from sqlalchemy import and_, delete, func, or_
+from sqlalchemy import String, and_, cast, delete, func, or_
 from sqlalchemy.orm import Query, Session, joinedload
 from sqlalchemy.sql.functions import coalesce
 
@@ -729,8 +729,53 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     db.commit()
 
 
+def _normalize_host_group_filter(
+    group_id: Optional[str] = None,
+    group_ids: Optional[Sequence[str]] = None,
+) -> List[str]:
+    normalized_group_ids = []
+    for value in [group_id, *(group_ids or [])]:
+        if value and value not in normalized_group_ids:
+            normalized_group_ids.append(value)
+    return normalized_group_ids
+
+
+def _filter_hosts_by_groups(
+    query: Query,
+    group_id: Optional[str] = None,
+    group_ids: Optional[Sequence[str]] = None,
+) -> Query:
+    normalized_group_ids = _normalize_host_group_filter(group_id, group_ids)
+    if not normalized_group_ids:
+        return query
+    return (
+        query
+        .join(ProxyHost.groups)
+        .filter(HostGroup.id.in_(normalized_group_ids))
+        .distinct()
+    )
+
+
+def _filter_hosts_by_search(query: Query, search: Optional[str] = None) -> Query:
+    term = search.strip() if search else ""
+    if not term:
+        return query
+    pattern = f"%{term}%"
+    return query.filter(
+        or_(
+            ProxyHost.remark.ilike(pattern),
+            ProxyHost.address.ilike(pattern),
+            cast(ProxyHost.port, String).ilike(pattern),
+        )
+    )
+
+
 def get_hosts(
-    db: Session, inbound_tag: str, group_id: Optional[str] = None
+    db: Session,
+    inbound_tag: str,
+    group_id: Optional[str] = None,
+    group_ids: Optional[Sequence[str]] = None,
+    search: Optional[str] = None,
 ) -> List[ProxyHost]:
     """
     Retrieves hosts for a given inbound tag.
@@ -748,18 +793,23 @@ def get_hosts(
         .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
         .filter(ProxyHost.inbound_id == inbound.id)
     )
-    if group_id:
-        query = query.join(ProxyHost.groups).filter(HostGroup.id == group_id)
+    query = _filter_hosts_by_groups(query, group_id=group_id, group_ids=group_ids)
+    query = _filter_hosts_by_search(query, search=search)
     return query.order_by(ProxyHost.position, ProxyHost.id).all()
 
 
-def get_hosts_v2(db: Session, group_id: Optional[str] = None) -> List[ProxyHost]:
+def get_hosts_v2(
+    db: Session,
+    group_id: Optional[str] = None,
+    group_ids: Optional[Sequence[str]] = None,
+    search: Optional[str] = None,
+) -> List[ProxyHost]:
     query = (
         db.query(ProxyHost)
         .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
     )
-    if group_id:
-        query = query.join(ProxyHost.groups).filter(HostGroup.id == group_id)
+    query = _filter_hosts_by_groups(query, group_id=group_id, group_ids=group_ids)
+    query = _filter_hosts_by_search(query, search=search)
     return query.order_by(ProxyHost.position, ProxyHost.id).all()
 
 

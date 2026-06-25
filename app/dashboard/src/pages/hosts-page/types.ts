@@ -9,6 +9,15 @@ export type HostGroupType = HostGroupRef & {
   created_at: string;
 };
 
+export type HostGroupPayload = {
+  id: string;
+  name: string;
+  description: string | null;
+  tags: string[];
+};
+
+export type HostGroupUpdatePayload = Omit<HostGroupPayload, "id">;
+
 export type HostType = {
   id: number;
   inbound_id: number;

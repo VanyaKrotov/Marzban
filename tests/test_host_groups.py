@@ -30,13 +30,14 @@ class HostGroupTests(TestCase):
             HostGroupCreate(id=group_id, name=name, description=None, tags=["premium"]),
         )
 
-    def create_host(self, remark="Germany", group_ids=None):
+    def create_host(self, remark="Germany", group_ids=None, address="example.com", port=None):
         return crud.create_host_v2(
             self.db,
             ProxyHostCreate(
                 inbound_tag="VLESS TCP",
                 remark=remark,
-                address="example.com",
+                address=address,
+                port=port,
                 group_ids=group_ids or [],
             ),
         )
@@ -70,13 +71,24 @@ class HostGroupTests(TestCase):
     def test_host_round_trip_includes_groups_and_filters_by_group(self):
         self.create_group("eu", "Europe")
         self.create_group("us", "United States")
-        host = self.create_host(group_ids=["eu"])
-        self.create_host("Chicago", group_ids=["us"])
+        host = self.create_host(group_ids=["eu", "us"], address="berlin.example.com", port=1080)
+        self.create_host("Chicago", group_ids=["us"], address="chicago.example.com", port=8443)
 
         response = ProxyHostV2.model_validate(host)
-        self.assertEqual([group.id for group in response.groups], ["eu"])
+        self.assertEqual([group.id for group in response.groups], ["eu", "us"])
         self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, group_id="eu")], [host.id])
         self.assertEqual([row.id for row in crud.get_hosts(self.db, "VLESS TCP", group_id="eu")], [host.id])
+        self.assertEqual(
+            [row.remark for row in crud.get_hosts_v2(self.db, group_ids=["eu", "us"])],
+            ["Germany", "Chicago"],
+        )
+        self.assertEqual(
+            [row.remark for row in crud.get_hosts(self.db, "VLESS TCP", group_ids=["eu", "us"])],
+            ["Germany", "Chicago"],
+        )
+        self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="germany")], [host.id])
+        self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="berlin")], [host.id])
+        self.assertEqual([row.id for row in crud.get_hosts_v2(self.db, search="1080")], [host.id])
 
     def test_attach_detach_and_missing_group(self):
         host = self.create_host()
