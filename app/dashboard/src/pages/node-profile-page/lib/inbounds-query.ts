@@ -12,7 +12,7 @@ export type InboundConfig = {
 
 export type InboundPayload = Pick<
   InboundConfig,
-  "tag" | "enabled" | "content" | "node_ids"
+  "enabled" | "content" | "node_ids"
 > & {
   auto_assign_users?: boolean;
 };

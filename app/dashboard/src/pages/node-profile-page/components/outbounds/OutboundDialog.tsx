@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 import { xrayOutboundSchema } from "@/lib/xray-schemas/outbound";
@@ -24,7 +23,6 @@ import type {
 } from "../../lib/outbounds-query";
 
 const outboundFormSchema = z.object({
-  tag: z.string().trim().min(1).max(256),
   enabled: z.boolean(),
   content: z.string().superRefine((value, context) => {
     try {
@@ -33,6 +31,18 @@ const outboundFormSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "JSON must contain an object",
+        });
+      }
+
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        !Array.isArray(parsed) &&
+        (typeof parsed.tag !== "string" || !parsed.tag.trim())
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "JSON must contain a non-empty tag",
         });
       }
     } catch {
@@ -53,6 +63,7 @@ type OutboundDialogProps = {
 };
 
 const defaultContent = {
+  tag: "",
   protocol: "freedom",
   settings: {},
 };
@@ -96,18 +107,18 @@ function OutboundDialogContent({
   const form = useForm<OutboundFormValues>({
     resolver: zodResolver(outboundFormSchema),
     defaultValues: {
-      tag: outbound?.tag ?? "",
       enabled: outbound?.enabled ?? true,
       content: JSON.stringify(outbound?.content ?? defaultContent, null, 2),
     },
   });
 
   const submit = (values: OutboundFormValues) => {
+    const content = JSON.parse(values.content) as Record<string, unknown>;
+
     onSubmit({
-      tag: values.tag,
       enabled: values.enabled,
       node_ids: outbound?.node_ids ?? [nodeId],
-      content: JSON.parse(values.content) as Record<string, unknown>,
+      content,
     });
   };
 
@@ -132,44 +143,6 @@ function OutboundDialogContent({
         </DialogHeader>
 
         <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-            <Controller
-              control={form.control}
-              name="tag"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="outbound-tag">
-                    {t("outboundsPage.tag")}
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="outbound-tag"
-                    disabled={Boolean(outbound) || pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                  <FieldError errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-            <Controller
-              control={form.control}
-              name="enabled"
-              render={({ field }) => (
-                <Field orientation="horizontal" className="h-9">
-                  <Switch
-                    id="outbound-enabled"
-                    checked={field.value}
-                    disabled={pending}
-                    onCheckedChange={field.onChange}
-                  />
-                  <FieldLabel htmlFor="outbound-enabled">
-                    {t(field.value ? "enabled" : "disabled")}
-                  </FieldLabel>
-                </Field>
-              )}
-            />
-          </div>
-
           <Controller
             control={form.control}
             name="content"
@@ -193,7 +166,24 @@ function OutboundDialogContent({
             )}
           />
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-4">
+            <Controller
+              control={form.control}
+              name="enabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="min-h-9">
+                  <Switch
+                    id="outbound-enabled"
+                    checked={field.value}
+                    disabled={pending}
+                    onCheckedChange={field.onChange}
+                  />
+                  <FieldLabel htmlFor="outbound-enabled" className="min-w-0">
+                    {t(field.value ? "enabled" : "disabled")}
+                  </FieldLabel>
+                </Field>
+              )}
+            />
             <Button type="submit" disabled={pending}>
               {pending && <LoaderCircle className="animate-spin" />}
               {t(outbound ? "core.save" : "create")}

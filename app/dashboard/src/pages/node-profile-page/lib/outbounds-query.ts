@@ -12,7 +12,7 @@ export type OutboundConfig = {
 
 export type OutboundPayload = Pick<
   OutboundConfig,
-  "tag" | "enabled" | "content" | "node_ids"
+  "enabled" | "content" | "node_ids"
 >;
 export type OutboundUpdate = Partial<
   Pick<OutboundConfig, "enabled" | "content" | "node_ids">

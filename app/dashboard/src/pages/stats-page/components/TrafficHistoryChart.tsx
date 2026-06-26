@@ -46,6 +46,7 @@ import {
   formatCompactBytes,
   formatCompactPercent,
   formatPeriod,
+  formatTime,
 } from "../lib/chart";
 import type { StatsGranularity, StatsHistory } from "../lib/query";
 import { ChartState } from "./ChartState";
@@ -95,6 +96,10 @@ export function TrafficHistoryChart({
       return next;
     });
   };
+  const formatTrafficPeriod = (value: string) =>
+    granularity === "hour"
+      ? formatTime(value, i18n.language)
+      : formatPeriod(value, granularity, i18n.language);
 
   return (
     <Card className="lg:col-span-2">
@@ -156,9 +161,7 @@ export function TrafficHistoryChart({
                   <CartesianGrid vertical={false} stroke="var(--border)" />
                   <XAxis
                     dataKey="period"
-                    tickFormatter={(value) =>
-                      formatPeriod(String(value), granularity, i18n.language)
-                    }
+                    tickFormatter={(value) => formatTrafficPeriod(String(value))}
                     tickLine={false}
                     axisLine={false}
                     minTickGap={24}
@@ -296,7 +299,9 @@ function TrafficTooltip({
         >
           <span>{t("statsPage.tooltip.period")}</span>
           <span className="text-right tabular-nums">
-            {formatPeriod(String(label), granularity, locale)}
+            {granularity === "hour"
+              ? formatTime(String(label), locale)
+              : formatPeriod(String(label), granularity, locale)}
           </span>
         </div>
       )}

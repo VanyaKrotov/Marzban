@@ -28,15 +28,19 @@ export function formatPeriod(
   return new Intl.DateTimeFormat(locale, options).format(date);
 }
 
-function formatHourRange(date: Date, locale: string) {
-  const nextHour = new Date(date);
-  nextHour.setHours(nextHour.getHours() + 1);
-  const formatter = new Intl.DateTimeFormat(locale, {
+export function formatTime(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     hour12: false,
     minute: "2-digit",
-  });
-  return `${formatter.format(date)}-${formatter.format(nextHour)}`;
+  }).format(new Date(value));
+}
+
+function formatHourRange(date: Date, locale: string) {
+  const nextHour = new Date(date);
+  nextHour.setHours(nextHour.getHours() + 1);
+  const formatter = (value: Date) => formatTime(value.toISOString(), locale);
+  return `${formatter(date)}-${formatter(nextHour)}`;
 }
 
 export function formatCompactBytes(value: number) {

@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.utils.system import random_password
 from xray_api.types.account import (
@@ -366,22 +366,35 @@ class ProxyInbound(BaseModel):
     port: Union[int, str]
 
 
+def validate_config_tag(content: Dict[str, Any], entity: str) -> str:
+    value = content.get("tag")
+    if not isinstance(value, str):
+        raise ValueError(f"{entity} content tag must be a string")
+
+    value = value.strip()
+    if not value:
+        raise ValueError(f"{entity} tag cannot be empty")
+    if len(value) > 256:
+        raise ValueError(f"{entity} tag cannot be longer than 256 characters")
+    if "," in value:
+        raise ValueError(f"Character ',' is not allowed in {entity.lower()} tag")
+    return value
+
+
 class InboundCreate(BaseModel):
-    tag: str = Field(min_length=1, max_length=256)
     enabled: bool = True
     auto_assign_users: bool = True
     content: Dict[str, Any]
     node_ids: List[int] = Field(default_factory=list)
 
-    @field_validator("tag")
-    @classmethod
-    def validate_tag(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("Inbound tag cannot be empty")
-        if "," in value:
-            raise ValueError("Character ',' is not allowed in inbound tag")
-        return value
+    @model_validator(mode="after")
+    def validate_content_tag(self):
+        validate_config_tag(self.content, "Inbound")
+        return self
+
+    @property
+    def tag(self) -> str:
+        return validate_config_tag(self.content, "Inbound")
 
 
 class InboundModify(BaseModel):
@@ -399,20 +412,18 @@ class InboundResponse(BaseModel):
 
 
 class OutboundCreate(BaseModel):
-    tag: str = Field(min_length=1, max_length=256)
     enabled: bool = True
     content: Dict[str, Any]
     node_ids: List[int] = Field(default_factory=list)
 
-    @field_validator("tag")
-    @classmethod
-    def validate_tag(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("Outbound tag cannot be empty")
-        if "," in value:
-            raise ValueError("Character ',' is not allowed in outbound tag")
-        return value
+    @model_validator(mode="after")
+    def validate_content_tag(self):
+        validate_config_tag(self.content, "Outbound")
+        return self
+
+    @property
+    def tag(self) -> str:
+        return validate_config_tag(self.content, "Outbound")
 
 
 class OutboundModify(BaseModel):

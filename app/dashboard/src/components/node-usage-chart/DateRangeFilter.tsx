@@ -17,6 +17,7 @@ import {
 } from "react-day-picker/locale";
 
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -58,6 +59,7 @@ const calendarLocales = {
 
 export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [draftRange, setDraftRange] = useState<DateRange>({
     from: range.from,
@@ -117,7 +119,10 @@ export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
           <span className="max-w-48 truncate">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-auto gap-2 p-2">
+      <PopoverContent
+        align="end"
+        className="w-[calc(100vw-2rem)] gap-2 p-2 sm:w-auto"
+      >
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
           {presets.map((item) => (
             <Button
@@ -147,12 +152,12 @@ export function NodeUsageDateRangeFilter({ range, preset, onChange }: Props) {
               setDraftPreset("custom");
             }}
             defaultMonth={draftRange.from ?? range.from}
-            numberOfMonths={2}
+            numberOfMonths={isMobile ? 1 : 2}
             locale={calendarLocale}
             disabled={{ after: new Date() }}
             className={cn(
               "p-1 [--cell-size:--spacing(8)]",
-              "max-sm:[&_.rdp-months]:flex-col",
+              "max-sm:w-full max-sm:[&_.rdp-months]:flex-col",
             )}
           />
         </div>

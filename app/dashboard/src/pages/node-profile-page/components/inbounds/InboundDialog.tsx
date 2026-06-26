@@ -142,7 +142,6 @@ function InboundDialogContent({
     const content = JSON.parse(values.content) as Record<string, unknown>;
 
     onSubmit({
-      tag: String(content.tag).trim(),
       enabled: values.enabled,
       auto_assign_users: inbound ? undefined : values.auto_assign_users,
       node_ids: inbound?.node_ids ?? [nodeId],
