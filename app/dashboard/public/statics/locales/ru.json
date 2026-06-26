@@ -250,6 +250,8 @@
   "usersTable.onlineNever": "Ещё не подключался",
   "usersTable.onlineMinutesAgo": "{{count}} мин. назад",
   "usersTable.onlineHoursAgo": "{{count}} ч. назад",
+  "usersTable.wasOnlineRelative": "Был в сети {{value}}",
+  "usersTable.wasOnlineDate": "Был в сети {{value}}",
   "usersTable.lastOnlineLabel": "Был онлайн: {{value}}",
   "usersTable.protocols": "Протоколы",
   "usersTable.retry": "Повторить",

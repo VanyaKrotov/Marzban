@@ -1,3 +1,10 @@
+import { format, formatDistanceToNowStrict, isSameYear } from "date-fns";
+import {
+  enUS as dateEnUS,
+  faIR as dateFaIR,
+  ru as dateRu,
+  zhCN as dateZhCN,
+} from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +21,16 @@ import { UserStatus } from "./UserStatus";
 import { UserUsage } from "./UserUsage";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
-const FULL_DATE_THRESHOLD_MS = 3 * 60 * 60 * 1000;
+const FULL_DATE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 type OnlineState = "never" | "stale" | "online";
+
+const dateLocales = {
+  en: dateEnUS,
+  fa: dateFaIR,
+  ru: dateRu,
+  zh: dateZhCN,
+};
 
 function parseOnlineAt(lastOnline: string | null) {
   if (!lastOnline) return null;
@@ -40,22 +54,32 @@ function getLastOnlineText(
   const timestamp = parseOnlineAt(lastOnline);
   if (!timestamp) return t("usersTable.onlineNever");
 
+  const state = getOnlineState(lastOnline);
+  if (state === "online") return t("usersTable.online");
+
   const elapsedMs = Math.max(Date.now() - timestamp, 0);
   if (elapsedMs > FULL_DATE_THRESHOLD_MS) {
-    return new Intl.DateTimeFormat(locale, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(timestamp));
+    const date = new Date(timestamp);
+    const language = locale.split("-")[0] as keyof typeof dateLocales;
+    const dateLocale = dateLocales[language] ?? dateEnUS;
+    const value = format(
+      date,
+      isSameYear(date, new Date()) ? "d MMMM" : "d MMMM yyyy",
+      { locale: dateLocale },
+    );
+
+    return t("usersTable.wasOnlineDate", { value });
   }
 
-  const elapsedMinutes = Math.max(1, Math.floor(elapsedMs / 60_000));
-  if (elapsedMinutes < 60) {
-    return t("usersTable.onlineMinutesAgo", { count: elapsedMinutes });
-  }
-
-  return t("usersTable.onlineHoursAgo", {
-    count: Math.floor(elapsedMinutes / 60),
+  const language = locale.split("-")[0] as keyof typeof dateLocales;
+  const dateLocale = dateLocales[language] ?? dateEnUS;
+  const value = formatDistanceToNowStrict(new Date(timestamp), {
+    addSuffix: true,
+    locale: dateLocale,
+    roundingMethod: "floor",
   });
+
+  return t("usersTable.wasOnlineRelative", { value });
 }
 
 type UserRowProps = {
@@ -177,14 +201,11 @@ export function UserCard({ user, onEdit, onShowQr }: UserRowProps) {
       onClick={() => onEdit(user)}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <OnlineIndicator lastOnline={user.online_at} />
             <span className="truncate font-medium">{user.username}</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t("usersTable.lastOnlineLabel", { value: lastOnlineText })}
-          </p>
         </div>
         <UserStatus status={user.status} expire={user.expire} compact />
       </div>
@@ -195,7 +216,10 @@ export function UserCard({ user, onEdit, onShowQr }: UserRowProps) {
         <UserProtocols user={user} compact />
       </div>
       <UserUsage user={user} />
-      <UserActions user={user} onShowQr={onShowQr} />
+      <div className="flex items-end justify-between gap-3">
+        <p className="text-xs text-muted-foreground">{lastOnlineText}</p>
+        <UserActions user={user} onShowQr={onShowQr} />
+      </div>
     </article>
   );
 }

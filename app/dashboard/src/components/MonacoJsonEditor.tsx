@@ -59,7 +59,7 @@ export const MonacoJsonEditor = forwardRef<
         data-invalid={invalid}
         aria-invalid={invalid}
         className={cn(
-          "h-80 overflow-hidden rounded-md border border-input bg-background shadow-xs transition-[color,box-shadow]",
+          "h-80 rounded-md border border-input bg-background shadow-xs transition-[color,box-shadow]",
           "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
           "data-[invalid=true]:border-destructive data-[invalid=true]:ring-3 data-[invalid=true]:ring-destructive/20",
           "data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50",

@@ -250,6 +250,8 @@
   "usersTable.onlineNever": "尚未连接",
   "usersTable.onlineMinutesAgo": "{{count}} 分钟前",
   "usersTable.onlineHoursAgo": "{{count}} 小时前",
+  "usersTable.wasOnlineRelative": "{{value}}在线过",
+  "usersTable.wasOnlineDate": "{{value}}在线过",
   "usersTable.lastOnlineLabel": "上次在线：{{value}}",
   "usersTable.protocols": "协议",
   "usersTable.retry": "重试",

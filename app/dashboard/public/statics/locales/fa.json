@@ -251,6 +251,8 @@
   "usersTable.onlineNever": "هنوز متصل نشده",
   "usersTable.onlineMinutesAgo": "{{count}} دقیقه پیش",
   "usersTable.onlineHoursAgo": "{{count}} ساعت پیش",
+  "usersTable.wasOnlineRelative": "{{value}} آنلاین بود",
+  "usersTable.wasOnlineDate": "در {{value}} آنلاین بود",
   "usersTable.lastOnlineLabel": "آخرین اتصال: {{value}}",
   "usersTable.protocols": "پروتکل‌ها",
   "usersTable.retry": "تلاش مجدد",

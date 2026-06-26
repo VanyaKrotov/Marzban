@@ -250,6 +250,8 @@
   "usersTable.onlineNever": "Never connected",
   "usersTable.onlineMinutesAgo": "{{count}} minutes ago",
   "usersTable.onlineHoursAgo": "{{count}} hours ago",
+  "usersTable.wasOnlineRelative": "Was online {{value}}",
+  "usersTable.wasOnlineDate": "Was online on {{value}}",
   "usersTable.lastOnlineLabel": "Last online: {{value}}",
   "usersTable.protocols": "Protocols",
   "usersTable.retry": "Retry",
