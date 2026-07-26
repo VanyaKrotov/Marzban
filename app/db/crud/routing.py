@@ -10,7 +10,11 @@ from app.db.models.nodes import Node
 from app.db.models.proxies import ProxyHost, ProxyInbound, ProxyOutbound
 from app.db.models.routing import RoutingRule
 from app.models.proxy import XRAY_INBOUND_PROTOCOLS
-from app.models.routing import RoutingRuleCreate, RoutingRuleModify
+from app.models.routing import (
+    RoutingRuleCreate,
+    RoutingRuleModify,
+    get_routing_rule_name,
+)
 from config import XRAY_EXCLUDE_INBOUND_TAGS
 
 from app.db.crud import proxy_inbounds as inbound_crud
@@ -51,7 +55,7 @@ def create_routing_rule(
         position = (max_position if max_position is not None else -1) + 1
 
     dbrule = RoutingRule(
-        name=rule.name,
+        name=get_routing_rule_name(rule.content),
         content=dict(rule.content),
         enabled=rule.enabled,
         position=position,
@@ -68,12 +72,11 @@ def update_routing_rule(
     dbrule: RoutingRule,
     modified: RoutingRuleModify,
 ) -> RoutingRule:
-    if modified.name is not None:
-        dbrule.name = modified.name
     if modified.content is not None:
         if dbrule.readonly:
             raise ValueError("Content of read-only routing rules cannot be changed")
         dbrule.content = dict(modified.content)
+        dbrule.name = get_routing_rule_name(modified.content)
     if modified.enabled is not None:
         dbrule.enabled = True if dbrule.readonly else modified.enabled
     if modified.position is not None:
@@ -268,6 +271,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     ]
     for rule, content in zip(readonly_rules, routing_rules):
         rule.content = content
+        rule.name = get_routing_rule_name(content, rule.name)
         rule.enabled = True
 
     for rule in readonly_rules[len(routing_rules):]:
@@ -282,7 +286,7 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
     next_position = (next_position if next_position is not None else -1) + 1
     for content in routing_rules[len(readonly_rules):]:
         rule = RoutingRule(
-            name=f"Xray rule {next_position + 1}",
+            name=get_routing_rule_name(content, f"Xray rule {next_position + 1}"),
             content=content,
             enabled=True,
             readonly=True,

@@ -76,9 +76,15 @@ export function createXrayRoutingRuleSchema(
     title: "Xray routing rule",
     description: "A single Xray-core routing rule.",
     type: "object",
-    required: ["type"],
+    required: ["ruleTag", "type"],
     additionalProperties: true,
     properties: {
+      ruleTag: {
+        type: "string",
+        minLength: 1,
+        maxLength: 128,
+        description: "Unique routing rule tag used as the rule name.",
+      },
       type: {
         type: "string",
         enum: ["field", "balancer"],

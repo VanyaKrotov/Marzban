@@ -30,9 +30,15 @@ const domainList = (): MonacoJsonSchema =>
 
 const routingRuleSchema: MonacoJsonSchema = {
   type: "object",
-  required: ["type"],
+  required: ["ruleTag", "type"],
   additionalProperties: true,
   properties: {
+    ruleTag: {
+      type: "string",
+      minLength: 1,
+      maxLength: 128,
+      description: "Unique routing rule tag used as the managed rule name.",
+    },
     type: {
       type: "string",
       enum: ["field", "balancer"],

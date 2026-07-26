@@ -112,7 +112,6 @@ export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
         {
           id: editing.id,
           payload: {
-            name: payload.name,
             enabled: payload.enabled,
             node_ids: payload.node_ids,
             ...(!editing.readonly && { content: payload.content }),

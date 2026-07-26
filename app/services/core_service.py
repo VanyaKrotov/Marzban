@@ -10,6 +10,7 @@ from app import xray
 from app.db import Session, get_db
 from app.models.admin import Admin
 from app.models.core import CoreStats
+from app.models.routing import normalize_routing_rule_content
 from app.xray import XRayConfig
 from config import XRAY_JSON
 from app.db.crud import routing as routing_crud
@@ -100,12 +101,34 @@ def get_core_config(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
     return config
 
 
+def _validate_routing_rules(payload: dict) -> None:
+    routing = payload.get("routing")
+    if not isinstance(routing, dict):
+        return
+
+    rules = routing.get("rules")
+    if rules is None:
+        return
+    if not isinstance(rules, list):
+        raise HTTPException(status_code=400, detail="Routing rules must be a list")
+
+    for index, rule in enumerate(rules):
+        try:
+            rules[index] = normalize_routing_rule_content(rule)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Routing rule {index + 1}: {exc}",
+            )
+
+
 def modify_core_config(
     payload: dict,
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ) -> dict:
     """Modify the core configuration and restart the core."""
+    _validate_routing_rules(payload)
     try:
         XRayConfig(payload, api_port=xray.config.api_port)
     except (KeyError, TypeError, ValueError) as err:

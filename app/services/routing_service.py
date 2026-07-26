@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from fastapi import Depends, HTTPException
 
 from app import xray
@@ -10,6 +8,7 @@ from app.models.routing import (
     RoutingRuleModify,
     RoutingRuleOrder,
     RoutingRuleResponse,
+    normalize_routing_rule_content,
 )
 from app.utils.node_restart_state import mark_nodes_pending_restart
 from app.db.crud import routing as routing_crud
@@ -29,18 +28,10 @@ def _response(rule) -> RoutingRuleResponse:
 
 
 def _validate_content(content: dict) -> dict:
-    normalized = deepcopy(content)
-    if normalized.get("type") not in {"field", "balancer"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Routing rule type must be field or balancer",
-        )
-    if not normalized.get("outboundTag") and not normalized.get("balancerTag"):
-        raise HTTPException(
-            status_code=400,
-            detail="Routing rule must contain outboundTag or balancerTag",
-        )
-    return normalized
+    try:
+        return normalize_routing_rule_content(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def get_routing_rules(

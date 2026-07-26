@@ -486,7 +486,7 @@
   "routingPage.createTitle": "Создание правила маршрутизации",
   "routingPage.editTitle": "Редактирование правила маршрутизации",
   "routingPage.dialogDescription": "Настройте правило маршрутизации и JSON Xray.",
-  "routingPage.readonlyDescription": "Это правило загружено из JSON-конфигурации Xray. Его JSON нельзя изменять, но название, состояние и порядок доступны для редактирования.",
+  "routingPage.readonlyDescription": "Это правило загружено из JSON-конфигурации Xray. Его JSON нельзя изменять, но состояние и порядок доступны для редактирования.",
   "routingPage.name": "Название",
   "routingPage.position": "Порядок",
   "routingPage.enabled": "Включено",

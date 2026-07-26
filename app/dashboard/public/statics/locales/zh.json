@@ -486,7 +486,7 @@
   "routingPage.createTitle": "创建路由规则",
   "routingPage.editTitle": "编辑路由规则",
   "routingPage.dialogDescription": "配置路由规则及其 Xray JSON。",
-  "routingPage.readonlyDescription": "此规则来自 Xray JSON 配置。JSON 内容为只读，但名称、状态和顺序仍可修改。",
+  "routingPage.readonlyDescription": "此规则来自 Xray JSON 配置。JSON 内容为只读，但状态和顺序仍可修改。",
   "routingPage.name": "名称",
   "routingPage.position": "顺序",
   "routingPage.enabled": "启用",

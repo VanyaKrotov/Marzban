@@ -15,7 +15,7 @@ export type RoutingRule = {
 
 export type RoutingRulePayload = Pick<
   RoutingRule,
-  "name" | "content" | "enabled" | "node_ids"
+  "content" | "enabled" | "node_ids"
 > & { position?: number };
 
 type TaggedConfig = {

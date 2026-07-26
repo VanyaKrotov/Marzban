@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 import { useNodeGeoResourcesQuery } from "../geo-resources/query";
@@ -28,7 +27,6 @@ import {
 import { createXrayRoutingRuleSchema } from "./xray-routing-rule-schema";
 
 const formSchema = z.object({
-  name: z.string().trim().min(1).max(128),
   enabled: z.boolean(),
   content: z.string().superRefine((value, context) => {
     try {
@@ -37,6 +35,19 @@ const formSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "JSON must contain an object",
+        });
+        return;
+      }
+      const ruleTag = (parsed as Record<string, unknown>).ruleTag;
+      if (typeof ruleTag !== "string" || !ruleTag.trim()) {
+        context.addIssue({
+          code: "custom",
+          message: "JSON must contain a non-empty ruleTag",
+        });
+      } else if (ruleTag.trim().length > 128) {
+        context.addIssue({
+          code: "custom",
+          message: "ruleTag cannot be longer than 128 characters",
         });
       }
     } catch {
@@ -124,10 +135,10 @@ function RoutingRuleDialogContent({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: rule?.name ?? "",
       enabled: rule?.enabled ?? true,
       content: JSON.stringify(
         rule?.content ?? {
+          ruleTag: "",
           type: "field",
           inboundTag: [],
           outboundTag: outboundTags[0] ?? "DIRECT",
@@ -140,7 +151,6 @@ function RoutingRuleDialogContent({
 
   const submit = (values: FormValues) => {
     onSubmit({
-      name: values.name,
       enabled: values.enabled,
       node_ids: rule?.node_ids ?? [nodeId],
       content: JSON.parse(values.content) as Record<string, unknown>,
@@ -168,25 +178,7 @@ function RoutingRuleDialogContent({
         </DialogHeader>
 
         <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-            <Controller
-              control={form.control}
-              name="name"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="routing-rule-name">
-                    {t("routingPage.name")}
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="routing-rule-name"
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                  <FieldError errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
+          <div className="flex justify-end">
             <Controller
               control={form.control}
               name="enabled"

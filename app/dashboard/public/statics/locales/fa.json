@@ -487,7 +487,7 @@
   "routingPage.createTitle": "ایجاد قانون مسیریابی",
   "routingPage.editTitle": "ویرایش قانون مسیریابی",
   "routingPage.dialogDescription": "قانون مسیریابی و JSON مربوط به Xray را تنظیم کنید.",
-  "routingPage.readonlyDescription": "این قانون از پیکربندی JSON اکس‌ری آمده است. محتوای JSON فقط خواندنی است، اما نام، وضعیت و ترتیب قابل تغییر هستند.",
+  "routingPage.readonlyDescription": "این قانون از پیکربندی JSON اکس‌ری آمده است. محتوای JSON فقط خواندنی است، اما وضعیت و ترتیب قابل تغییر هستند.",
   "routingPage.name": "نام",
   "routingPage.position": "ترتیب",
   "routingPage.enabled": "فعال",

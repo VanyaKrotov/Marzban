@@ -486,7 +486,7 @@
   "routingPage.createTitle": "Create routing rule",
   "routingPage.editTitle": "Edit routing rule",
   "routingPage.dialogDescription": "Configure the routing rule and its Xray JSON.",
-  "routingPage.readonlyDescription": "This rule comes from the Xray JSON config. Its JSON content is read-only, but its name, state, and order can be changed.",
+  "routingPage.readonlyDescription": "This rule comes from the Xray JSON config. Its JSON content is read-only, but its state and order can be changed.",
   "routingPage.name": "Name",
   "routingPage.position": "Order",
   "routingPage.enabled": "Enabled",
