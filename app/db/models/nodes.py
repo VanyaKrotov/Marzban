@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Integer, String
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Integer, JSON, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 
@@ -11,6 +11,7 @@ from app.db.models.associations import (
     node_routing_rules_association,
 )
 from app.models.node import NodeStatus
+from app.models.settings import default_node_config
 
 
 class Node(Base):
@@ -22,6 +23,7 @@ class Node(Base):
     port = Column(Integer, unique=False, nullable=False)
     api_port = Column(Integer, unique=False, nullable=False)
     xray_version = Column(String(32), nullable=True)
+    config_template = Column(JSON, nullable=False, default=default_node_config)
     status = Column(Enum(NodeStatus), nullable=False, default=NodeStatus.connecting)
     last_status_change = Column(DateTime, default=datetime.utcnow)
     message = Column(String(1024), nullable=True)

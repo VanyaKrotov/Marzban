@@ -37,12 +37,18 @@ from app.telegram.utils.shared import (
 )
 from app.utils.store import MemoryStorage
 from app.utils.system import cpu_usage, memory_usage, readable_size, realtime_bandwidth
+from app.utils.xray_config_registry import get_enabled_inbound_registry
 from config import TELEGRAM_DEFAULT_VLESS_FLOW, TELEGRAM_LOGGER_CHANNEL_ID
 from app.db.crud import settings as settings_crud
 from app.db.crud import templates as template_crud
 from app.db.crud import users as user_crud
 
 mem_store = MemoryStorage()
+
+
+def _get_inbound_registry():
+    with GetDB() as db:
+        return get_enabled_inbound_registry(db)
 
 
 def get_system_info():
@@ -304,12 +310,13 @@ def add_time_step(message):
 
 @bot.callback_query_handler(cb_query_startswith("inbound"), is_admin=True)
 def inbound_command(call: types.CallbackQuery):
+    registry = _get_inbound_registry()
     bot.edit_message_text(
         f"Select inbound to *{call.data[8:].title()}* from all users",
         call.message.chat.id,
         call.message.message_id,
         parse_mode="markdown",
-        reply_markup=BotKeyboard.inbounds_menu(call.data, xray.config.inbounds_by_tag))
+        reply_markup=BotKeyboard.inbounds_menu(call.data, registry.inbounds_by_tag))
 
 
 @bot.callback_query_handler(cb_query_startswith("confirm_inbound"), is_admin=True)
@@ -1412,11 +1419,13 @@ def select_inbounds(call: types.CallbackQuery):
         return bot.answer_callback_query(call.id, '❌ No user selected.', show_alert=True)
     protocols: dict[str, list[str]] = mem_store.get(f'{call.message.chat.id}:protocols', {})
     _, inbound, action = call.data.split(':')
-    for protocol, inbounds in xray.config.inbounds_by_protocol.items():
+    registry = _get_inbound_registry()
+    for protocol, inbounds in registry.inbounds_by_protocol.items():
         for i in inbounds:
             if i['tag'] != inbound:
                 continue
-            if not inbound in protocols[protocol]:
+            protocols.setdefault(protocol, [])
+            if inbound not in protocols[protocol]:
                 protocols[protocol].append(inbound)
             else:
                 protocols[protocol].remove(inbound)
@@ -1454,8 +1463,9 @@ def select_protocols(call: types.CallbackQuery):
     if protocol in protocols:
         del protocols[protocol]
     else:
+        registry = _get_inbound_registry()
         protocols.update(
-            {protocol: [inbound['tag'] for inbound in xray.config.inbounds_by_protocol[protocol]]})
+            {protocol: [inbound['tag'] for inbound in registry.inbounds_by_protocol[protocol]]})
     mem_store.set(f'{call.message.chat.id}:protocols', protocols)
 
     if action in ["edit", "create_from_template"]:
@@ -1619,7 +1629,8 @@ def confirm_user_command(call: types.CallbackQuery):
             inbounds = template.inbounds
             proxies = {p.type.value: p.settings for p in db_user.proxies}
 
-            for protocol in xray.config.inbounds_by_protocol:
+            registry = _get_inbound_registry()
+            for protocol in registry.inbounds_by_protocol:
                 if protocol in inbounds and protocol not in db_user.inbounds:
                     proxies.update({protocol: {}})
                 elif protocol in db_user.inbounds and protocol not in inbounds:
@@ -1708,7 +1719,8 @@ def confirm_user_command(call: types.CallbackQuery):
 
             proxies = {p.type.value: p.settings for p in db_user.proxies}
 
-            for protocol in xray.config.inbounds_by_protocol:
+            registry = _get_inbound_registry()
+            for protocol in registry.inbounds_by_protocol:
                 if protocol in inbounds and protocol not in db_user.inbounds:
                     proxies.update({protocol: {'flow': TELEGRAM_DEFAULT_VLESS_FLOW} if
                                     TELEGRAM_DEFAULT_VLESS_FLOW and protocol == ProxyTypes.VLESS else {}})
@@ -1846,8 +1858,10 @@ def confirm_user_command(call: types.CallbackQuery):
                     if mem_store.get(f'{call.message.chat.id}:data_limit') else None,
                     proxies=proxies,
                     inbounds=inbounds)
+            registry = _get_inbound_registry()
             for proxy_type in new_user.proxies:
-                if not xray.config.inbounds_by_protocol.get(proxy_type):
+                protocol = proxy_type.value if hasattr(proxy_type, "value") else str(proxy_type)
+                if not registry.inbounds_by_protocol.get(protocol):
                     return bot.answer_callback_query(
                         call.id,
                         f'❌ Protocol {proxy_type} is disabled on your server',
@@ -2055,10 +2069,11 @@ def confirm_user_command(call: types.CallbackQuery):
         inbound = call.data.split(":")[2]
         with GetDB() as db:
             users = user_crud.get_users(db)
+            registry = get_enabled_inbound_registry(db)
             unsuccessful = 0
             for user in users:
                 inbound_tags = [j for i in user.inbounds for j in user.inbounds[i]]
-                protocol = xray.config.inbounds_by_tag[inbound]['protocol']
+                protocol = registry.inbounds_by_tag[inbound]['protocol']
                 new_inbounds = user.inbounds
                 if data == 'inbound_add':
                     if inbound not in inbound_tags:
@@ -2075,7 +2090,7 @@ def confirm_user_command(call: types.CallbackQuery):
                 if (data == 'inbound_remove' and inbound in inbound_tags)\
                         or (data == 'inbound_add' and inbound not in inbound_tags):
                     proxies = {p.type.value: p.settings for p in user.proxies}
-                    for protocol in xray.config.inbounds_by_protocol:
+                    for protocol in registry.inbounds_by_protocol:
                         if protocol in new_inbounds and protocol not in user.inbounds:
                             proxies.update({protocol: {'flow': TELEGRAM_DEFAULT_VLESS_FLOW} if
                                             TELEGRAM_DEFAULT_VLESS_FLOW and protocol == ProxyTypes.VLESS else {}})

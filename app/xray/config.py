@@ -4,23 +4,22 @@ import json
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import PosixPath
-from typing import Union
+from typing import Any, Union
 
 import commentjson
 from sqlalchemy import func, inspect, text
 
 from app.db import GetDB
 from app.db.models.associations import excluded_inbounds_association
+from app.db.models.nodes import Node
 from app.db.models.proxies import Proxy
 from app.db.models.users import User
 from app.db.base import engine
 from app.models.proxy import ACCOUNT_PROTOCOLS, ProxyTypes, XRAY_INBOUND_PROTOCOLS
+from app.models.settings import default_node_config
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
-from app.db.crud import proxy_inbounds as inbound_crud
-from app.db.crud import proxy_outbounds as outbound_crud
-from app.db.crud import routing as routing_crud
 
 
 def merge_dicts(a, b):  # B will override A dictionary key and values
@@ -32,22 +31,36 @@ def merge_dicts(a, b):  # B will override A dictionary key and values
     return a
 
 
-def load_xray_config(
-    config: Union[dict, str, PosixPath],
-    api_host: str = "127.0.0.1",
-    api_port: int = 8080,
-) -> "XRayConfig":
+def _coerce_config_payload(config: Union[dict, str, PosixPath]) -> dict:
     if isinstance(config, dict):
-        payload = deepcopy(config)
-    else:
-        path = str(config)
-        try:
-            payload = commentjson.loads(path)
-        except (json.JSONDecodeError, ValueError):
-            with open(path, "r") as config_file:
-                payload = commentjson.loads(config_file.read())
+        return deepcopy(config)
 
+    path = str(config)
+    try:
+        payload = commentjson.loads(path)
+    except (json.JSONDecodeError, ValueError):
+        with open(path, "r", encoding="utf-8") as config_file:
+            payload = commentjson.loads(config_file.read())
+    return payload
+
+
+def _as_json_content(value: Any) -> dict | None:
+    if isinstance(value, str):
+        value = json.loads(value)
+    return deepcopy(value) if isinstance(value, dict) else None
+
+
+def _merge_managed_configs(payload: dict, node_id: int | None = None) -> None:
     inspector = inspect(engine)
+
+    node_join = ""
+    node_where = ""
+    params = {}
+    if node_id is not None:
+        node_join = " JOIN node_inbounds_association nia ON nia.inbound_tag = i.tag"
+        node_where = " WHERE nia.node_id = :node_id"
+        params["node_id"] = node_id
+
     inbound_columns = (
         {column["name"] for column in inspector.get_columns("inbounds")}
         if inspector.has_table("inbounds")
@@ -56,7 +69,11 @@ def load_xray_config(
     if {"content", "enabled"}.issubset(inbound_columns):
         with engine.connect() as connection:
             rows = connection.execute(
-                text("SELECT tag, content, enabled FROM inbounds ORDER BY id")
+                text(
+                    "SELECT i.tag, i.content, i.enabled FROM inbounds i"
+                    f"{node_join}{node_where} ORDER BY i.id"
+                ),
+                params,
             )
             managed_inbound_tags = set()
             db_inbounds = []
@@ -64,10 +81,8 @@ def load_xray_config(
                 managed_inbound_tags.add(tag)
                 if not enabled:
                     continue
-                if isinstance(content, str):
-                    content = json.loads(content)
-                if isinstance(content, dict):
-                    content = deepcopy(content)
+                content = _as_json_content(content)
+                if content:
                     content["tag"] = tag
                     db_inbounds.append(content)
 
@@ -79,6 +94,14 @@ def load_xray_config(
         ]
         payload["inbounds"].extend(db_inbounds)
 
+    node_join = ""
+    node_where = ""
+    params = {}
+    if node_id is not None:
+        node_join = " JOIN node_outbounds_association noa ON noa.outbound_tag = o.tag"
+        node_where = " WHERE noa.node_id = :node_id"
+        params["node_id"] = node_id
+
     outbound_columns = (
         {column["name"] for column in inspector.get_columns("outbounds")}
         if inspector.has_table("outbounds")
@@ -87,7 +110,11 @@ def load_xray_config(
     if {"content", "enabled"}.issubset(outbound_columns):
         with engine.connect() as connection:
             rows = connection.execute(
-                text("SELECT tag, content, enabled FROM outbounds ORDER BY id")
+                text(
+                    "SELECT o.tag, o.content, o.enabled FROM outbounds o"
+                    f"{node_join}{node_where} ORDER BY o.id"
+                ),
+                params,
             )
             managed_outbound_tags = set()
             db_outbounds = []
@@ -95,10 +122,8 @@ def load_xray_config(
                 managed_outbound_tags.add(tag)
                 if not enabled:
                     continue
-                if isinstance(content, str):
-                    content = json.loads(content)
-                if isinstance(content, dict):
-                    content = deepcopy(content)
+                content = _as_json_content(content)
+                if content:
                     content["tag"] = tag
                     db_outbounds.append(content)
 
@@ -109,6 +134,17 @@ def load_xray_config(
         ]
         payload["outbounds"].extend(db_outbounds)
 
+    node_join = ""
+    node_where = ""
+    params = {}
+    if node_id is not None:
+        node_join = (
+            " JOIN node_routing_rules_association nrra"
+            " ON nrra.routing_rule_id = rr.id"
+        )
+        node_where = " WHERE nrra.node_id = :node_id"
+        params["node_id"] = node_id
+
     routing_rule_columns = (
         {column["name"] for column in inspector.get_columns("routing_rules")}
         if inspector.has_table("routing_rules")
@@ -118,26 +154,51 @@ def load_xray_config(
         with engine.connect() as connection:
             rows = connection.execute(
                 text(
-                    "SELECT content, enabled FROM routing_rules "
-                    "ORDER BY position, id"
-                )
+                    "SELECT rr.content, rr.enabled FROM routing_rules rr"
+                    f"{node_join}{node_where} ORDER BY rr.position, rr.id"
+                ),
+                params,
             )
             routing_rules = []
             for content, enabled in rows:
                 if not enabled:
                     continue
-                if isinstance(content, str):
-                    content = json.loads(content)
-                if isinstance(content, dict):
+                content = _as_json_content(content)
+                if content:
                     routing_rules.append(content)
 
-        routing = payload.get("routing")
-        if not isinstance(routing, dict):
-            routing = {}
-            payload["routing"] = routing
-        routing["rules"] = routing_rules
+        if routing_rules or node_id is not None:
+            routing = payload.get("routing")
+            if not isinstance(routing, dict):
+                routing = {}
+                payload["routing"] = routing
+            routing["rules"] = routing_rules
+
+
+def load_xray_config(
+    config: Union[dict, str, PosixPath],
+    api_host: str = "127.0.0.1",
+    api_port: int = 8080,
+    node_id: int | None = None,
+) -> "XRayConfig":
+    payload = _coerce_config_payload(config)
+
+    _merge_managed_configs(payload, node_id=node_id)
 
     return XRayConfig(payload, api_host=api_host, api_port=api_port)
+
+
+def load_node_xray_config(
+    node: Node,
+    api_host: str = "127.0.0.1",
+    api_port: int | None = None,
+) -> "XRayConfig":
+    return load_xray_config(
+        node.config_template or default_node_config(),
+        api_host=api_host,
+        api_port=node.api_port if api_port is None else api_port,
+        node_id=node.id,
+    )
 
 
 class XRayConfig(dict):
@@ -374,12 +435,11 @@ class XRayConfig(dict):
                             raise ValueError(
                                 f"You need to provide privateKey in realitySettings of {inbound['tag']}")
 
-                        try:
-                            from app.xray import core
-                            x25519 = core.get_x25519(pvk)
+                        from app.utils.xray_binary import get_x25519
+
+                        x25519 = get_x25519(pvk)
+                        if x25519:
                             settings['pbk'] = x25519['public_key']
-                        except ImportError:
-                            pass
 
                         if not settings.get('pbk'):
                             raise ValueError(
@@ -516,74 +576,11 @@ class XRayConfig(dict):
         return deepcopy(self)
 
     def for_node(self, node_id: int) -> XRayConfig:
-        config = self.copy()
-
         with GetDB() as db:
-            assignments = inbound_crud.get_inbound_node_ids_map(
-                db, list(self.inbounds_by_tag)
-            )
-            outbound_assignments = outbound_crud.get_outbound_node_ids_map(
-                db,
-                [
-                    outbound.get("tag")
-                    for outbound in config.get("outbounds", [])
-                    if outbound.get("tag")
-                ],
-            )
-            routing_rules = routing_crud.get_routing_rules_for_node(db, node_id)
-
-        allowed_tags = {
-            tag for tag, node_ids in assignments.items() if node_id in node_ids
-        }
-        managed_tags = set(self.inbounds_by_tag)
-        allowed_outbound_tags = {
-            tag
-            for tag, node_ids in outbound_assignments.items()
-            if node_id in node_ids
-        }
-        managed_outbound_tags = set(outbound_assignments)
-
-        config["inbounds"] = [
-            inbound
-            for inbound in config.get("inbounds", [])
-            if inbound.get("tag") not in managed_tags
-            or inbound.get("tag") in allowed_tags
-        ]
-        config["outbounds"] = [
-            outbound
-            for outbound in config.get("outbounds", [])
-            if outbound.get("tag") not in managed_outbound_tags
-            or outbound.get("tag") in allowed_outbound_tags
-        ]
-        api_rules = [
-            rule
-            for rule in config.get("routing", {}).get("rules", [])
-            if "API_INBOUND" in rule.get("inboundTag", [])
-            and rule.get("outboundTag") == "API"
-        ]
-        config.setdefault("routing", {})["rules"] = api_rules + routing_rules
-
-        config.inbounds = [
-            inbound for inbound in config.inbounds if inbound["tag"] in allowed_tags
-        ]
-        config.inbounds_by_tag = {
-            tag: inbound
-            for tag, inbound in config.inbounds_by_tag.items()
-            if tag in allowed_tags
-        }
-        config.inbounds_by_protocol = {
-            protocol: [
-                inbound for inbound in inbounds if inbound["tag"] in allowed_tags
-            ]
-            for protocol, inbounds in config.inbounds_by_protocol.items()
-        }
-        config.inbounds_by_protocol = {
-            protocol: inbounds
-            for protocol, inbounds in config.inbounds_by_protocol.items()
-            if inbounds
-        }
-
-        return config
+            node = db.get(Node, node_id)
+            if not node:
+                raise ValueError("Node not found")
+            return load_node_xray_config(node, api_host=self.api_host)
 
     def include_db_users(self) -> XRayConfig:
         config = self.copy()

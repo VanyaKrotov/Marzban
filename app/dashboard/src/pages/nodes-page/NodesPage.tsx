@@ -1,18 +1,11 @@
-import { ChevronRight, Plus, RefreshCw, Server } from "lucide-react";
+import { Plus, RefreshCw, Server } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Page from "@/components/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -22,6 +15,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { NodeDialog } from "./components/NodeDialog";
 import { NodeStatusBadge } from "./components/NodeStatusBadge";
@@ -30,6 +31,7 @@ import { useNodesPageQuery } from "./lib/query";
 
 export function NodesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     data: nodes = [],
     isLoading,
@@ -67,7 +69,7 @@ export function NodesPage() {
       </Page.Header>
 
       {isLoading ? (
-        <NodesGridSkeleton />
+        <NodesTableSkeleton />
       ) : isError ? (
         <Empty className="min-h-96 rounded-xl">
           <EmptyHeader>
@@ -94,46 +96,59 @@ export function NodesPage() {
           </EmptyContent>
         </Empty>
       ) : nodes.length ? (
-        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
-          {nodes.map((node) =>
-            node.id ? (
-              <Link
-                key={node.id}
-                to={`/nodes/${node.id}`}
-                className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                <Card className="h-full transition-colors group-hover:bg-muted/30">
-                  <CardHeader className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Server className="size-5" />
-                    </div>
-                    <CardTitle className="truncate">{node.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="mt-auto space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <NodeCardValue
-                        label={t("nodes.nodeAddress")}
-                        value={`${node.address}:${node.port}`}
-                      />
-                      <NodeCardValue
-                        label={t("nodesPage.coreVersion")}
-                      >
-                        {node.xray_version ? (
-                          <Badge variant="outline">v{node.xray_version}</Badge>
-                        ) : (
-                          "-"
-                        )}
-                      </NodeCardValue>
-                    </div>
-                    <div className="flex justify-between gap-x-6 pt-3 text-muted-foreground">
-                      <NodeStatusBadge status={node.status} />{" "}
-                      <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ) : null,
-          )}
+        <div className="overflow-x-auto rounded-xl border">
+          <Table className="min-w-[720px] table-fixed">
+            <colgroup>
+              <col className="w-[30%]" />
+              <col className="w-[30%]" />
+              <col className="w-[20%]" />
+              <col className="w-[20%]" />
+            </colgroup>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("nodes.nodeName")}</TableHead>
+                <TableHead>{t("nodes.nodeAddress")}</TableHead>
+                <TableHead>{t("nodesPage.coreVersion")}</TableHead>
+                <TableHead>{t("nodesPage.status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {nodes.map((node) =>
+                node.id ? (
+                  <TableRow
+                    key={node.id}
+                    tabIndex={0}
+                    role="link"
+                    className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    onClick={() => navigate(`/nodes/${node.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate(`/nodes/${node.id}`);
+                      }
+                    }}
+                  >
+                    <TableCell className="truncate font-medium">
+                      {node.name}
+                    </TableCell>
+                    <TableCell className="truncate font-mono text-xs">
+                      {node.address}:{node.port}
+                    </TableCell>
+                    <TableCell>
+                      {node.xray_version ? (
+                        <Badge variant="outline">v{node.xray_version}</Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <NodeStatusBadge status={node.status} />
+                    </TableCell>
+                  </TableRow>
+                ) : null,
+              )}
+            </TableBody>
+          </Table>
         </div>
       ) : (
         <Empty className="min-h-96 rounded-xl">
@@ -164,29 +179,45 @@ export function NodesPage() {
   );
 }
 
-function NodeCardValue({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="truncate font-medium mt-0.5">{children ?? value}</div>
-    </div>
-  );
-}
+function NodesTableSkeleton() {
+  const { t } = useTranslation();
 
-function NodesGridSkeleton() {
   return (
-    <div className="grid gap-4 min-[480px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, index) => (
-        <Skeleton className="h-52 rounded-xl" key={index} />
-      ))}
+    <div className="overflow-x-auto rounded-xl border">
+      <Table className="min-w-[720px] table-fixed">
+        <colgroup>
+          <col className="w-[30%]" />
+          <col className="w-[30%]" />
+          <col className="w-[20%]" />
+          <col className="w-[20%]" />
+        </colgroup>
+        <TableHeader className="bg-muted/40">
+          <TableRow className="hover:bg-transparent">
+            <TableHead>{t("nodes.nodeName")}</TableHead>
+            <TableHead>{t("nodes.nodeAddress")}</TableHead>
+            <TableHead>{t("nodesPage.coreVersion")}</TableHead>
+            <TableHead>{t("nodesPage.status")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Skeleton className="h-5 w-36" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-44" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-6 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-6 w-24" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

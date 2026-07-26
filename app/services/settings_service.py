@@ -24,6 +24,8 @@ from app.utils.runtime_settings import (
     update_runtime_settings,
     update_subscription_template,
 )
+from app.utils.xray_config_template import normalize_xray_config_template
+from app.utils.xray_config_registry import XRAY_VALIDATION_API_PORT
 
 
 def _remove_file(path: str) -> None:
@@ -40,6 +42,11 @@ def modify_settings(
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
+    if modified_settings.default_node_config is not None:
+        modified_settings.default_node_config = normalize_xray_config_template(
+            modified_settings.default_node_config,
+            api_port=XRAY_VALIDATION_API_PORT,
+        )
     settings = update_runtime_settings(db, modified_settings)
     return runtime_settings_response(settings)
 

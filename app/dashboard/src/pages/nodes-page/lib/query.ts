@@ -26,6 +26,8 @@ export const nodeSettingsQueryKey = ["node-settings"] as const;
 export const nodesQueryKey = ["nodes"] as const;
 export const nodeQueryKey = (nodeId: number) =>
   [...nodesQueryKey, nodeId] as const;
+export const nodeConfigTemplateQueryKey = (nodeId: number) =>
+  ["node-config-template", nodeId] as const;
 export const nodeCertificatesQueryKey = (nodeId: number) =>
   ["node-certificates", nodeId] as const;
 
@@ -60,6 +62,35 @@ export function useNodeSettingsQuery(enabled: boolean) {
     queryFn: () => api.get<NodeSettings>("/node/settings"),
     enabled,
     staleTime: Infinity,
+  });
+}
+
+export function useNodeConfigTemplateQuery(nodeId: number, enabled = true) {
+  return useQuery({
+    queryKey: nodeConfigTemplateQueryKey(nodeId),
+    queryFn: () =>
+      api.get<Record<string, unknown>>(`/node/${nodeId}/config-template`),
+    enabled: Boolean(nodeId) && enabled,
+  });
+}
+
+export function useUpdateNodeConfigTemplateMutation(nodeId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (config: Record<string, unknown>) =>
+      api.put<Record<string, unknown>>(
+        `/node/${nodeId}/config-template`,
+        config,
+      ),
+    onSuccess: (config) =>
+      Promise.all([
+        queryClient.setQueryData(nodeConfigTemplateQueryKey(nodeId), config),
+        queryClient.invalidateQueries({ queryKey: nodeQueryKey(nodeId) }),
+        queryClient.invalidateQueries({ queryKey: nodesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["inbound-configs"] }),
+        queryClient.invalidateQueries({ queryKey: ["outbound-configs"] }),
+        queryClient.invalidateQueries({ queryKey: ["routing-rules"] }),
+      ]),
   });
 }
 

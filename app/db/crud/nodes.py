@@ -1,16 +1,16 @@
 """Domain CRUD helpers extracted from the former app.db.crud module."""
 
 from datetime import datetime
+from copy import deepcopy
 from typing import List, Optional, Union
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from app.db.models.nodes import Node
-from app.db.models.proxies import ProxyInbound, ProxyOutbound
-from app.db.models.routing import RoutingRule
 from app.db.models.usages import NodeUsage, NodeUserUsage
 from app.models.node import NodeCreate, NodeModify, NodeStatus, NodeUsageResponse
+from app.models.settings import default_node_config
 
 
 def get_node(db: Session, name: str) -> Optional[Node]:
@@ -105,7 +105,7 @@ def get_nodes_usage(db: Session, start: datetime, end: datetime) -> List[NodeUsa
 
     return list(usages.values())
 
-def create_node(db: Session, node: NodeCreate) -> Node:
+def create_node(db: Session, node: NodeCreate, config_template: dict | None = None) -> Node:
     """
     Creates a new node in the database.
 
@@ -119,24 +119,17 @@ def create_node(db: Session, node: NodeCreate) -> Node:
     dbnode = Node(name=node.name,
                   address=node.address,
                   port=node.port,
-                  api_port=node.api_port)
-    dbnode.inbounds = (
-        db.query(ProxyInbound)
-        .filter(ProxyInbound.readonly.is_(True))
-        .all()
-    )
-    dbnode.outbounds = (
-        db.query(ProxyOutbound)
-        .filter(ProxyOutbound.readonly.is_(True))
-        .all()
-    )
-    dbnode.routing_rules = (
-        db.query(RoutingRule)
-        .filter(RoutingRule.readonly.is_(True))
-        .all()
-    )
+                  api_port=node.api_port,
+                  config_template=deepcopy(config_template or default_node_config()))
 
     db.add(dbnode)
+    db.commit()
+    db.refresh(dbnode)
+    return dbnode
+
+
+def update_node_config_template(db: Session, dbnode: Node, config_template: dict) -> Node:
+    dbnode.config_template = deepcopy(config_template)
     db.commit()
     db.refresh(dbnode)
     return dbnode

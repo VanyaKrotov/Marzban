@@ -13,6 +13,7 @@ from app.models.settings import (
     RuntimeSettingsModify,
     RuntimeSettingsResponse,
     SubscriptionTemplate,
+    default_node_config,
 )
 from app.templates import env
 from config import (
@@ -109,6 +110,7 @@ def build_default_runtime_settings() -> RuntimeSettings:
         webhook_secret=WEBHOOK_SECRET,
         recurrent_notifications_timeout=RECURRENT_NOTIFICATIONS_TIMEOUT,
         number_of_recurrent_notifications=NUMBER_OF_RECURRENT_NOTIFICATIONS,
+        default_node_config=default_node_config(),
     )
 
 

@@ -1,4 +1,4 @@
-import { Pencil, RefreshCw } from "lucide-react";
+import { FileJson, Pencil, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
@@ -21,11 +21,13 @@ import type { NodeType } from "types/Node";
 import { generateErrorMessage } from "utils/toastHandler";
 
 import { NodeErrorDialog } from "./NodeErrorDialog";
+import { NodeConfigTemplateDialog } from "./NodeConfigTemplateDialog";
 import { NodeSettingsDialog } from "./NodeSettingsDialog";
 
 export function NodeOverviewCard({ node }: { node: NodeType }) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
   const reconnect = useReconnectNodeMutation();
   const address = `${node.address}:${node.port}`;
@@ -52,6 +54,15 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
             {t("nodeProfile.connectionInfo")}
           </CardTitle>
           <CardAction className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setConfigOpen(true)}
+            >
+              <FileJson />
+              {t("nodeProfile.editConfigTemplate")}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -126,6 +137,11 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
         node={node}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+      />
+      <NodeConfigTemplateDialog
+        node={node}
+        open={configOpen}
+        onOpenChange={setConfigOpen}
       />
       <NodeErrorDialog
         node={node}

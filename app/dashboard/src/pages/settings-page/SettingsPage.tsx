@@ -10,6 +10,7 @@ import {
 } from "@/utils/toastHandler";
 
 import { BackupSettingsSection } from "./components/BackupSettingsSection";
+import { DefaultNodeConfigSection } from "./components/DefaultNodeConfigSection";
 import { LoadError } from "./components/LoadError";
 import { NotificationSettingsSection } from "./components/NotificationSettingsSection";
 import { SubscriptionSettingsSection } from "./components/SubscriptionSettingsSection";
@@ -74,6 +75,7 @@ export function SettingsPage() {
       ) : (
         <div className="space-y-5">
           <SubscriptionSettingsSection settings={settingsQuery.data} />
+          <DefaultNodeConfigSection settings={settingsQuery.data} />
           {templatesQuery.isLoading ? (
             <Skeleton className="h-96 w-full rounded-md" />
           ) : templatesQuery.isError ? (

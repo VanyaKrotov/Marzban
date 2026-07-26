@@ -86,7 +86,6 @@ configuration and import aliases. The `@/*` alias maps to `src/*`.
 | `/inbounds` | Managed inbound JSON and node assignment |
 | `/outbounds` | Managed outbound JSON and node assignment |
 | `/routing` | Routing rule JSON, assignments and ordering |
-| `/config` | Complete Xray JSON configuration |
 | `/stats` | Traffic and user charts |
 | `/login` | Administrator authentication |
 
@@ -103,8 +102,8 @@ The application also links to same-origin `/docs`.
 - Keep schemas and reusable form helpers in the feature-local `lib` directory.
 - Split large dialogs into local `components`, `lib`, and query modules.
 
-Objects sourced from `XRAY_JSON` have read-only JSON content and cannot be
-deleted. Their metadata, enabled state and node assignments can still be edited.
+Objects sourced from a node Xray template have read-only JSON content and cannot
+be deleted. Their metadata, enabled state and node assignments can still be edited.
 
 ## JSON editor
 
@@ -114,7 +113,8 @@ schemas currently cover:
 - complete Xray configuration;
 - inbound configuration;
 - outbound configuration;
-- routing rules with inbound tag completion.
+- routing rules with inbound tag completion;
+- node Xray templates.
 
 Schema descriptions are written in English. Keep the schema optional so the
 editor remains reusable.

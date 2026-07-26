@@ -8,7 +8,6 @@ import { AxiosError } from "axios";
 
 import { ErrorFallback } from "@/components/ErrorFallback";
 import HostsPage from "@/pages/hosts-page";
-import ConfigPage from "@/pages/config-page";
 import NodesPage from "@/pages/nodes-page";
 import NodeProfilePage from "@/pages/node-profile-page";
 import StatsPage from "@/pages/stats-page";
@@ -71,11 +70,6 @@ export const router = createHashRouter([
       {
         path: "stats",
         element: <StatsPage />,
-      },
-      {
-        path: "config",
-        element: <ConfigPage />,
-        loader: requireSudo,
       },
       {
         path: "settings",

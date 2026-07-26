@@ -25,6 +25,7 @@ from app.models.user import (
 )
 from app.utils.helpers import calculate_expiration_days, calculate_usage_percent
 from app.utils.runtime_settings import get_runtime_settings
+from app.utils.xray_config_registry import get_excluded_inbound_tags
 from config import USERS_AUTODELETE_DAYS
 
 from app.db.crud import proxy_inbounds as inbound_crud
@@ -229,11 +230,15 @@ def create_user(db: Session, user: UserCreate, admin: Admin = None) -> User:
     Returns:
         User: The created user object.
     """
-    excluded_inbounds_tags = user.excluded_inbounds
+    excluded_inbounds_tags = get_excluded_inbound_tags(
+        db,
+        user.proxies,
+        user.inbounds,
+    )
     proxies = []
     for proxy_type, settings in user.proxies.items():
         excluded_inbounds = [
-            inbound_crud.get_or_create_inbound(db, tag) for tag in excluded_inbounds_tags[proxy_type]
+            inbound_crud.get_inbound_or_raise(db, tag) for tag in excluded_inbounds_tags[proxy_type]
         ]
         proxies.append(
             Proxy(type=proxy_type.value,
@@ -324,12 +329,17 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
             if proxy.type not in modify.proxies:
                 db.delete(proxy)
     if "inbounds" in modify.model_fields_set:
-        for proxy_type, tags in modify.excluded_inbounds.items():
+        excluded_inbounds_tags = get_excluded_inbound_tags(
+            db,
+            modify.inbounds,
+            modify.inbounds,
+        )
+        for proxy_type, tags in excluded_inbounds_tags.items():
             dbproxy = db.query(Proxy) \
                 .where(Proxy.user == dbuser, Proxy.type == proxy_type) \
                 .first() or added_proxies.get(proxy_type)
             if dbproxy:
-                dbproxy.excluded_inbounds = [inbound_crud.get_or_create_inbound(db, tag) for tag in tags]
+                dbproxy.excluded_inbounds = [inbound_crud.get_inbound_or_raise(db, tag) for tag in tags]
 
     if modify.status is not None:
         dbuser.status = modify.status

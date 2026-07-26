@@ -2,10 +2,9 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import object_session, relationship
 from sqlalchemy.sql.expression import select
 
-from app import xray
 from app.db.base import Base
 from app.db.models.associations import excluded_inbounds_association, template_inbounds_association
 from app.models.user import UserDataLimitResetStrategy, UserStatus
@@ -87,15 +86,26 @@ class User(Base):
 
     @property
     def inbounds(self):
-        _ = {}
-        for proxy in self.proxies:
-            _[proxy.type] = []
-            excluded_tags = [i.tag for i in proxy.excluded_inbounds]
-            for inbound in xray.config.inbounds_by_protocol.get(proxy.type, []):
-                if inbound["tag"] not in excluded_tags:
-                    _[proxy.type].append(inbound["tag"])
+        from app.db import GetDB
+        from app.utils.xray_config_registry import get_enabled_inbound_registry
 
-        return _
+        session = object_session(self)
+        if session is None:
+            with GetDB() as db:
+                registry = get_enabled_inbound_registry(db)
+        else:
+            registry = get_enabled_inbound_registry(session)
+
+        result = {}
+        for proxy in self.proxies:
+            result[proxy.type] = []
+            excluded_tags = [i.tag for i in proxy.excluded_inbounds]
+            protocol = proxy.type.value if hasattr(proxy.type, "value") else str(proxy.type)
+            for inbound in registry.inbounds_by_protocol.get(protocol, []):
+                if inbound["tag"] not in excluded_tags:
+                    result[proxy.type].append(inbound["tag"])
+
+        return result
 
 class NextPlan(Base):
     __tablename__ = 'next_plans'

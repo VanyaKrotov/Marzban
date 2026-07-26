@@ -4,7 +4,7 @@ from typing import Dict, List, Union
 from fastapi import Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 
-from app import __version__, xray
+from app import __version__
 from app.db import Session, get_db
 from app.models.admin import Admin
 from app.models.proxy import (
@@ -34,6 +34,12 @@ from app.models.system import SystemStats
 from app.models.user import UserStatus
 from app.utils.node_restart_state import mark_nodes_pending_restart
 from app.utils.system import cpu_usage, memory_usage, realtime_bandwidth
+from app.utils.xray_config_registry import (
+    XRAY_VALIDATION_API_PORT,
+    build_validation_payload,
+    get_enabled_inbound_registry,
+)
+from app.xray.config import XRayConfig
 from app.db.crud import admins as admin_crud
 from app.db.crud import node_certificates as certificate_crud
 from app.db.crud import proxy_hosts as host_crud
@@ -74,7 +80,7 @@ def _outbound_response(outbound) -> OutboundResponse:
     )
 
 
-def _validate_inbound_content(tag: str, content: dict) -> dict:
+def _validate_inbound_content(db: Session, tag: str, content: dict) -> dict:
     normalized = deepcopy(content)
     normalized["tag"] = tag
     if normalized.get("protocol") not in XRAY_INBOUND_PROTOCOLS:
@@ -83,21 +89,19 @@ def _validate_inbound_content(tag: str, content: dict) -> dict:
             detail=f"Inbound protocol must be one of {sorted(XRAY_INBOUND_PROTOCOLS)}",
         )
 
-    payload = deepcopy(dict(xray.config))
-    payload["inbounds"] = [
-        inbound
-        for inbound in payload.get("inbounds", [])
-        if inbound.get("tag") not in {tag, "API_INBOUND"}
-    ]
-    payload["inbounds"].append(normalized)
+    payload = build_validation_payload(
+        db,
+        inbounds=[normalized],
+        replace_inbound_tags={tag, "API_INBOUND"},
+    )
     try:
-        xray.XRayConfig(payload, api_port=xray.config.api_port)
+        XRayConfig(payload, api_port=XRAY_VALIDATION_API_PORT)
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return normalized
 
 
-def _validate_outbound_content(tag: str, content: dict) -> dict:
+def _validate_outbound_content(db: Session, tag: str, content: dict) -> dict:
     normalized = deepcopy(content)
     normalized["tag"] = tag
     if normalized.get("protocol") not in XRAY_OUTBOUND_PROTOCOLS:
@@ -106,22 +110,21 @@ def _validate_outbound_content(tag: str, content: dict) -> dict:
             detail=f"Outbound protocol must be one of {sorted(XRAY_OUTBOUND_PROTOCOLS)}",
         )
 
-    payload = deepcopy(dict(xray.config))
-    payload["outbounds"] = [
-        outbound
-        for outbound in payload.get("outbounds", [])
-        if outbound.get("tag") != tag
-    ]
-    payload["outbounds"].append(normalized)
+    payload = build_validation_payload(
+        db,
+        outbounds=[normalized],
+        replace_outbound_tags={tag},
+    )
     try:
-        xray.XRayConfig(payload, api_port=xray.config.api_port)
+        XRayConfig(payload, api_port=XRAY_VALIDATION_API_PORT)
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return normalized
 
 
 def _ensure_inbound_users(db: Session, inbound_tag: str) -> None:
-    inbound = xray.config.inbounds_by_tag.get(inbound_tag)
+    registry = get_enabled_inbound_registry(db)
+    inbound = registry.inbounds_by_tag.get(inbound_tag)
     if not inbound:
         return
     protocol = inbound["protocol"]
@@ -131,7 +134,7 @@ def _ensure_inbound_users(db: Session, inbound_tag: str) -> None:
         included_tags=[inbound_tag],
         protocol_inbound_tags=[
             item["tag"]
-            for item in xray.config.inbounds_by_protocol.get(protocol, [])
+            for item in registry.inbounds_by_protocol.get(protocol, [])
         ],
     )
     db.commit()
@@ -185,9 +188,12 @@ def get_system_stats(
     )
 
 
-def get_inbounds(admin: Admin = Depends(Admin.get_current)):
+def get_inbounds(
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.get_current),
+):
     """Retrieve inbound configurations grouped by protocol."""
-    return xray.config.inbounds_by_protocol
+    return get_enabled_inbound_registry(db).inbounds_by_protocol
 
 
 def get_inbound_configs(
@@ -202,7 +208,7 @@ def create_inbound_config(
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
-    inbound.content = _validate_inbound_content(inbound.tag, inbound.content)
+    inbound.content = _validate_inbound_content(db, inbound.tag, inbound.content)
     try:
         created = inbound_crud.create_inbound(db, inbound)
     except IntegrityError:
@@ -210,7 +216,6 @@ def create_inbound_config(
         raise HTTPException(status_code=409, detail="Inbound tag already exists")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    xray.reload_config()
     if inbound.auto_assign_users:
         _ensure_inbound_users(db, created.tag)
     else:
@@ -243,6 +248,7 @@ def modify_inbound_config(
     was_enabled = dbinbound.enabled
     if modified.content is not None:
         modified.content = _validate_inbound_content(
+            db,
             inbound_tag,
             modified.content,
         )
@@ -251,7 +257,6 @@ def modify_inbound_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     affected_node_ids.update(node.id for node in updated.nodes)
-    xray.reload_config()
     if updated.enabled and not was_enabled:
         _ensure_inbound_users(db, updated.tag)
     mark_nodes_pending_restart(affected_node_ids)
@@ -273,7 +278,6 @@ def delete_inbound_config(
         )
     affected_node_ids = {node.id for node in dbinbound.nodes}
     inbound_crud.remove_inbound(db, dbinbound)
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)
 
 
@@ -289,7 +293,7 @@ def create_outbound_config(
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
-    outbound.content = _validate_outbound_content(outbound.tag, outbound.content)
+    outbound.content = _validate_outbound_content(db, outbound.tag, outbound.content)
     try:
         created = outbound_crud.create_outbound(db, outbound)
     except IntegrityError:
@@ -297,7 +301,7 @@ def create_outbound_config(
         raise HTTPException(status_code=409, detail="Outbound tag already exists")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    # xray.reload_config()
+
     mark_nodes_pending_restart(node.id for node in created.nodes)
     return _outbound_response(created)
 
@@ -320,6 +324,7 @@ def modify_outbound_config(
     affected_node_ids = {node.id for node in dboutbound.nodes}
     if modified.content is not None:
         modified.content = _validate_outbound_content(
+            db,
             outbound_tag,
             modified.content,
         )
@@ -328,7 +333,6 @@ def modify_outbound_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     affected_node_ids.update(node.id for node in updated.nodes)
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)
     return _outbound_response(updated)
 
@@ -348,7 +352,6 @@ def delete_outbound_config(
         )
     affected_node_ids = {node.id for node in dboutbound.nodes}
     outbound_crud.remove_outbound(db, dboutbound)
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)
 
 
@@ -356,7 +359,10 @@ def get_inbound_nodes(
     db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)
 ):
     """Get node assignments for every managed inbound."""
-    return inbound_crud.get_inbound_nodes(db, list(xray.config.inbounds_by_tag))
+    return inbound_crud.get_inbound_nodes(
+        db,
+        [inbound.tag for inbound in inbound_crud.get_inbounds(db)],
+    )
 
 
 def modify_inbound_nodes(
@@ -365,7 +371,8 @@ def modify_inbound_nodes(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Update node assignments."""
-    unknown_inbounds = set(inbound_nodes) - xray.config.inbounds_by_tag.keys()
+    known_inbounds = {inbound.tag for inbound in inbound_crud.get_inbounds(db)}
+    unknown_inbounds = set(inbound_nodes) - known_inbounds
     if unknown_inbounds:
         raise HTTPException(
             status_code=400,
@@ -474,7 +481,7 @@ def get_hosts(
             group_ids=parse_groups_query(groups),
             search=search,
         )
-        for tag in xray.config.inbounds_by_tag
+        for tag in [inbound.tag for inbound in inbound_crud.get_inbounds(db)]
     }
     return hosts
 
@@ -501,7 +508,7 @@ def create_host_v2(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Create a proxy host."""
-    if host.inbound_tag not in xray.config.inbounds_by_tag:
+    if not inbound_crud.get_inbound(db, host.inbound_tag):
         raise HTTPException(
             status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
         )
@@ -509,7 +516,6 @@ def create_host_v2(
         dbhost = host_crud.create_host_v2(db, host)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    xray.hosts.update()
     return dbhost
 
 
@@ -523,7 +529,6 @@ def reorder_hosts_v2(
         hosts = host_crud.reorder_hosts_v2(db, payload.host_ids)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    xray.hosts.update()
     return hosts
 
 
@@ -534,7 +539,7 @@ def update_host_v2(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Update a proxy host."""
-    if host.inbound_tag not in xray.config.inbounds_by_tag:
+    if not inbound_crud.get_inbound(db, host.inbound_tag):
         raise HTTPException(
             status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
         )
@@ -545,7 +550,6 @@ def update_host_v2(
         dbhost = host_crud.update_host_v2(db, dbhost, host)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    xray.hosts.update()
     return dbhost
 
 
@@ -591,7 +595,6 @@ def delete_host_v2(
     if not dbhost:
         raise HTTPException(status_code=404, detail="Host not found")
     host_crud.remove_host_v2(db, dbhost)
-    xray.hosts.update()
     return {}
 
 
@@ -601,8 +604,9 @@ def modify_hosts(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Modify proxy hosts and update the configuration."""
+    known_inbounds = {inbound.tag for inbound in inbound_crud.get_inbounds(db)}
     for inbound_tag in modified_hosts:
-        if inbound_tag not in xray.config.inbounds_by_tag:
+        if inbound_tag not in known_inbounds:
             raise HTTPException(
                 status_code=400, detail=f"Inbound {inbound_tag} doesn't exist"
             )
@@ -610,9 +614,7 @@ def modify_hosts(
     for inbound_tag, hosts in modified_hosts.items():
         host_crud.update_hosts(db, inbound_tag, hosts)
 
-    xray.hosts.update()
-
-    return {tag: host_crud.get_hosts(db, tag) for tag in xray.config.inbounds_by_tag}
+    return {tag: host_crud.get_hosts(db, tag) for tag in known_inbounds}
 
 
 def get_version():

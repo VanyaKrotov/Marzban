@@ -10,8 +10,33 @@ from app.dependencies import get_expired_users_list, get_validated_user, validat
 from app.models.admin import Admin
 from app.models.user import UserCreate, UserModify, UserResponse, UsersResponse, UserStatus
 from app.utils import report
+from app.utils.xray_config_registry import (
+    normalize_user_inbounds,
+    validate_selected_inbounds,
+)
 from app.db.crud import admins as admin_crud
 from app.db.crud import users as user_crud
+
+
+def _normalize_user_create_inbounds(db: Session, user: UserCreate) -> None:
+    try:
+        user.inbounds = normalize_user_inbounds(
+            db,
+            user.proxies,
+            user.inbounds,
+            fill_missing=True,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _validate_user_modify_inbounds(db: Session, user: UserModify) -> None:
+    if "inbounds" not in user.model_fields_set:
+        return
+    try:
+        user.inbounds = validate_selected_inbounds(db, user.inbounds or {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def add_user(
@@ -38,12 +63,7 @@ def add_user(
 
     # TODO expire should be datetime instead of timestamp
 
-    for proxy_type in new_user.proxies:
-        if not xray.config.inbounds_by_protocol.get(proxy_type):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Protocol {proxy_type} is disabled on your server",
-            )
+    _normalize_user_create_inbounds(db, new_user)
 
     try:
         dbuser = user_crud.create_user(
@@ -90,12 +110,17 @@ def modify_user(
     Note: Fields set to `null` or omitted will not be modified.
     """
 
-    for proxy_type in modified_user.proxies:
-        if not xray.config.inbounds_by_protocol.get(proxy_type):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Protocol {proxy_type} is disabled on your server",
+    if modified_user.proxies:
+        try:
+            normalize_user_inbounds(
+                db,
+                modified_user.proxies,
+                {},
+                fill_missing=True,
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    _validate_user_modify_inbounds(db, modified_user)
 
     old_status = dbuser.status
     dbuser = user_crud.update_user(db, dbuser, modified_user)

@@ -20,6 +20,16 @@ router.get("/node/settings", response_model=NodeSettings)(service.get_node_setti
 
 router.post("/node", response_model=NodeResponse, responses={409: responses._409})(service.add_node)
 
+router.get(
+    "/node/{node_id}/config-template",
+    responses={403: responses._403},
+)(service.get_node_config_template)
+
+router.put(
+    "/node/{node_id}/config-template",
+    responses={400: responses._400, 403: responses._403},
+)(service.modify_node_config_template)
+
 router.get("/node/{node_id}", response_model=NodeResponse)(service.get_node)
 
 router.websocket("/node/{node_id}/logs")(service.node_logs)

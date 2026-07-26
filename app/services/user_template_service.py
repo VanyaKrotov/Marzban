@@ -28,6 +28,8 @@ def add_user_template(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Template by this name already exists")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def get_user_template_endpoint(
@@ -56,6 +58,8 @@ def modify_user_template(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Template by this name already exists")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def remove_user_template(

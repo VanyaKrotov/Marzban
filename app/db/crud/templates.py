@@ -7,6 +7,17 @@ from sqlalchemy.orm import Session
 from app.db.models.proxies import ProxyInbound
 from app.db.models.users import UserTemplate
 from app.models.user_template import UserTemplateCreate, UserTemplateModify
+from app.utils.xray_config_registry import (
+    get_enabled_inbound_registry,
+    validate_selected_inbounds,
+)
+
+
+def _flatten_inbound_tags(inbounds: dict) -> List[str]:
+    tags: List[str] = []
+    for _, values in inbounds.items():
+        tags.extend(values)
+    return list(dict.fromkeys(tags))
 
 
 def create_user_template(db: Session, user_template: UserTemplateCreate) -> UserTemplate:
@@ -20,9 +31,12 @@ def create_user_template(db: Session, user_template: UserTemplateCreate) -> User
     Returns:
         UserTemplate: The created user template object.
     """
-    inbound_tags: List[str] = []
-    for _, i in user_template.inbounds.items():
-        inbound_tags.extend(i)
+    if user_template.inbounds:
+        inbound_tags = _flatten_inbound_tags(
+            validate_selected_inbounds(db, user_template.inbounds)
+        )
+    else:
+        inbound_tags = list(get_enabled_inbound_registry(db).inbounds_by_tag)
     dbuser_template = UserTemplate(
         name=user_template.name,
         data_limit=user_template.data_limit,
@@ -62,9 +76,9 @@ def update_user_template(
         dbuser_template.username_suffix = modified_user_template.username_suffix
 
     if modified_user_template.inbounds:
-        inbound_tags: List[str] = []
-        for _, i in modified_user_template.inbounds.items():
-            inbound_tags.extend(i)
+        inbound_tags = _flatten_inbound_tags(
+            validate_selected_inbounds(db, modified_user_template.inbounds)
+        )
         dbuser_template.inbounds = db.query(ProxyInbound).filter(ProxyInbound.tag.in_(inbound_tags)).all()
 
     db.commit()

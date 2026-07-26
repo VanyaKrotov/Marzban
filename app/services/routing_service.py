@@ -1,6 +1,5 @@
 from fastapi import Depends, HTTPException
 
-from app import xray
 from app.db import Session, get_db
 from app.models.admin import Admin
 from app.models.routing import (
@@ -51,7 +50,6 @@ def create_routing_rule(
         created = routing_crud.create_routing_rule(db, rule)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    xray.reload_config()
     mark_nodes_pending_restart(node.id for node in created.nodes)
     return _response(created)
 
@@ -77,7 +75,6 @@ def reorder_routing_rules(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)
     return [_response(rule) for rule in reordered]
 
@@ -106,7 +103,6 @@ def modify_routing_rule(
         raise HTTPException(status_code=400, detail=str(exc))
 
     affected_node_ids.update(node.id for node in updated.nodes)
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)
     return _response(updated)
 
@@ -127,5 +123,4 @@ def delete_routing_rule(
 
     affected_node_ids = {node.id for node in dbrule.nodes}
     routing_crud.remove_routing_rule(db, dbrule)
-    xray.reload_config()
     mark_nodes_pending_restart(affected_node_ids)

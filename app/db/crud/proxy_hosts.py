@@ -74,7 +74,9 @@ def get_hosts(
     Returns:
         List[ProxyHost]: List of hosts for the inbound.
     """
-    inbound = inbound_crud.get_or_create_inbound(db, inbound_tag)
+    inbound = inbound_crud.get_inbound(db, inbound_tag)
+    if not inbound:
+        return []
     query = (
         db.query(ProxyHost)
         .options(joinedload(ProxyHost.inbound), joinedload(ProxyHost.groups))
@@ -226,7 +228,7 @@ def _apply_host_fields(dbhost: ProxyHost, host: ProxyHostModify) -> None:
 
 
 def create_host_v2(db: Session, host: ProxyHostCreate) -> ProxyHost:
-    inbound = inbound_crud.get_or_create_inbound(db, host.inbound_tag)
+    inbound = inbound_crud.get_inbound_or_raise(db, host.inbound_tag)
     position = host.position
     if position is None:
         position = inbound_crud.get_next_host_position(db)
@@ -242,7 +244,7 @@ def create_host_v2(db: Session, host: ProxyHostCreate) -> ProxyHost:
 def update_host_v2(
     db: Session, dbhost: ProxyHost, host: ProxyHostV2Modify
 ) -> ProxyHost:
-    inbound = inbound_crud.get_or_create_inbound(db, host.inbound_tag)
+    inbound = inbound_crud.get_inbound_or_raise(db, host.inbound_tag)
     dbhost.inbound = inbound
     if host.position is not None:
         dbhost.position = host.position
@@ -284,7 +286,7 @@ def add_host(db: Session, inbound_tag: str, host: ProxyHostModify) -> List[Proxy
     Returns:
         List[ProxyHost]: Updated list of hosts for the inbound.
     """
-    inbound = inbound_crud.get_or_create_inbound(db, inbound_tag)
+    inbound = inbound_crud.get_inbound_or_raise(db, inbound_tag)
     inbound.hosts.append(
         ProxyHost(
             remark=host.remark,
@@ -317,7 +319,7 @@ def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostMo
     Returns:
         List[ProxyHost]: Updated list of hosts for the inbound.
     """
-    inbound = inbound_crud.get_or_create_inbound(db, inbound_tag)
+    inbound = inbound_crud.get_inbound_or_raise(db, inbound_tag)
     position = inbound_crud.get_next_host_position(db)
     inbound.hosts = [
         ProxyHost(

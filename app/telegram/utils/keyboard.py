@@ -4,7 +4,8 @@ from typing import Dict, List, Literal
 
 from telebot import types  # noqa
 
-from app import xray
+from app.db import GetDB
+from app.utils.xray_config_registry import get_enabled_inbound_registry
 from app.utils.system import readable_size
 
 
@@ -335,7 +336,9 @@ class BotKeyboard:
                     types.InlineKeyboardButton(text="✏️ Edit", callback_data=f"edit_user:{username}:expire"))
 
         if action != 'create_from_template':
-            for protocol, inbounds in xray.config.inbounds_by_protocol.items():
+            with GetDB() as db:
+                inbounds_by_protocol = get_enabled_inbound_registry(db).inbounds_by_protocol
+            for protocol, inbounds in inbounds_by_protocol.items():
                 keyboard.add(
                     types.InlineKeyboardButton(
                         text=f"🌐 {protocol.upper()} {'✅' if protocol in selected_protocols else '❌'}",

@@ -35,31 +35,10 @@ def get_next_host_position(db: Session) -> int:
     return (max_position if max_position is not None else -1) + 1
 
 
-def get_or_create_inbound(db: Session, inbound_tag: str) -> ProxyInbound:
-    """
-    Retrieves or creates a proxy inbound based on the given tag.
-
-    Args:
-        db (Session): Database session.
-        inbound_tag (str): The tag of the inbound.
-
-    Returns:
-        ProxyInbound: The retrieved or newly created proxy inbound.
-    """
+def get_inbound_or_raise(db: Session, inbound_tag: str) -> ProxyInbound:
     inbound = db.query(ProxyInbound).filter(ProxyInbound.tag == inbound_tag).first()
     if not inbound:
-        from app import xray
-
-        content = xray.config.get_inbound(inbound_tag) or {
-            "tag": inbound_tag,
-            "protocol": "dokodemo-door",
-            "settings": {},
-        }
-        inbound = ProxyInbound(tag=inbound_tag, content=content, enabled=True)
-        db.add(inbound)
-        db.commit()
-        # add_default_host(db, inbound)
-        db.refresh(inbound)
+        raise ValueError(f"Inbound {inbound_tag} doesn't exist")
     return inbound
 
 
@@ -251,8 +230,20 @@ def remove_inbound(db: Session, dbinbound: ProxyInbound) -> None:
 
 
 def get_inbound_nodes(db: Session, inbound_tags: List[str]) -> Dict[str, List[int]]:
+    inbounds = (
+        db.query(ProxyInbound)
+        .options(joinedload(ProxyInbound.nodes))
+        .filter(ProxyInbound.tag.in_(inbound_tags))
+        .all()
+        if inbound_tags
+        else []
+    )
+    nodes_by_tag = {
+        inbound.tag: [node.id for node in inbound.nodes]
+        for inbound in inbounds
+    }
     return {
-        inbound_tag: [node.id for node in get_or_create_inbound(db, inbound_tag).nodes]
+        inbound_tag: nodes_by_tag.get(inbound_tag, [])
         for inbound_tag in inbound_tags
     }
 
@@ -271,7 +262,7 @@ def update_inbound_nodes(
         raise ValueError(f"Nodes {sorted(missing_node_ids)} don't exist")
 
     for inbound_tag, assigned_node_ids in inbound_nodes.items():
-        inbound = get_or_create_inbound(db, inbound_tag)
+        inbound = get_inbound_or_raise(db, inbound_tag)
         inbound.nodes = [
             nodes[node_id] for node_id in dict.fromkeys(assigned_node_ids)
         ]
@@ -281,7 +272,19 @@ def update_inbound_nodes(
 
 
 def get_inbound_node_ids_map(db: Session, inbound_tags: List[str]) -> Dict[str, set]:
+    inbounds = (
+        db.query(ProxyInbound)
+        .options(joinedload(ProxyInbound.nodes))
+        .filter(ProxyInbound.tag.in_(inbound_tags))
+        .all()
+        if inbound_tags
+        else []
+    )
+    nodes_by_tag = {
+        inbound.tag: {node.id for node in inbound.nodes}
+        for inbound in inbounds
+    }
     return {
-        inbound_tag: {node.id for node in get_or_create_inbound(db, inbound_tag).nodes}
+        inbound_tag: nodes_by_tag.get(inbound_tag, set())
         for inbound_tag in inbound_tags
     }

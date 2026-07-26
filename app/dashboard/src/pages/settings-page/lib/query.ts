@@ -33,6 +33,7 @@ export type RuntimeSettings = {
   webhook_secret_set: boolean;
   recurrent_notifications_timeout: number;
   number_of_recurrent_notifications: number;
+  default_node_config: Record<string, unknown>;
 };
 
 export type RuntimeSettingsUpdate = Partial<

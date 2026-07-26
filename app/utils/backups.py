@@ -16,7 +16,6 @@ from config import (
     CUSTOM_TEMPLATES_DIRECTORY,
     SQLALCHEMY_DATABASE_URL,
     XRAY_ASSETS_PATH,
-    XRAY_JSON,
 )
 
 
@@ -259,7 +258,6 @@ def _candidate_backup_paths() -> list[Path]:
     candidates = [
         Path(".env"),
         Path("docker-compose.yml"),
-        Path(XRAY_JSON),
     ]
     if CUSTOM_TEMPLATES_DIRECTORY:
         candidates.append(Path(CUSTOM_TEMPLATES_DIRECTORY))

@@ -1,9 +1,55 @@
 import json
-from typing import Literal, Optional
+from copy import deepcopy
+from typing import Any, Dict, Literal, Optional
 from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+DEFAULT_NODE_CONFIG: Dict[str, Any] = {
+    "log": {
+        "loglevel": "warning",
+    },
+    "routing": {
+        "rules": [
+            {
+                "ruleTag": "xray-rule-1",
+                "ip": [
+                    "geoip:private",
+                ],
+                "outboundTag": "BLOCK",
+                "type": "field",
+            },
+        ],
+    },
+    "inbounds": [
+        {
+            "tag": "Shadowsocks TCP",
+            "listen": "0.0.0.0",
+            "port": 1080,
+            "protocol": "shadowsocks",
+            "settings": {
+                "clients": [],
+                "network": "tcp,udp",
+            },
+        },
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom",
+            "tag": "DIRECT",
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "BLOCK",
+        },
+    ],
+}
+
+
+def default_node_config() -> Dict[str, Any]:
+    return deepcopy(DEFAULT_NODE_CONFIG)
 
 
 class RuntimeSettingsBase(BaseModel):
@@ -39,6 +85,7 @@ class RuntimeSettingsBase(BaseModel):
     webhook_addresses: list[str] = Field(default_factory=list)
     recurrent_notifications_timeout: int = Field(ge=1)
     number_of_recurrent_notifications: int = Field(ge=0)
+    default_node_config: Dict[str, Any] = Field(default_factory=default_node_config)
 
     @field_validator("sub_support_url")
     @classmethod
@@ -143,6 +190,7 @@ class RuntimeSettingsModify(BaseModel):
     clear_webhook_secret: bool = False
     recurrent_notifications_timeout: Optional[int] = Field(default=None, ge=1)
     number_of_recurrent_notifications: Optional[int] = Field(default=None, ge=0)
+    default_node_config: Optional[Dict[str, Any]] = None
 
     _validate_optional_url = field_validator("sub_support_url")(RuntimeSettingsBase.validate_optional_url.__func__)
     _validate_update_interval = field_validator(

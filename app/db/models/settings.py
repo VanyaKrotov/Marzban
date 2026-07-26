@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import JSON, BigInteger, Boolean, Column, DateTime, Integer, String, Text
 
 from app.db.base import Base
+from app.models.settings import default_node_config
 
 
 class System(Base):
@@ -68,6 +69,7 @@ class RuntimeSettings(Base):
     webhook_secret = Column(String(2048), nullable=True, default=None)
     recurrent_notifications_timeout = Column(Integer, nullable=False, default=180, server_default="180")
     number_of_recurrent_notifications = Column(Integer, nullable=False, default=3, server_default="3")
+    default_node_config = Column(JSON, nullable=False, default=default_node_config)
 
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

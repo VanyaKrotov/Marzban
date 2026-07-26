@@ -1,5 +1,6 @@
 """Domain CRUD helpers extracted from the former app.db.crud module."""
 
+from copy import deepcopy
 from typing import Dict, List, Optional
 
 from sqlalchemy import delete, func
@@ -14,6 +15,7 @@ from app.models.routing import (
     RoutingRuleCreate,
     RoutingRuleModify,
     get_routing_rule_name,
+    normalize_routing_rule_content,
 )
 from config import XRAY_EXCLUDE_INBOUND_TAGS
 
@@ -142,10 +144,33 @@ def get_routing_rules_for_node(db: Session, node_id: int) -> List[dict]:
     ]
 
 
-def sync_readonly_xray_config(db: Session, payload: dict) -> None:
-    nodes = db.query(Node).all()
-    inbound_contents = {
-        inbound["tag"]: inbound
+def _node_has_relation(items: list, node_id: int) -> bool:
+    return any(item.id == node_id for item in items)
+
+
+def _other_relation_ids(items: list, node_id: int) -> set[int]:
+    return {item.id for item in items if item.id != node_id}
+
+
+def _detach_node(items: list, node_id: int) -> None:
+    items[:] = [item for item in items if item.id != node_id]
+
+
+def _cleanup_inbound(db: Session, inbound: ProxyInbound) -> None:
+    tag = inbound.tag
+    inbound.nodes = []
+    inbound.node_certificates = []
+    for association in (
+        excluded_inbounds_association,
+        template_inbounds_association,
+    ):
+        db.execute(delete(association).where(association.c.inbound_tag == tag))
+    db.delete(inbound)
+
+
+def _template_inbound_contents(payload: dict) -> Dict[str, dict]:
+    return {
+        inbound["tag"]: deepcopy(inbound)
         for inbound in payload.get("inbounds", [])
         if (
             isinstance(inbound, dict)
@@ -154,11 +179,32 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
             and inbound["tag"] not in XRAY_EXCLUDE_INBOUND_TAGS
         )
     }
-    outbound_contents = {
-        outbound["tag"]: outbound
+
+
+def _template_outbound_contents(payload: dict) -> Dict[str, dict]:
+    return {
+        outbound["tag"]: deepcopy(outbound)
         for outbound in payload.get("outbounds", [])
         if isinstance(outbound, dict) and outbound.get("tag")
     }
+
+
+def _template_routing_rules(payload: dict) -> List[dict]:
+    routing = payload.get("routing")
+    routing_rules = routing.get("rules", []) if isinstance(routing, dict) else []
+    return [
+        normalize_routing_rule_content(content)
+        for content in routing_rules
+        if isinstance(content, dict)
+    ]
+
+
+def sync_readonly_node_config(db: Session, node: Node, payload: dict) -> None:
+    inbound_contents = {
+        tag: content
+        for tag, content in _template_inbound_contents(payload).items()
+    }
+    outbound_contents = _template_outbound_contents(payload)
 
     readonly_inbounds = (
         db.query(ProxyInbound)
@@ -166,41 +212,50 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         .filter(ProxyInbound.readonly.is_(True))
         .all()
     )
-    for inbound in readonly_inbounds:
-        content = inbound_contents.get(inbound.tag)
-        if content is None:
-            tag = inbound.tag
-            inbound.nodes = []
-            inbound.node_certificates = []
-            for association in (
-                excluded_inbounds_association,
-                template_inbounds_association,
-            ):
-                db.execute(
-                    delete(association).where(association.c.inbound_tag == tag)
-                )
-            db.delete(inbound)
-            continue
-        inbound.content = content
-        inbound.enabled = True
-
-    existing_inbound_tags = {
-        row[0]
-        for row in db.query(ProxyInbound.tag)
-        .filter(ProxyInbound.tag.in_(inbound_contents))
-        .all()
-    } if inbound_contents else set()
     next_host_position = inbound_crud.get_next_host_position(db)
     new_inbound_tags_by_protocol: Dict[str, List[str]] = {}
-    for tag in inbound_contents.keys() - existing_inbound_tags:
-        protocol = inbound_contents[tag].get("protocol")
+
+    for inbound in readonly_inbounds:
+        if not _node_has_relation(inbound.nodes, node.id):
+            continue
+        if inbound.tag in inbound_contents:
+            continue
+        _detach_node(inbound.nodes, node.id)
+        if not inbound.nodes:
+            _cleanup_inbound(db, inbound)
+
+    existing_inbounds = {
+        inbound.tag: inbound
+        for inbound in (
+            db.query(ProxyInbound)
+            .options(joinedload(ProxyInbound.nodes))
+            .filter(ProxyInbound.tag.in_(inbound_contents))
+            .all()
+            if inbound_contents
+            else []
+        )
+    }
+    for tag, content in inbound_contents.items():
+        inbound = existing_inbounds.get(tag)
+        if inbound and not inbound.readonly:
+            raise ValueError(f"Inbound tag {tag} already exists as editable config")
+        if inbound:
+            if _other_relation_ids(inbound.nodes, node.id) and inbound.content != content:
+                raise ValueError(f"Inbound tag {tag} is used by another node with different content")
+            inbound.content = content
+            inbound.enabled = True
+            if not _node_has_relation(inbound.nodes, node.id):
+                inbound.nodes.append(node)
+            continue
+
+        protocol = content.get("protocol")
         new_inbound_tags_by_protocol.setdefault(protocol, []).append(tag)
         inbound = ProxyInbound(
             tag=tag,
-            content=inbound_contents[tag],
+            content=content,
             enabled=True,
             readonly=True,
-            nodes=list(nodes),
+            nodes=[node],
         )
         inbound.hosts.append(
             ProxyHost(
@@ -211,13 +266,14 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         )
         next_host_position += 1
         db.add(inbound)
+
     if new_inbound_tags_by_protocol:
         db.flush()
         protocol_tags: Dict[str, List[str]] = {}
         for tag, content in inbound_contents.items():
             protocol_tags.setdefault(content.get("protocol"), []).append(tag)
         for protocol, included_tags in new_inbound_tags_by_protocol.items():
-            ensure_protocol_inbounds_for_users(
+            inbound_crud.ensure_protocol_inbounds_for_users(
                 db,
                 protocol=protocol,
                 included_tags=included_tags,
@@ -231,28 +287,45 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         .all()
     )
     for outbound in readonly_outbounds:
-        content = outbound_contents.get(outbound.tag)
-        if content is None:
-            outbound.nodes = []
-            db.delete(outbound)
+        if not _node_has_relation(outbound.nodes, node.id):
             continue
-        outbound.content = content
-        outbound.enabled = True
+        if outbound.tag in outbound_contents:
+            continue
+        _detach_node(outbound.nodes, node.id)
+        if not outbound.nodes:
+            db.delete(outbound)
 
-    existing_outbound_tags = {
-        row[0]
-        for row in db.query(ProxyOutbound.tag)
-        .filter(ProxyOutbound.tag.in_(outbound_contents))
-        .all()
-    } if outbound_contents else set()
-    for tag in outbound_contents.keys() - existing_outbound_tags:
+    existing_outbounds = {
+        outbound.tag: outbound
+        for outbound in (
+            db.query(ProxyOutbound)
+            .options(joinedload(ProxyOutbound.nodes))
+            .filter(ProxyOutbound.tag.in_(outbound_contents))
+            .all()
+            if outbound_contents
+            else []
+        )
+    }
+    for tag, content in outbound_contents.items():
+        outbound = existing_outbounds.get(tag)
+        if outbound and not outbound.readonly:
+            raise ValueError(f"Outbound tag {tag} already exists as editable config")
+        if outbound:
+            if _other_relation_ids(outbound.nodes, node.id) and outbound.content != content:
+                raise ValueError(f"Outbound tag {tag} is used by another node with different content")
+            outbound.content = content
+            outbound.enabled = True
+            if not _node_has_relation(outbound.nodes, node.id):
+                outbound.nodes.append(node)
+            continue
+
         db.add(
             ProxyOutbound(
                 tag=tag,
-                content=outbound_contents[tag],
+                content=content,
                 enabled=True,
                 readonly=True,
-                nodes=list(nodes),
+                nodes=[node],
             )
         )
 
@@ -263,37 +336,42 @@ def sync_readonly_xray_config(db: Session, payload: dict) -> None:
         .order_by(RoutingRule.position, RoutingRule.id)
         .all()
     )
-
-    routing = payload.get("routing")
-    routing_rules = routing.get("rules", []) if isinstance(routing, dict) else []
-    routing_rules = [
-        content for content in routing_rules if isinstance(content, dict)
+    node_readonly_rules = [
+        rule for rule in readonly_rules if _node_has_relation(rule.nodes, node.id)
     ]
-    for rule, content in zip(readonly_rules, routing_rules):
-        rule.content = content
-        rule.name = get_routing_rule_name(content, rule.name)
-        rule.enabled = True
+    node_rules_by_name = {rule.name: rule for rule in node_readonly_rules}
+    next_names = set()
+    routing_rules = _template_routing_rules(payload)
 
-    for rule in readonly_rules[len(routing_rules):]:
-        rule.nodes = []
-        db.delete(rule)
+    for position, content in enumerate(routing_rules):
+        name = get_routing_rule_name(content, f"Xray rule {position + 1}")
+        next_names.add(name)
+        rule = node_rules_by_name.get(name)
+        if rule and _other_relation_ids(rule.nodes, node.id) and rule.content != content:
+            _detach_node(rule.nodes, node.id)
+            rule = None
+        if rule:
+            rule.name = name
+            rule.content = content
+            rule.enabled = True
+            rule.position = position
+            continue
 
-    next_position = (
-        db.query(func.max(RoutingRule.position)).scalar()
-        if routing_rules[len(readonly_rules):]
-        else None
-    )
-    next_position = (next_position if next_position is not None else -1) + 1
-    for content in routing_rules[len(readonly_rules):]:
         rule = RoutingRule(
-            name=get_routing_rule_name(content, f"Xray rule {next_position + 1}"),
+            name=name,
             content=content,
             enabled=True,
             readonly=True,
-            position=next_position,
-            nodes=list(nodes),
+            position=position,
+            nodes=[node],
         )
         db.add(rule)
-        next_position += 1
+
+    for rule in node_readonly_rules:
+        if rule.name in next_names:
+            continue
+        _detach_node(rule.nodes, node.id)
+        if not rule.nodes:
+            db.delete(rule)
 
     db.commit()

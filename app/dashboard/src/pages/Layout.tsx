@@ -5,7 +5,6 @@ import {
   BookOpen,
   ChartArea,
   CodeXml,
-  FileJson,
   FolderGit2,
   HeartHandshake,
   LogOut,
@@ -78,12 +77,6 @@ const NAVIGATION = [
         labelKey: "navigation.hosts",
         sudoOnly: true,
         to: "/hosts",
-      },
-      {
-        icon: FileJson,
-        labelKey: "navigation.config",
-        sudoOnly: true,
-        to: "/config",
       },
       {
         icon: Settings,

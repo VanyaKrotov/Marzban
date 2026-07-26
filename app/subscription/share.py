@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, List, Literal, Optional, Sequence, Union
 
 from jdatetime import date as jd
 
-from app import xray
 from app.models.proxy import ProxyHostSecurity
 from app.utils.system import get_public_ip, get_public_ipv6, readable_size
 
@@ -365,10 +364,19 @@ def process_inbounds_and_tags(
         reverse=False,
         hosts_by_inbound: Optional[dict] = None,
 ) -> Union[List, str]:
+    from app.db import GetDB
+    from app.db.crud import proxy_hosts as host_crud
+    from app.utils.xray_config_registry import get_enabled_inbound_registry
+
+    with GetDB() as db:
+        registry = get_enabled_inbound_registry(db)
+        if hosts_by_inbound is None:
+            host_source = build_subscription_hosts_by_inbound(host_crud.get_hosts_v2(db))
+        else:
+            host_source = hosts_by_inbound
     inbound_order = {
-        tag: index for index, tag in enumerate(xray.config.inbounds_by_tag.keys())
+        tag: index for index, tag in enumerate(registry.inbounds_by_tag.keys())
     }
-    host_source = xray.hosts if hosts_by_inbound is None else hosts_by_inbound
     targets = []
     sequence = 0
     for protocol, tags in inbounds.items():
@@ -377,7 +385,7 @@ def process_inbounds_and_tags(
             continue
 
         for tag in tags:
-            inbound = xray.config.inbounds_by_tag.get(tag)
+            inbound = registry.inbounds_by_tag.get(tag)
             if not inbound:
                 continue
 

@@ -54,19 +54,21 @@ from app.db.crud import node_certificates as certificate_crud
 from app.db.crud import node_geo_resources as geo_resource_crud
 from app.db.crud import proxy_hosts as host_crud
 from app.db.crud import nodes as node_crud
+from app.db.crud import routing as routing_crud
 from app.db.crud import settings as settings_crud
+from app.utils.runtime_settings import get_runtime_settings
+from app.utils.xray_config_template import normalize_xray_config_template
 
 
-def add_host_if_needed(new_node: NodeCreate, db: Session):
+def add_host_if_needed(new_node: NodeCreate, dbnode, db: Session):
     """Add a host if specified in the new node settings."""
     if new_node.add_as_new_host:
         host = ProxyHost(
             remark=f"{new_node.name} ({{USERNAME}}) [{{PROTOCOL}} - {{TRANSPORT}}]",
             address=new_node.address,
         )
-        for inbound_tag in xray.config.inbounds_by_tag:
-            host_crud.add_host(db, inbound_tag, host)
-        xray.hosts.update()
+        for inbound in dbnode.inbounds:
+            host_crud.add_host(db, inbound.tag, host)
 
 
 def get_node_settings(
@@ -84,16 +86,27 @@ def add_node(
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Add a new node to the database and optionally add it as a host."""
+    config_template = normalize_xray_config_template(
+        get_runtime_settings().default_node_config,
+        api_port=new_node.api_port,
+    )
     try:
-        dbnode = node_crud.create_node(db, new_node)
+        dbnode = node_crud.create_node(db, new_node, config_template=config_template)
+        routing_crud.sync_readonly_node_config(db, dbnode, config_template)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409, detail=f'Node "{new_node.name}" already exists'
         )
+    except ValueError as exc:
+        db.rollback()
+        if "dbnode" in locals():
+            node_crud.remove_node(db, dbnode)
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    add_host_if_needed(new_node, dbnode, db)
 
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
-    bg.add_task(add_host_if_needed, new_node, db)
 
     logger.info(f'New node "{dbnode.name}" added')
     dbnode.restart_required = False
@@ -106,6 +119,34 @@ def get_node(
 ):
     """Retrieve details of a specific node by its ID."""
     return dbnode
+
+
+def get_node_config_template(
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Retrieve the Xray config template assigned to a remote node."""
+    return dbnode.config_template or {}
+
+
+def modify_node_config_template(
+    payload: dict,
+    dbnode: NodeResponse = Depends(get_node),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update a node-specific Xray config template."""
+    config_template = normalize_xray_config_template(payload, api_port=dbnode.api_port)
+    try:
+        updated_node = node_crud.update_node_config_template(db, dbnode, config_template)
+        routing_crud.sync_readonly_node_config(db, updated_node, config_template)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    mark_nodes_pending_restart([updated_node.id])
+    logger.info(f'Node "{updated_node.name}" config template modified')
+    return updated_node.config_template
 
 
 async def node_logs(node_id: int, websocket: WebSocket, db: Session = Depends(get_db)):
