@@ -452,6 +452,11 @@
   "inboundsPage.helpers.setup": "Применить",
   "inboundsPage.helpers.publicKey": "Публичный ключ",
   "inboundsPage.helpers.privateKey": "Приватный ключ",
+  "inboundsPage.helpers.tlsCertificate": "TLS-сертификат",
+  "inboundsPage.helpers.certificate": "Сертификат",
+  "inboundsPage.helpers.domain": "Домен",
+  "inboundsPage.helpers.noServerName": "Сертификат без домена",
+  "inboundsPage.helpers.generate": "Сгенерировать сертификат",
   "outboundsPage.title": "Аутбаунды",
   "outboundsPage.description": "Управление конфигурациями Xray-аутбаундов и назначенными нодами.",
   "outboundsPage.refresh": "Обновить",
@@ -605,6 +610,7 @@
   "statsPage.summary.expired": "Просроченные",
   "statsPage.summary.percentTooltip": "{{value}} из {{total}} пользователей"
   ,"nodeProfile.restart": "Перезапустить Xray"
+  ,"nodeProfile.actions": "Действия с нодой"
   ,"nodeProfile.restartTitle": "Перезапустить Xray на этой ноде?"
   ,"nodeProfile.restartDescription": "Ядро Xray на ноде {{name}} будет перезапущено с текущей конфигурацией."
   ,"nodeProfile.restartSuccess": "Перезапуск Xray запланирован"

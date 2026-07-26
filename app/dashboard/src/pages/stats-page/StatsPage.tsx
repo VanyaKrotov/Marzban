@@ -22,9 +22,9 @@ import { StatsSummaryCards } from "./components/StatsSummaryCards";
 import { TrafficHistoryChart } from "./components/TrafficHistoryChart";
 import { UserGrowthChart } from "./components/UserGrowthChart";
 import {
-  type StatsGranularity,
+  resolveStatsGranularity,
   useStatsHistoryQuery,
-  useStatsSummaryQuery,
+  useSystemStatsQuery,
 } from "./lib/query";
 
 export function StatsPage() {
@@ -41,9 +41,9 @@ export function StatsPage() {
     () => getEffectiveRange(piePreset, urlRange),
     [piePreset, urlRange],
   );
-  const granularity = parseGranularity(searchParams.get("granularity"));
+  const granularity = resolveStatsGranularity(pieRange, piePreset);
   const historyQuery = useStatsHistoryQuery(granularity, pieRange, piePreset);
-  const summaryQuery = useStatsSummaryQuery(pieRange, piePreset);
+  const systemStatsQuery = useSystemStatsQuery();
   const nodeUsageQueryKey = [
     "node-usage-chart",
     "all",
@@ -53,7 +53,7 @@ export function StatsPage() {
   const nodeUsageFetching = useIsFetching({ queryKey: nodeUsageQueryKey });
   const refreshing =
     historyQuery.isFetching ||
-    summaryQuery.isFetching ||
+    systemStatsQuery.isFetching ||
     nodeUsageFetching > 0;
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function StatsPage() {
     if (
       searchParams.get("range") === range &&
       searchParams.get("period") === piePreset &&
-      searchParams.get("granularity") === granularity
+      !searchParams.has("granularity")
     ) {
       return;
     }
@@ -71,15 +71,14 @@ export function StatsPage() {
         const next = new URLSearchParams(current);
         next.delete("from");
         next.delete("to");
+        next.delete("granularity");
         next.set("range", range);
         next.set("period", piePreset);
-        next.set("granularity", granularity);
         return next;
       },
       { replace: true },
     );
   }, [
-    granularity,
     piePreset,
     pieRange,
     searchParams,
@@ -95,22 +94,9 @@ export function StatsPage() {
         const next = new URLSearchParams(current);
         next.delete("from");
         next.delete("to");
+        next.delete("granularity");
         next.set("range", formatNodeUsageRangeParam(range));
         next.set("period", preset);
-        if (isHourPeriodPreset(preset)) {
-          next.set("granularity", "hour");
-        }
-        return next;
-      },
-      { replace: true },
-    );
-  };
-
-  const updateGranularity = (value: StatsGranularity) => {
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        next.set("granularity", value);
         return next;
       },
       { replace: true },
@@ -120,7 +106,7 @@ export function StatsPage() {
   const refreshStats = () => {
     void Promise.all([
       historyQuery.refetch(),
-      summaryQuery.refetch(),
+      systemStatsQuery.refetch(),
       queryClient.invalidateQueries({ queryKey: nodeUsageQueryKey }),
     ]);
   };
@@ -153,8 +139,8 @@ export function StatsPage() {
 
       <div className="flex flex-col gap-4">
         <StatsSummaryCards
-          data={summaryQuery.data}
-          loading={summaryQuery.isLoading}
+          data={systemStatsQuery.data}
+          loading={systemStatsQuery.isLoading}
         />
         <div className="grid gap-4 lg:grid-cols-2">
           <NodeUsageChart range={pieRange} preset={piePreset} />
@@ -170,21 +156,11 @@ export function StatsPage() {
             granularity={granularity}
             loading={historyQuery.isLoading}
             error={historyQuery.isError}
-            onGranularityChange={updateGranularity}
             onRetry={() => void historyQuery.refetch()}
           />
         </div>
       </div>
     </Page>
-  );
-}
-
-function isHourPeriodPreset(preset: NodeUsagePeriodPreset) {
-  return (
-    preset === "last_hour" ||
-    preset === "last_3_hours" ||
-    preset === "last_6_hours" ||
-    preset === "last_12_hours"
   );
 }
 
@@ -201,19 +177,11 @@ const PERIOD_PRESETS: NodeUsagePeriodPreset[] = [
   "custom",
 ];
 
-const GRANULARITIES: StatsGranularity[] = ["hour", "day", "week", "month"];
-
 function parsePreset(value: string | null): NodeUsagePeriodPreset {
   const normalized = normalizePreset(value);
   return PERIOD_PRESETS.includes(normalized as NodeUsagePeriodPreset)
     ? (normalized as NodeUsagePeriodPreset)
-    : "last_30_days";
-}
-
-function parseGranularity(value: string | null): StatsGranularity {
-  return GRANULARITIES.includes(value as StatsGranularity)
-    ? (value as StatsGranularity)
-    : "day";
+    : "today";
 }
 
 function normalizePreset(value: string | null) {

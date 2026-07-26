@@ -453,6 +453,11 @@
   "inboundsPage.helpers.setup": "اعمال",
   "inboundsPage.helpers.publicKey": "کلید عمومی",
   "inboundsPage.helpers.privateKey": "کلید خصوصی",
+  "inboundsPage.helpers.tlsCertificate": "گواهی TLS",
+  "inboundsPage.helpers.certificate": "گواهی",
+  "inboundsPage.helpers.domain": "دامنه",
+  "inboundsPage.helpers.noServerName": "گواهی بدون دامنه",
+  "inboundsPage.helpers.generate": "تولید گواهی",
   "outboundsPage.title": "خروجی‌ها",
   "outboundsPage.description": "مدیریت پیکربندی‌های خروجی Xray و انتساب آن‌ها به نودها.",
   "outboundsPage.refresh": "تازه‌سازی",
@@ -606,6 +611,7 @@
   "statsPage.summary.expired": "Expired",
   "statsPage.summary.percentTooltip": "{{value}} of {{total}} total users"
   ,"nodeProfile.restart": "Restart Xray"
+  ,"nodeProfile.actions": "Node actions"
   ,"nodeProfile.restartTitle": "Restart Xray on this node?"
   ,"nodeProfile.restartDescription": "The Xray core on {{name}} will restart with the current configuration."
   ,"nodeProfile.restartSuccess": "Xray restart has been scheduled"

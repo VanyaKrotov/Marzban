@@ -15,10 +15,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import type { StatsSummary } from "../lib/query";
+import type { SystemStats } from "../lib/query";
 
 type Props = {
-  data?: StatsSummary;
+  data?: Pick<
+    SystemStats,
+    | "total_user"
+    | "online_users"
+    | "users_active"
+    | "users_disabled"
+    | "users_limited"
+    | "users_expired"
+  >;
   loading: boolean;
 };
 

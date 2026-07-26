@@ -99,13 +99,15 @@ export function NodesPage() {
         <div className="overflow-x-auto rounded-xl border">
           <Table className="min-w-[720px] table-fixed">
             <colgroup>
+              <col className="w-[10%]" />
+              <col className="w-[25%]" />
               <col className="w-[30%]" />
-              <col className="w-[30%]" />
-              <col className="w-[20%]" />
-              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[17%]" />
             </colgroup>
             <TableHeader className="bg-muted/40">
               <TableRow className="hover:bg-transparent">
+                <TableHead>ID</TableHead>
                 <TableHead>{t("nodes.nodeName")}</TableHead>
                 <TableHead>{t("nodes.nodeAddress")}</TableHead>
                 <TableHead>{t("nodesPage.coreVersion")}</TableHead>
@@ -128,6 +130,9 @@ export function NodesPage() {
                       }
                     }}
                   >
+                    <TableCell className="font-mono text-xs tabular-nums">
+                      {node.id}
+                    </TableCell>
                     <TableCell className="truncate font-medium">
                       {node.name}
                     </TableCell>
@@ -186,13 +191,15 @@ function NodesTableSkeleton() {
     <div className="overflow-x-auto rounded-xl border">
       <Table className="min-w-[720px] table-fixed">
         <colgroup>
+          <col className="w-[10%]" />
+          <col className="w-[25%]" />
           <col className="w-[30%]" />
-          <col className="w-[30%]" />
-          <col className="w-[20%]" />
-          <col className="w-[20%]" />
+          <col className="w-[18%]" />
+          <col className="w-[17%]" />
         </colgroup>
         <TableHeader className="bg-muted/40">
           <TableRow className="hover:bg-transparent">
+            <TableHead>ID</TableHead>
             <TableHead>{t("nodes.nodeName")}</TableHead>
             <TableHead>{t("nodes.nodeAddress")}</TableHead>
             <TableHead>{t("nodesPage.coreVersion")}</TableHead>
@@ -202,6 +209,9 @@ function NodesTableSkeleton() {
         <TableBody>
           {Array.from({ length: 8 }).map((_, index) => (
             <TableRow key={index}>
+              <TableCell>
+                <Skeleton className="h-4 w-8" />
+              </TableCell>
               <TableCell>
                 <Skeleton className="h-5 w-36" />
               </TableCell>

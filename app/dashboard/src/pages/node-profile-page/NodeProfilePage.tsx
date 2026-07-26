@@ -1,11 +1,13 @@
 import {
   ArrowLeft,
   AlertTriangle,
+  Ellipsis,
   LoaderCircle,
   RefreshCw,
   Server,
   Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -23,6 +25,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RuntimeLogsCard } from "@/components/runtime-logs/RuntimeLogsCard";
 import {
   Empty,
@@ -54,6 +62,7 @@ export function NodeProfilePage() {
   const params = useParams();
   const nodeId = Number(params.id);
   const query = useNodeQuery(nodeId, Number.isInteger(nodeId) && nodeId > 0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const remove = useDeleteNodeMutation();
   const restart = useRestartNodeMutation();
   const node = query.data;
@@ -148,15 +157,28 @@ export function NodeProfilePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button type="button" variant="destructive" size="sm">
-            <Trash2 />
-            <span className="hidden sm:inline">
-              {t("nodesPage.deleteNode")}
-            </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("nodeProfile.actions")}
+          >
+            <Ellipsis />
           </Button>
-        </AlertDialogTrigger>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-50">
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 />
+            {t("nodesPage.deleteNode")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia className="bg-destructive/10 text-destructive">
@@ -178,17 +200,19 @@ export function NodeProfilePage() {
             <AlertDialogAction
               variant="destructive"
               disabled={remove.isPending}
-              onClick={() =>
+              onClick={(event) => {
+                event.preventDefault();
                 remove.mutate(node.id!, {
                   onSuccess: () => {
+                    setDeleteDialogOpen(false);
                     generateSuccessMessage(
                       t("deleteNode.deleteSuccess", { name: node.name }),
                     );
                     navigate("/nodes", { replace: true });
                   },
                   onError: (error) => generateErrorMessage(error),
-                })
-              }
+                });
+              }}
             >
               {remove.isPending && <LoaderCircle className="animate-spin" />}
               {t("delete")}

@@ -452,6 +452,11 @@
   "inboundsPage.helpers.setup": "应用",
   "inboundsPage.helpers.publicKey": "公钥",
   "inboundsPage.helpers.privateKey": "私钥",
+  "inboundsPage.helpers.tlsCertificate": "TLS 证书",
+  "inboundsPage.helpers.certificate": "证书",
+  "inboundsPage.helpers.domain": "域名",
+  "inboundsPage.helpers.noServerName": "无域名证书",
+  "inboundsPage.helpers.generate": "生成证书",
   "outboundsPage.title": "出站",
   "outboundsPage.description": "管理 Xray 出站配置及其节点分配。",
   "outboundsPage.refresh": "刷新",
@@ -605,6 +610,7 @@
   "statsPage.summary.expired": "Expired",
   "statsPage.summary.percentTooltip": "{{value}} of {{total}} total users"
   ,"nodeProfile.restart": "Restart Xray"
+  ,"nodeProfile.actions": "Node actions"
   ,"nodeProfile.restartTitle": "Restart Xray on this node?"
   ,"nodeProfile.restartDescription": "The Xray core on {{name}} will restart with the current configuration."
   ,"nodeProfile.restartSuccess": "Xray restart has been scheduled"

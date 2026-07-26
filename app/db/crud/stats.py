@@ -1,6 +1,7 @@
 """Domain CRUD helpers extracted from the former app.db.crud module."""
 
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -18,12 +19,18 @@ from app.models.stats import (
 )
 from app.models.user import UserStatus
 
-def _stats_bucket_start(value: datetime, granularity: StatsGranularity) -> datetime:
-    value = value.replace(tzinfo=None)
+def _stats_bucket_start(
+    value: datetime,
+    granularity: StatsGranularity,
+    local_timezone: ZoneInfo,
+) -> datetime:
+    value = value.replace(tzinfo=timezone.utc).astimezone(local_timezone)
     if granularity == StatsGranularity.hour:
         return value.replace(minute=0, second=0, microsecond=0)
     if granularity == StatsGranularity.week:
-        value -= timedelta(days=value.weekday())
+        return (value - timedelta(days=value.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     if granularity == StatsGranularity.month:
         return value.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return value.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -31,7 +38,9 @@ def _stats_bucket_start(value: datetime, granularity: StatsGranularity) -> datet
 
 def _next_stats_bucket(value: datetime, granularity: StatsGranularity) -> datetime:
     if granularity == StatsGranularity.hour:
-        return value + timedelta(hours=1)
+        return (value.astimezone(timezone.utc) + timedelta(hours=1)).astimezone(
+            value.tzinfo
+        )
     if granularity == StatsGranularity.day:
         return value + timedelta(days=1)
     if granularity == StatsGranularity.week:
@@ -46,15 +55,17 @@ def get_stats_history(
     start: datetime,
     end: datetime,
     granularity: StatsGranularity,
+    local_timezone: ZoneInfo,
 ) -> StatsHistoryResponse:
     """Aggregate recorded traffic and user registrations into time buckets."""
     query_start = start.astimezone(timezone.utc).replace(tzinfo=None)
     query_end = end.astimezone(timezone.utc).replace(tzinfo=None)
-    first_bucket = _stats_bucket_start(query_start, granularity)
+    first_bucket = _stats_bucket_start(query_start, granularity, local_timezone)
+    last_bucket = _stats_bucket_start(query_end, granularity, local_timezone)
 
     buckets = []
     bucket = first_bucket
-    while bucket <= query_end:
+    while bucket <= last_bucket:
         buckets.append(bucket)
         bucket = _next_stats_bucket(bucket, granularity)
 
@@ -71,7 +82,7 @@ def get_stats_history(
     for usage in usage_rows:
         if usage.node_id not in traffic_by_node:
             continue
-        period = _stats_bucket_start(usage.created_at, granularity)
+        period = _stats_bucket_start(usage.created_at, granularity, local_timezone)
         values = traffic_by_node[usage.node_id].get(period)
         if values is not None:
             values[0] += usage.uplink or 0
@@ -100,7 +111,7 @@ def get_stats_history(
         User.created_at <= query_end,
     )
     for (created_at,) in created_rows:
-        period = _stats_bucket_start(created_at, granularity)
+        period = _stats_bucket_start(created_at, granularity, local_timezone)
         if period in user_counts:
             user_counts[period] += 1
 
@@ -152,7 +163,7 @@ def get_stats_summary(
         User.created_at >= query_start,
         User.created_at <= query_end,
     )
-    online_since = datetime.utcnow() - timedelta(hours=24)
+    online_since = datetime.utcnow() - timedelta(minutes=5)
 
     return StatsSummaryResponse(
         start=start,

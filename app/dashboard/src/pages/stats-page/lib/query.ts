@@ -58,16 +58,34 @@ export type StatsSummary = {
   users_limited: number;
 };
 
+export function resolveStatsGranularity(
+  range: NodeUsageDateRange,
+  period: NodeUsagePeriodPreset,
+): StatsGranularity {
+  const apiRange = createNodeUsageApiRange(range, period);
+  const durationHours = Math.max(
+    0,
+    (apiRange.to.getTime() - apiRange.from.getTime()) / (60 * 60 * 1000),
+  );
+
+  if (durationHours <= 90) return "hour";
+  if (durationHours <= 90 * 24) return "day";
+  if (durationHours <= 90 * 24 * 7) return "week";
+  return "month";
+}
+
 export const statsHistoryQueryKey = (
   granularity: StatsGranularity,
   range: NodeUsageDateRange,
   period: NodeUsagePeriodPreset,
+  timeZone: string,
 ) =>
   [
     "stats",
     "history",
     granularity,
     period,
+    timeZone,
     formatNodeUsageRangeParam(range),
   ] as const;
 export const systemStatsQueryKey = ["statistics-query-key"] as const;
@@ -87,8 +105,10 @@ export function useStatsHistoryQuery(
   range: NodeUsageDateRange,
   period: NodeUsagePeriodPreset,
 ) {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
   return useQuery({
-    queryKey: statsHistoryQueryKey(granularity, range, period),
+    queryKey: statsHistoryQueryKey(granularity, range, period, timeZone),
     queryFn: () => {
       const apiRange = createNodeUsageApiRange(range, period);
       return api.get<StatsHistory>("/stats/history", {
@@ -96,6 +116,7 @@ export function useStatsHistoryQuery(
           granularity,
           start: apiRange.from.toISOString(),
           end: apiRange.to.toISOString(),
+          time_zone: timeZone,
         },
       });
     },

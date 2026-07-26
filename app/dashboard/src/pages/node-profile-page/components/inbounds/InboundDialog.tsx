@@ -30,6 +30,7 @@ import type { InboundConfig, InboundPayload } from "../../lib/inbounds-query";
 import { tryParseInbound } from "./selectors";
 import CertificateHelper from "./CertificateHelper";
 import ShortIdsHelper from "./ShortIdsHelper";
+import TlsCertificateHelper from "./TlsCertificateHelper";
 import X25519Helpers from "./X25519Helpers";
 
 const inboundFormSchema = z.object({
@@ -264,7 +265,7 @@ function InboundHelpers({ nodeId }: { nodeId: number }) {
     const helpers = [];
     switch (inbound.streamSettings?.security) {
       case "tls":
-        helpers.push("certificate");
+        helpers.push("certificate", "tlsCertificate");
         break;
       case "reality":
         helpers.push("shortIds", "x25519");
@@ -340,6 +341,26 @@ function InboundHelpers({ nodeId }: { nodeId: number }) {
                   inbound!,
                   "streamSettings.tlsSettings.certificates",
                   [{ certificateFile, keyFile }],
+                );
+
+                setValue("content", JSON.stringify(res, null, 2));
+              }}
+            />
+          );
+        }
+
+        if (type === "tlsCertificate") {
+          const serverName = inbound?.streamSettings?.tlsSettings?.serverName;
+
+          return (
+            <TlsCertificateHelper
+              key={type}
+              serverName={typeof serverName === "string" ? serverName : undefined}
+              onSet={(certificate, key) => {
+                const res = set(
+                  inbound!,
+                  "streamSettings.tlsSettings.certificates",
+                  [{ certificate, key }],
                 );
 
                 setValue("content", JSON.stringify(res, null, 2));

@@ -18,7 +18,7 @@ export function formatPeriod(
 ) {
   const date = new Date(value);
   if (granularity === "hour") {
-    return formatHourRange(date, locale);
+    return formatTime(value, locale);
   }
 
   const options: Intl.DateTimeFormatOptions =
@@ -34,13 +34,6 @@ export function formatTime(value: string, locale: string) {
     hour12: false,
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function formatHourRange(date: Date, locale: string) {
-  const nextHour = new Date(date);
-  nextHour.setHours(nextHour.getHours() + 1);
-  const formatter = (value: Date) => formatTime(value.toISOString(), locale);
-  return `${formatter(date)}-${formatter(nextHour)}`;
 }
 
 export function formatCompactBytes(value: number) {

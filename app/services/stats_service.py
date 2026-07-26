@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, HTTPException, Query
 
@@ -13,6 +14,7 @@ def get_stats_history(
     granularity: StatsGranularity = Query(StatsGranularity.day),
     start: str = "",
     end: str = "",
+    time_zone: str = Query("UTC"),
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
@@ -33,7 +35,18 @@ def get_stats_history(
             detail="Statistics date range cannot exceed three years",
         )
 
-    return stats_crud.get_stats_history(db, start_date, end_date, granularity)
+    try:
+        local_timezone = ZoneInfo(time_zone)
+    except ZoneInfoNotFoundError:
+        raise HTTPException(status_code=400, detail="Invalid time zone")
+
+    return stats_crud.get_stats_history(
+        db,
+        start_date,
+        end_date,
+        granularity,
+        local_timezone,
+    )
 
 
 def get_stats_summary(

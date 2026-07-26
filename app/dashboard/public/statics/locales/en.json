@@ -452,6 +452,11 @@
   "inboundsPage.helpers.setup": "Setup",
   "inboundsPage.helpers.publicKey": "Public key",
   "inboundsPage.helpers.privateKey": "Private key",
+  "inboundsPage.helpers.tlsCertificate": "TLS certificate",
+  "inboundsPage.helpers.certificate": "Certificate",
+  "inboundsPage.helpers.domain": "Domain",
+  "inboundsPage.helpers.noServerName": "Certificate without domain",
+  "inboundsPage.helpers.generate": "Generate certificate",
   "outboundsPage.title": "Outbounds",
   "outboundsPage.description": "Manage Xray outbound configurations and their node assignments.",
   "outboundsPage.refresh": "Refresh",
@@ -605,6 +610,7 @@
   "statsPage.summary.expired": "Expired",
   "statsPage.summary.percentTooltip": "{{value}} of {{total}} total users"
   ,"nodeProfile.restart": "Restart Xray"
+  ,"nodeProfile.actions": "Node actions"
   ,"nodeProfile.restartTitle": "Restart Xray on this node?"
   ,"nodeProfile.restartDescription": "The Xray core on {{name}} will restart with the current configuration."
   ,"nodeProfile.restartSuccess": "Xray restart has been scheduled"
