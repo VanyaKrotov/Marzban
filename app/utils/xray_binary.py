@@ -63,4 +63,13 @@ def _is_pem_lines(value: object, pem_type: str) -> bool:
         return False
 
     pem = "\n".join(value)
+    if pem_type == "PRIVATE KEY":
+        return bool(
+            re.search(
+                r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----.*-----END (?:[A-Z0-9]+ )*PRIVATE KEY-----",
+                pem,
+                flags=re.DOTALL,
+            )
+        )
+
     return f"-----BEGIN {pem_type}-----" in pem and f"-----END {pem_type}-----" in pem

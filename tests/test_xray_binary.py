@@ -14,9 +14,9 @@ TLS_CERTIFICATE_JSON = b'''{
     "-----END CERTIFICATE-----"
   ],
   "key": [
-    "-----BEGIN PRIVATE KEY-----",
+    "-----BEGIN RSA PRIVATE KEY-----",
     "key-data",
-    "-----END PRIVATE KEY-----"
+    "-----END RSA PRIVATE KEY-----"
   ]
 }'''
 
@@ -64,6 +64,16 @@ class XrayBinaryTests(TestCase):
     def test_get_tls_certificate_rejects_invalid_pem_data(self, _):
         with self.assertRaisesRegex(ValueError, "invalid TLS certificate data"):
             xray_binary.get_tls_certificate()
+
+    @patch("app.utils.xray_binary.subprocess.check_output")
+    def test_get_tls_certificate_accepts_ec_private_key(self, check_output):
+        check_output.return_value = TLS_CERTIFICATE_JSON.replace(
+            b"RSA PRIVATE KEY", b"EC PRIVATE KEY"
+        )
+
+        result = xray_binary.get_tls_certificate()
+
+        self.assertEqual(result["key"][0], "-----BEGIN EC PRIVATE KEY-----")
 
     @patch("app.services.core_service.get_tls_certificate")
     def test_generate_tls_certificate_passes_normalized_server_name(self, get_certificate):
