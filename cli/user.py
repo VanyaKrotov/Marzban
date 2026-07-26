@@ -3,11 +3,14 @@ from typing import Optional, List
 import typer
 from rich.table import Table
 
-from app.db import GetDB, crud
-from app.db.models import User
+from app.db import GetDB
+from app.db.models.users import User
 from app.utils.system import readable_size
 
 from . import utils
+from app.db.crud import admins as admin_crud
+from app.db.crud import users as user_crud
+from app.models.user import UserStatus
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -18,7 +21,7 @@ def list_users(
     limit: Optional[int] = typer.Option(None, *utils.FLAGS["limit"]),
     username: Optional[List[str]] = typer.Option(None, *utils.FLAGS["username"], help="Search by username(s)"),
     search: Optional[str] = typer.Option(None, *utils.FLAGS["search"], help="Search by username/note"),
-    status: Optional[crud.UserStatus] = typer.Option(None, *utils.FLAGS["status"]),
+    status: Optional[UserStatus] = typer.Option(None, *utils.FLAGS["status"]),
     admins: Optional[List[str]] = typer.Option(None, *utils.FLAGS["admin"], help="Search by owner admin's username(s)")
 ):
     """
@@ -27,7 +30,7 @@ def list_users(
     NOTE: Sorting is not currently available.
     """
     with GetDB() as db:
-        users: list[User] = crud.get_users(
+        users: list[User] = user_crud.get_users(
             db=db, offset=offset, limit=limit,
             usernames=username, search=search, status=status,
             admins=admins
@@ -67,10 +70,10 @@ def set_owner(
     """
     with GetDB() as db:
         user: User = utils.raise_if_falsy(
-            crud.get_user(db, username=username), f'User "{username}" not found.')
+            user_crud.get_user(db, username=username), f'User "{username}" not found.')
 
         dbadmin = utils.raise_if_falsy(
-            crud.get_admin(db, username=admin), f'Admin "{admin}" not found.')
+            admin_crud.get_admin(db, username=admin), f'Admin "{admin}" not found.')
 
         # Ask for confirmation if user already has an owner
         if user.admin and not yes_to_all and not typer.confirm(
@@ -79,6 +82,6 @@ def set_owner(
         ):
             utils.error("Aborted.")
 
-        crud.set_owner(db, user, dbadmin)
+        user_crud.set_owner(db, user, dbadmin)
 
         utils.success(f'{username}\'s owner successfully set to "{admin}".')

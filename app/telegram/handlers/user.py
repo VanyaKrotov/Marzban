@@ -1,11 +1,12 @@
 from datetime import datetime
-from app.db import GetDB, crud
+from app.db import GetDB
 from app.models.user import UserResponse
 from app.telegram import bot
 from telebot.custom_filters import ChatFilter
 from telebot.util import extract_arguments
 
 from app.utils.system import readable_size
+from app.db.crud import users as user_crud
 
 bot.add_custom_filter(ChatFilter())
 
@@ -17,7 +18,7 @@ def usage_command(message):
         return bot.reply_to(message, 'Usage: `/usage <username>`', parse_mode='MarkdownV2')
 
     with GetDB() as db:
-        dbuser = crud.get_user(db, username)
+        dbuser = user_crud.get_user(db, username)
 
         if not dbuser:
             return bot.reply_to(message, "No user found with this username")

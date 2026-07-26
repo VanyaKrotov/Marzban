@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.db import Session, crud, get_db
+from app.db import Session, get_db
 from app.utils.jwt import get_admin_payload
 from config import SUDOERS
 
@@ -38,6 +38,8 @@ class Admin(BaseModel):
 
     @classmethod
     def get_admin(cls, token: str, db: Session):
+        from app.db.crud import admins as admin_crud
+
         payload = get_admin_payload(token)
         if not payload:
             return
@@ -45,7 +47,7 @@ class Admin(BaseModel):
         if payload['username'] in SUDOERS and payload['is_sudo'] is True:
             return cls(username=payload['username'], is_sudo=True)
 
-        dbadmin = crud.get_admin(db, payload['username'])
+        dbadmin = admin_crud.get_admin(db, payload['username'])
         if not dbadmin:
             return
 

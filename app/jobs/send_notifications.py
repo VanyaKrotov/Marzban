@@ -7,7 +7,7 @@ from requests import Session
 
 from app import app, logger, scheduler
 from app.db import GetDB
-from app.db.models import NotificationReminder
+from app.db.models.notifications import NotificationReminder
 from app.utils.notification import queue
 from app.utils.runtime_settings import get_runtime_settings
 from config import JOB_SEND_NOTIFICATIONS_INTERVAL

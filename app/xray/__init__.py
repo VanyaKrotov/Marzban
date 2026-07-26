@@ -13,6 +13,7 @@ from config import XRAY_ASSETS_PATH, XRAY_EXECUTABLE_PATH, XRAY_JSON
 from xray_api import XRay as XRayAPI
 from xray_api import exceptions, types
 from xray_api import exceptions as exc
+from app.db.crud import proxy_hosts as host_crud
 
 core = (
     None
@@ -44,17 +45,17 @@ def reload_config():
 
 
 if TYPE_CHECKING:
-    from app.db.models import ProxyHost
+    from app.db.models.proxies import ProxyHost
 
 
 @DictStorage
 def hosts(storage: dict):
-    from app.db import GetDB, crud
+    from app.db import GetDB
 
     storage.clear()
     with GetDB() as db:
         for inbound_tag in config.inbounds_by_tag:
-            inbound_hosts: Sequence[ProxyHost] = crud.get_hosts(db, inbound_tag)
+            inbound_hosts: Sequence[ProxyHost] = host_crud.get_hosts(db, inbound_tag)
 
             storage[inbound_tag] = [
                 {

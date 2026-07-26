@@ -10,7 +10,10 @@ from sqlalchemy.sql.dml import Insert
 
 from app import scheduler, xray
 from app.db import GetDB
-from app.db.models import Admin, NodeUsage, NodeUserUsage, System, User
+from app.db.models.admins import Admin
+from app.db.models.settings import System
+from app.db.models.usages import NodeUsage, NodeUserUsage
+from app.db.models.users import User
 from config import (
     DISABLE_RECORDING_NODE_USAGE,
     JOB_RECORD_NODE_USAGES_INTERVAL,

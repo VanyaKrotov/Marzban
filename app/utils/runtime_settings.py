@@ -6,8 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db import GetDB
-from app.db.models import RuntimeSettings as DBRuntimeSettings
-from app.db.models import SubscriptionTemplate as DBSubscriptionTemplate
+from app.db.models.settings import RuntimeSettings as DBRuntimeSettings
+from app.db.models.settings import SubscriptionTemplate as DBSubscriptionTemplate
 from app.models.settings import (
     RuntimeSettings,
     RuntimeSettingsModify,

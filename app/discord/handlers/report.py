@@ -1,6 +1,6 @@
 import requests
 from datetime import datetime
-from app.db.models import User
+from app.db.models.users import User
 from app.utils.system import readable_size
 from app.models.user import UserDataLimitResetStrategy
 from app.models.admin import Admin

@@ -8,12 +8,14 @@ from rich.table import Table
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
-from app.db import GetDB, crud
-from app.db.models import Admin, User
+from app.db import GetDB
+from app.db.models.admins import Admin
+from app.db.models.users import User
 from app.models.admin import AdminCreate, AdminPartialModify
 from app.utils.system import readable_size
 
 from . import utils
+from app.db.crud import admins as admin_crud
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -56,7 +58,7 @@ def list_admins(
 ):
     """Displays a table of admins"""
     with GetDB() as db:
-        admins: list[Admin] = crud.get_admins(db, offset=offset, limit=limit, username=username)
+        admins: list[Admin] = admin_crud.get_admins(db, offset=offset, limit=limit, username=username)
         utils.print_table(
             table=Table("Username", 'Usage', 'Reseted usage', "Users Usage", "Is sudo",
                         "Created at", "Telegram ID", "Discord Webhook"),
@@ -85,12 +87,12 @@ def delete_admin(
     Confirmations can be skipped using `--yes/-y` option.
     """
     with GetDB() as db:
-        admin: Union[Admin, None] = crud.get_admin(db, username=username)
+        admin: Union[Admin, None] = admin_crud.get_admin(db, username=username)
         if not admin:
             utils.error(f"There's no admin with username \"{username}\"!")
 
         if yes_to_all or typer.confirm(f'Are you sure about deleting "{username}"?', default=False):
-            crud.remove_admin(db, admin)
+            admin_crud.remove_admin(db, admin)
             utils.success(f'"{username}" deleted successfully.')
         else:
             utils.error("Operation aborted!")
@@ -114,7 +116,7 @@ def create_admin(
     """
     with GetDB() as db:
         try:
-            crud.create_admin(db, AdminCreate(username=username,
+            admin_crud.create_admin(db, AdminCreate(username=username,
                                               password=password,
                                               is_sudo=is_sudo,
                                               telegram_id=telegram_id,
@@ -162,11 +164,11 @@ def update_admin(username: str = typer.Option(..., *utils.FLAGS["username"], pro
         )
 
     with GetDB() as db:
-        admin: Union[Admin, None] = crud.get_admin(db, username=username)
+        admin: Union[Admin, None] = admin_crud.get_admin(db, username=username)
         if not admin:
             utils.error(f"There's no admin with username \"{username}\"!")
 
-        crud.partial_update_admin(db, admin, _get_modify_model(admin))
+        admin_crud.partial_update_admin(db, admin, _get_modify_model(admin))
         utils.success(f'Admin "{username}" updated successfully.')
 
 
@@ -197,20 +199,20 @@ def import_from_env(yes_to_all: bool = typer.Option(False, *utils.FLAGS["yes_to_
         admin: Union[None, Admin] = None
 
         # If env admin already exists
-        if current_admin := crud.get_admin(db, username=username):
+        if current_admin := admin_crud.get_admin(db, username=username):
             if not yes_to_all and not typer.confirm(
                 f'Admin "{username}" already exists. Do you want to sync it with env?', default=None
             ):
                 utils.error("Aborted.")
 
-            admin = crud.partial_update_admin(
+            admin = admin_crud.partial_update_admin(
                 db,
                 current_admin,
                 AdminPartialModify(password=password, is_sudo=True)
             )
         # If env admin does not exist yet
         else:
-            admin = crud.create_admin(db, AdminCreate(
+            admin = admin_crud.create_admin(db, AdminCreate(
                 username=username,
                 password=password,
                 is_sudo=True

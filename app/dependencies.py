@@ -1,12 +1,16 @@
 from typing import Optional, Union
 from app.models.admin import AdminInDB, AdminValidationResult, Admin
 from app.models.user import UserResponse, UserStatus
-from app.db import Session, crud, get_db
+from app.db import Session, get_db
 from config import SUDOERS
 from fastapi import Depends, HTTPException
 from datetime import datetime, timezone, timedelta
 from app.utils.jwt import get_subscription_payload
 from app.utils.node_restart_state import is_node_pending_restart
+from app.db.crud import admins as admin_crud
+from app.db.crud import nodes as node_crud
+from app.db.crud import templates as template_crud
+from app.db.crud import users as user_crud
 
 
 def serialize_node(dbnode):
@@ -20,7 +24,7 @@ def validate_admin(db: Session, username: str, password: str) -> Optional[AdminV
     if SUDOERS.get(username) == password:
         return AdminValidationResult(username=username, is_sudo=True)
 
-    dbadmin = crud.get_admin(db, username)
+    dbadmin = admin_crud.get_admin(db, username)
     if dbadmin and AdminInDB.model_validate(dbadmin).verify_password(password):
         return AdminValidationResult(username=dbadmin.username, is_sudo=dbadmin.is_sudo)
 
@@ -29,7 +33,7 @@ def validate_admin(db: Session, username: str, password: str) -> Optional[AdminV
 
 def get_admin_by_username(username: str, db: Session = Depends(get_db)):
     """Fetch an admin by username from the database."""
-    dbadmin = crud.get_admin(db, username)
+    dbadmin = admin_crud.get_admin(db, username)
     if not dbadmin:
         raise HTTPException(status_code=404, detail="Admin not found")
     return dbadmin
@@ -37,7 +41,7 @@ def get_admin_by_username(username: str, db: Session = Depends(get_db)):
 
 def get_dbnode(node_id: int, db: Session = Depends(get_db)):
     """Fetch a node by its ID from the database, raising a 404 error if not found."""
-    dbnode = crud.get_node_by_id(db, node_id)
+    dbnode = node_crud.get_node_by_id(db, node_id)
     if not dbnode:
         raise HTTPException(status_code=404, detail="Node not found")
     return serialize_node(dbnode)
@@ -65,7 +69,7 @@ def validate_dates(start: Optional[Union[str, datetime]], end: Optional[Union[st
 
 def get_user_template(template_id: int, db: Session = Depends(get_db)):
     """Fetch a User Template by its ID, raise 404 if not found."""
-    dbuser_template = crud.get_user_template(db, template_id)
+    dbuser_template = template_crud.get_user_template(db, template_id)
     if not dbuser_template:
         raise HTTPException(status_code=404, detail="User Template not found")
     return dbuser_template
@@ -79,7 +83,7 @@ def get_validated_sub(
     if not sub:
         raise HTTPException(status_code=404, detail="Not Found")
 
-    dbuser = crud.get_user(db, sub['username'])
+    dbuser = user_crud.get_user(db, sub['username'])
     if not dbuser or dbuser.created_at > sub['created_at']:
         raise HTTPException(status_code=404, detail="Not Found")
 
@@ -94,7 +98,7 @@ def get_validated_user(
         admin: Admin = Depends(Admin.get_current),
         db: Session = Depends(get_db)
 ) -> UserResponse:
-    dbuser = crud.get_user(db, username)
+    dbuser = user_crud.get_user(db, username)
     if not dbuser:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -109,8 +113,8 @@ def get_expired_users_list(db: Session, admin: Admin, expired_after: Optional[da
     expired_before = expired_before or datetime.now(timezone.utc)
     expired_after = expired_after or datetime.min.replace(tzinfo=timezone.utc)
 
-    dbadmin = crud.get_admin(db, admin.username)
-    dbusers = crud.get_users(
+    dbadmin = admin_crud.get_admin(db, admin.username)
+    dbusers = user_crud.get_users(
         db=db,
         status=[UserStatus.expired, UserStatus.limited],
         admin=dbadmin if not admin.is_sudo else None

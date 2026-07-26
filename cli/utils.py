@@ -6,8 +6,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from app.db import crud
-from app.db.models import User
+
+from app.db.models.users import User
+from app.db.crud import users as user_crud
 
 T = TypeVar("T")
 
@@ -47,7 +48,7 @@ def paginate(text: str):
 
 
 def get_user(db, username: str) -> User:
-    user: Union[User, None] = crud.get_user(db=db, username=username)
+    user: Union[User, None] = user_crud.get_user(db=db, username=username)
     if not user:
         error(f'User "{username}" not found!')
 

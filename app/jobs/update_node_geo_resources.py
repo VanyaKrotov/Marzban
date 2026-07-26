@@ -1,13 +1,14 @@
 from datetime import datetime
 
 from app import logger, scheduler, xray
-from app.db import GetDB, crud
+from app.db import GetDB
 from app.utils.node_geo_resources import (
     download_geo_resource,
     get_next_run_at,
     upload_remote_geo_resource,
 )
 from app.utils.node_restart_state import mark_nodes_pending_restart
+from app.db.crud import node_geo_resources as geo_resource_crud
 
 
 def restart_updated_nodes(node_ids: set[int]) -> None:
@@ -25,7 +26,7 @@ def update_due_node_geo_resources():
     now = datetime.utcnow()
     updated_node_ids = set()
     with GetDB() as db:
-        resources = crud.get_due_node_geo_resource_updates(db, now)
+        resources = geo_resource_crud.get_due_node_geo_resource_updates(db, now)
         for resource in resources:
             try:
                 content = download_geo_resource(resource.url)
@@ -43,7 +44,7 @@ def update_due_node_geo_resources():
                 )
 
             next_run_at = get_next_run_at(resource.cron)
-            crud.update_node_geo_resource_result(
+            geo_resource_crud.update_node_geo_resource_result(
                 db, resource, next_run_at=next_run_at, error=error
             )
     restart_updated_nodes(updated_node_ids)

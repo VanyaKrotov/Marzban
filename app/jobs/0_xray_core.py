@@ -1,8 +1,9 @@
 from app import app, logger, scheduler, xray
-from app.db import GetDB, crud
+from app.db import GetDB
 from app.models.node import NodeStatus
 from config import JOB_CORE_HEALTH_CHECK_INTERVAL
 from xray_api import exc as xray_exc
+from app.db.crud import nodes as node_crud
 
 
 def core_health_check():
@@ -23,10 +24,10 @@ def core_health_check():
 def start_core():
     logger.info("Starting nodes Xray core")
     with GetDB() as db:
-        dbnodes = crud.get_nodes(db=db, enabled=True)
+        dbnodes = node_crud.get_nodes(db=db, enabled=True)
         node_ids = [dbnode.id for dbnode in dbnodes]
         for dbnode in dbnodes:
-            crud.update_node_status(db, dbnode, NodeStatus.connecting)
+            node_crud.update_node_status(db, dbnode, NodeStatus.connecting)
 
     for node_id in node_ids:
         xray.operations.connect_node(node_id)

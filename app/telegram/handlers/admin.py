@@ -15,7 +15,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.util import extract_arguments, user_link
 
 from app import xray
-from app.db import GetDB, crud
+from app.db import GetDB
 from app.models.proxy import ProxyTypes
 from app.models.user import (
     UserCreate,
@@ -38,6 +38,9 @@ from app.telegram.utils.shared import (
 from app.utils.store import MemoryStorage
 from app.utils.system import cpu_usage, memory_usage, readable_size, realtime_bandwidth
 from config import TELEGRAM_DEFAULT_VLESS_FLOW, TELEGRAM_LOGGER_CHANNEL_ID
+from app.db.crud import settings as settings_crud
+from app.db.crud import templates as template_crud
+from app.db.crud import users as user_crud
 
 mem_store = MemoryStorage()
 
@@ -46,10 +49,10 @@ def get_system_info():
     mem = memory_usage()
     cpu = cpu_usage()
     with GetDB() as db:
-        bandwidth = crud.get_system_usage(db)
-        total_users = crud.get_users_count(db)
-        active_users = crud.get_users_count(db, UserStatus.active)
-        onhold_users = crud.get_users_count(db, UserStatus.on_hold)
+        bandwidth = settings_crud.get_system_usage(db)
+        total_users = user_crud.get_users_count(db)
+        active_users = user_crud.get_users_count(db, UserStatus.active)
+        onhold_users = user_crud.get_users_count(db, UserStatus.on_hold)
     return """\
 🎛 *CPU Cores*: `{cpu_cores}`
 🖥 *CPU Usage*: `{cpu_percent}%`
@@ -194,12 +197,12 @@ def reset_usage_user_command(call: types.CallbackQuery):
 @bot.callback_query_handler(cb_query_equals('edit_all'), is_admin=True)
 def edit_all_command(call: types.CallbackQuery):
     with GetDB() as db:
-        total_users = crud.get_users_count(db)
-        active_users = crud.get_users_count(db, UserStatus.active)
-        disabled_users = crud.get_users_count(db, UserStatus.disabled)
-        expired_users = crud.get_users_count(db, UserStatus.expired)
-        limited_users = crud.get_users_count(db, UserStatus.limited)
-        onhold_users = crud.get_users_count(db, UserStatus.on_hold)
+        total_users = user_crud.get_users_count(db)
+        active_users = user_crud.get_users_count(db, UserStatus.active)
+        disabled_users = user_crud.get_users_count(db, UserStatus.disabled)
+        expired_users = user_crud.get_users_count(db, UserStatus.expired)
+        limited_users = user_crud.get_users_count(db, UserStatus.limited)
+        onhold_users = user_crud.get_users_count(db, UserStatus.on_hold)
         text = f"""
 👥 *Total Users*: `{total_users}`
 ✅ *Active Users*: `{active_users}`
@@ -324,7 +327,7 @@ def edit_command(call: types.CallbackQuery):
     bot.clear_step_handler_by_chat_id(call.message.chat.id)
     username = call.data.split(":")[1]
     with GetDB() as db:
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(
                 call.id,
@@ -565,8 +568,8 @@ def edit_user_expire_step(message: types.Message, username: str):
 def users_command(call: types.CallbackQuery):
     page = int(call.data.split(':')[1]) if len(call.data.split(':')) > 1 else 1
     with GetDB() as db:
-        total_pages = math.ceil(crud.get_users_count(db) / 10)
-        users = crud.get_users(db, offset=(page - 1) * 10, limit=10, sort=[crud.UsersSortingOptions["-created_at"]])
+        total_pages = math.ceil(user_crud.get_users_count(db) / 10)
+        users = user_crud.get_users(db, offset=(page - 1) * 10, limit=10, sort=[user_crud.UsersSortingOptions["-created_at"]])
         text = """👥 Users: (Page {page}/{total_pages})
 ✅ Active
 ❌ Disabled
@@ -588,7 +591,7 @@ def users_command(call: types.CallbackQuery):
 def edit_note_command(call: types.CallbackQuery):
     username = call.data.split(':')[1]
     with GetDB() as db:
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, '❌ User not found.', show_alert=True)
     schedule_delete_message(call.message.chat.id, call.message.id)
@@ -615,10 +618,10 @@ def edit_note_step(message: types.Message):
         if not username:
             cleanup_messages(message.chat.id)
             bot.reply_to(message, '❌ Something went wrong!\n restart bot /start')
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         last_note = db_user.note
         modify = UserModify(note=note)
-        db_user = crud.update_user(db, db_user, modify)
+        db_user = user_crud.update_user(db, db_user, modify)
         user = UserResponse.model_validate(db_user)
         bot.reply_to(
             message, get_user_info_text(db_user), parse_mode="html",
@@ -644,7 +647,7 @@ def user_command(call: types.CallbackQuery):
     username = call.data.split(':')[1]
     page = int(call.data.split(':')[2]) if len(call.data.split(':')) > 2 else 1
     with GetDB() as db:
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, '❌ User not found.', show_alert=True)
         user = UserResponse.model_validate(db_user)
@@ -670,7 +673,7 @@ def links_command(call: types.CallbackQuery):
     username = call.data.split(":")[1]
 
     with GetDB() as db:
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, "User not found!", show_alert=True)
 
@@ -698,7 +701,7 @@ def genqr_command(call: types.CallbackQuery):
     username = call.data.split(":")[2]
 
     with GetDB() as db:
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, "User not found!", show_alert=True)
 
@@ -780,12 +783,12 @@ def template_charge_command(call: types.CallbackQuery):
     now = datetime.now()
     today = datetime(year=now.year, month=now.month, day=now.day, hour=23, minute=59, second=59)
     with GetDB() as db:
-        template = crud.get_user_template(db, template_id)
+        template = template_crud.get_user_template(db, template_id)
         if not template:
             return bot.answer_callback_query(call.id, "Template not found!", show_alert=True)
         template = UserTemplateResponse.model_validate(template)
 
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, "User not found!", show_alert=True)
         user = UserResponse.model_validate(db_user)
@@ -805,7 +808,7 @@ def template_charge_command(call: types.CallbackQuery):
                 reply_markup=BotKeyboard.charge_add_or_reset(
                     username=username, template_id=template_id))
         elif (not user.data_limit and not user.expire) or (user.used_traffic > user.data_limit) or (now > datetime.fromtimestamp(user.expire)):
-            crud.reset_user_data_usage(db, db_user)
+            user_crud.reset_user_data_usage(db, db_user)
             expire_date = None
             if template.expire_duration:
                 expire_date = today + relativedelta(seconds=template.expire_duration)
@@ -814,7 +817,7 @@ def template_charge_command(call: types.CallbackQuery):
                 expire=int(expire_date.timestamp()) if expire_date else 0,
                 data_limit=template.data_limit,
             )
-            db_user = crud.update_user(db, db_user, modify)
+            db_user = user_crud.update_user(db, db_user, modify)
             xray.operations.add_user(db_user)
             bot.answer_callback_query(call.id, "🔋 User Successfully Charged!")
             bot.edit_message_text(
@@ -866,11 +869,11 @@ def template_charge_command(call: types.CallbackQuery):
 def charge_command(call: types.CallbackQuery):
     username = call.data.split(":")[1]
     with GetDB() as db:
-        templates = crud.get_user_templates(db)
+        templates = template_crud.get_user_templates(db)
         if not templates:
             return bot.answer_callback_query(call.id, "You don't have any User Templates!")
 
-        db_user = crud.get_user(db, username)
+        db_user = user_crud.get_user(db, username)
         if not db_user:
             return bot.answer_callback_query(call.id, "User not found!", show_alert=True)
 
@@ -890,7 +893,7 @@ def charge_command(call: types.CallbackQuery):
 @bot.callback_query_handler(cb_query_equals('template_add_bulk_user'), is_admin=True)
 def add_user_from_template_command(call: types.CallbackQuery):
     with GetDB() as db:
-        templates = crud.get_user_templates(db)
+        templates = template_crud.get_user_templates(db)
         if not templates:
             return bot.answer_callback_query(call.id, "You don't have any User Templates!")
 
@@ -914,7 +917,7 @@ def add_user_from_template_command(call: types.CallbackQuery):
 def add_user_from_template(call: types.CallbackQuery):
     template_id = int(call.data.split(":")[1])
     with GetDB() as db:
-        template = crud.get_user_template(db, template_id)
+        template = template_crud.get_user_template(db, template_id)
         if not template:
             return bot.answer_callback_query(call.id, "Template not found!", show_alert=True)
         template = UserTemplateResponse.model_validate(template)
@@ -969,7 +972,7 @@ def random_username(call: types.CallbackQuery):
         return bot.register_next_step_handler(call.message, add_user_data_limit_step, username=username)
 
     with GetDB() as db:
-        template = crud.get_user_template(db, template_id)
+        template = template_crud.get_user_template(db, template_id)
         if template.username_prefix:
             username = template.username_prefix + username
         if template.username_suffix:
@@ -1031,7 +1034,7 @@ def add_user_from_template_username_step(message: types.Message):
     with GetDB() as db:
         username = message.text
 
-        template = crud.get_user_template(db, template_id)
+        template = template_crud.get_user_template(db, template_id)
         if template.username_prefix:
             username = template.username_prefix + username
         if template.username_suffix:
@@ -1062,7 +1065,7 @@ def add_user_from_template_username_step(message: types.Message):
             schedule_delete_message(message.chat.id, wait_msg.message_id, message.message_id)
             return bot.register_next_step_handler(wait_msg, add_user_from_template_username_step)
 
-        if crud.get_user(db, username):
+        if user_crud.get_user(db, username):
             wait_msg = bot.send_message(message.chat.id, '❌ Username already exists.')
             schedule_delete_message(message.chat.id, wait_msg.message_id, message.message_id)
             return bot.register_next_step_handler(wait_msg, add_user_from_template_username_step)
@@ -1148,7 +1151,7 @@ def add_user_username_step(message: types.Message):
         schedule_delete_message(message.chat.id, message.id)
         return bot.register_next_step_handler(wait_msg, add_user_username_step)
     with GetDB() as db:
-        if crud.get_user(db, username):
+        if user_crud.get_user(db, username):
             wait_msg = bot.send_message(message.chat.id, '❌ Username already exists.')
             schedule_delete_message(message.chat.id, wait_msg.id)
             schedule_delete_message(message.chat.id, message.id)
@@ -1491,8 +1494,8 @@ def confirm_user_command(call: types.CallbackQuery):
     if data == 'delete':
         username = call.data.split(':')[2]
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
-            crud.remove_user(db, db_user)
+            db_user = user_crud.get_user(db, username)
+            user_crud.remove_user(db, db_user)
             xray.operations.remove_user(db_user)
 
         bot.edit_message_text(
@@ -1518,8 +1521,8 @@ def confirm_user_command(call: types.CallbackQuery):
     elif data == "suspend":
         username = call.data.split(":")[2]
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
-            crud.update_user(db, db_user, UserModify(
+            db_user = user_crud.get_user(db, username)
+            user_crud.update_user(db, db_user, UserModify(
                 status=UserStatusModify.disabled))
             xray.operations.remove_user(db_user)
             bot.edit_message_text(
@@ -1542,8 +1545,8 @@ def confirm_user_command(call: types.CallbackQuery):
     elif data == "activate":
         username = call.data.split(":")[2]
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
-            crud.update_user(db, db_user, UserModify(
+            db_user = user_crud.get_user(db, username)
+            user_crud.update_user(db, db_user, UserModify(
                 status=UserStatusModify.active))
             xray.operations.add_user(db_user)
             bot.edit_message_text(
@@ -1566,8 +1569,8 @@ def confirm_user_command(call: types.CallbackQuery):
     elif data == 'reset_usage':
         username = call.data.split(":")[2]
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
-            crud.reset_user_data_usage(db, db_user)
+            db_user = user_crud.get_user(db, username)
+            user_crud.reset_user_data_usage(db, db_user)
             if db_user.status in [UserStatus.active, UserStatus.on_hold]:
                 xray.operations.add_user(db_user)
             user = UserResponse.model_validate(db_user)
@@ -1603,12 +1606,12 @@ def confirm_user_command(call: types.CallbackQuery):
     elif data in ['charge_add', 'charge_reset']:
         _, _, username, template_id = call.data.split(":")
         with GetDB() as db:
-            template = crud.get_user_template(db, template_id)
+            template = template_crud.get_user_template(db, template_id)
             if not template:
                 return bot.answer_callback_query(call.id, "Template not found!", show_alert=True)
             template = UserTemplateResponse.model_validate(template)
 
-            db_user = crud.get_user(db, username)
+            db_user = user_crud.get_user(db, username)
             if not db_user:
                 return bot.answer_callback_query(call.id, "User not found!", show_alert=True)
             user = UserResponse.model_validate(db_user)
@@ -1622,7 +1625,7 @@ def confirm_user_command(call: types.CallbackQuery):
                 elif protocol in db_user.inbounds and protocol not in inbounds:
                     del proxies[protocol]
 
-            crud.reset_user_data_usage(db, db_user)
+            user_crud.reset_user_data_usage(db, db_user)
             if data == 'charge_reset':
                 expire_date = None
                 if template.expire_duration:
@@ -1642,7 +1645,7 @@ def confirm_user_command(call: types.CallbackQuery):
                     expire=int(expire_date.timestamp()) if expire_date else 0,
                     data_limit=(user.data_limit or 0) - user.used_traffic + template.data_limit,
                 )
-            db_user = crud.update_user(db, db_user, modify)
+            db_user = user_crud.update_user(db, db_user, modify)
             xray.operations.add_user(db_user)
             bot.answer_callback_query(call.id, "🔋 User Successfully Charged!")
             bot.edit_message_text(
@@ -1699,7 +1702,7 @@ def confirm_user_command(call: types.CallbackQuery):
             k: v for k, v in mem_store.get(f'{call.message.chat.id}:protocols').items() if v}
 
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
+            db_user = user_crud.get_user(db, username)
             if not db_user:
                 return bot.answer_callback_query(call.id, text=f"User not found!", show_alert=True)
 
@@ -1730,7 +1733,7 @@ def confirm_user_command(call: types.CallbackQuery):
                     inbounds=inbounds
                 )
             last_user = UserResponse.model_validate(db_user)
-            db_user = crud.update_user(db, db_user, modify)
+            db_user = user_crud.update_user(db, db_user, modify)
 
             user = UserResponse.model_validate(db_user)
 
@@ -1852,7 +1855,7 @@ def confirm_user_command(call: types.CallbackQuery):
                     )
             try:
                 with GetDB() as db:
-                    db_user = crud.create_user(db, new_user)
+                    db_user = user_crud.create_user(db, new_user)
                     proxies = db_user.proxies
                     user = UserResponse.model_validate(db_user)
                     xray.operations.add_user(db_user)
@@ -1911,7 +1914,7 @@ def confirm_user_command(call: types.CallbackQuery):
             call.message.message_id,
             parse_mode="HTML")
         with GetDB() as db:
-            depleted_users = crud.get_users(
+            depleted_users = user_crud.get_users(
                 db, status=[UserStatus.limited if data == 'delete_limited' else UserStatus.expired])
             file_name = f'{data[8:]}_users_{int(now.timestamp()*1000)}.txt'
             with open(file_name, 'w') as f:
@@ -1919,7 +1922,7 @@ def confirm_user_command(call: types.CallbackQuery):
                 deleted = 0
                 for user in depleted_users:
                     try:
-                        crud.remove_user(db, user)
+                        user_crud.remove_user(db, user)
                         xray.operations.remove_user(user)
                         deleted += 1
                         f.write(
@@ -1955,7 +1958,7 @@ def confirm_user_command(call: types.CallbackQuery):
             bot.send_message(chat_id, '⏳ <b>In Progress...</b>', 'HTML').id)
         data_limit = float(call.data.split(":")[2]) * 1024 * 1024 * 1024
         with GetDB() as db:
-            users = crud.get_users(db)
+            users = user_crud.get_users(db)
             counter = 0
             file_name = f'new_data_limit_users_{int(now.timestamp()*1000)}.txt'
             with open(file_name, 'w') as f:
@@ -1963,7 +1966,7 @@ def confirm_user_command(call: types.CallbackQuery):
                 for user in users:
                     try:
                         if user.data_limit and user.status not in [UserStatus.limited, UserStatus.expired]:
-                            user = crud.update_user(db, user, UserModify(data_limit=(user.data_limit + data_limit)))
+                            user = user_crud.update_user(db, user, UserModify(data_limit=(user.data_limit + data_limit)))
                             counter += 1
                             f.write(
                                 f'{user.username}\
@@ -2001,7 +2004,7 @@ def confirm_user_command(call: types.CallbackQuery):
             bot.send_message(chat_id, '⏳ <b>In Progress...</b>', 'HTML').id)
         days = int(call.data.split(":")[2])
         with GetDB() as db:
-            users = crud.get_users(db)
+            users = user_crud.get_users(db)
             counter = 0
             file_name = f'new_expiry_users_{int(now.timestamp()*1000)}.txt'
             with open(file_name, 'w') as f:
@@ -2009,7 +2012,7 @@ def confirm_user_command(call: types.CallbackQuery):
                 for user in users:
                     try:
                         if user.expire and user.status not in [UserStatus.limited, UserStatus.expired]:
-                            user = crud.update_user(
+                            user = user_crud.update_user(
                                 db, user,
                                 UserModify(
                                     expire=int(
@@ -2051,7 +2054,7 @@ def confirm_user_command(call: types.CallbackQuery):
             parse_mode="HTML")
         inbound = call.data.split(":")[2]
         with GetDB() as db:
-            users = crud.get_users(db)
+            users = user_crud.get_users(db)
             unsuccessful = 0
             for user in users:
                 inbound_tags = [j for i in user.inbounds for j in user.inbounds[i]]
@@ -2079,7 +2082,7 @@ def confirm_user_command(call: types.CallbackQuery):
                         elif protocol in user.inbounds and protocol not in new_inbounds:
                             del proxies[protocol]
                     try:
-                        user = crud.update_user(db, user, UserModify(inbounds=new_inbounds, proxies=proxies))
+                        user = user_crud.update_user(db, user, UserModify(inbounds=new_inbounds, proxies=proxies))
                         if user.status == UserStatus.active:
                             xray.operations.update_user(user)
                     except:
@@ -2109,10 +2112,10 @@ def confirm_user_command(call: types.CallbackQuery):
     elif data == 'revoke_sub':
         username = call.data.split(":")[2]
         with GetDB() as db:
-            db_user = crud.get_user(db, username)
+            db_user = user_crud.get_user(db, username)
             if not db_user:
                 return bot.answer_callback_query(call.id, text=f"User not found!", show_alert=True)
-            db_user = crud.revoke_user_sub(db, db_user)
+            db_user = user_crud.revoke_user_sub(db, db_user)
             user = UserResponse.model_validate(db_user)
             bot.answer_callback_query(call.id, "✅ Subscription Successfully Revoked!")
             bot.edit_message_text(
@@ -2150,7 +2153,7 @@ def search_user(message: types.Message):
 
     with GetDB() as db:
         for username in usernames:
-            db_user = crud.get_user(db, username)
+            db_user = user_crud.get_user(db, username)
             if not db_user:
                 bot.reply_to(message, f'❌ User «{username}» not found.')
                 continue

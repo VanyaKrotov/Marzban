@@ -6,12 +6,15 @@ from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db import crud
+
 from app.db.base import Base
-from app.db import models as db_models
+from app import xray
+from app.db.models.proxies import Proxy, ProxyInbound
+from app.db.models.users import User
 from app.models import user as user_models
 from app.models.proxy import InboundCreate
 from app.models.proxy import ProxyTypes
+from app.db.crud import proxy_inbounds as inbound_crud
 
 xray_config = importlib.import_module("app.xray.config")
 
@@ -116,13 +119,13 @@ class UserInboundTests(TestCase):
         self.assertFalse(manual.auto_assign_users)
 
     def test_db_user_inbounds_include_new_non_excluded_inbound(self):
-        dbuser = db_models.User(username="test_user")
+        dbuser = User(username="test_user")
         dbuser.proxies = [
-            db_models.Proxy(
+            Proxy(
                 type=ProxyTypes.VLESS,
                 settings={},
                 excluded_inbounds=[
-                    db_models.ProxyInbound(
+                    ProxyInbound(
                         tag="VLESS TCP",
                         content=VLESS_INBOUNDS[0],
                     )
@@ -130,23 +133,23 @@ class UserInboundTests(TestCase):
             )
         ]
 
-        with patch.object(db_models.xray, "config", FakeConfig):
+        with patch.object(xray, "config", FakeConfig):
             self.assertEqual(dbuser.inbounds[ProxyTypes.VLESS], ["VLESS WS"])
 
     def test_ensure_protocol_inbounds_adds_missing_proxy_with_only_new_tags(self):
-        old_inbound = db_models.ProxyInbound(
+        old_inbound = ProxyInbound(
             tag="VLESS TCP",
             content=VLESS_INBOUNDS[0],
         )
-        new_inbound = db_models.ProxyInbound(
+        new_inbound = ProxyInbound(
             tag="VLESS WS",
             content=VLESS_INBOUNDS[1],
         )
-        missing_proxy_user = db_models.User(username="missing_proxy")
-        existing_proxy_user = db_models.User(
+        missing_proxy_user = User(username="missing_proxy")
+        existing_proxy_user = User(
             username="existing_proxy",
             proxies=[
-                db_models.Proxy(
+                Proxy(
                     type=ProxyTypes.VLESS,
                     settings={"id": "00000000-0000-0000-0000-000000000001"},
                 )
@@ -160,7 +163,7 @@ class UserInboundTests(TestCase):
         ])
         self.db.commit()
 
-        users = crud.ensure_protocol_inbounds_for_users(
+        users = inbound_crud.ensure_protocol_inbounds_for_users(
             self.db,
             protocol="vless",
             included_tags=["VLESS WS"],
@@ -182,24 +185,24 @@ class UserInboundTests(TestCase):
         self.assertEqual(existing_proxy_user.proxies[0].excluded_inbounds, [])
 
     def test_exclude_protocol_inbounds_adds_manual_inbound_to_existing_proxies(self):
-        new_inbound = db_models.ProxyInbound(
+        new_inbound = ProxyInbound(
             tag="VLESS WS",
             content=VLESS_INBOUNDS[1],
         )
-        existing_proxy_user = db_models.User(
+        existing_proxy_user = User(
             username="existing_proxy",
             proxies=[
-                db_models.Proxy(
+                Proxy(
                     type=ProxyTypes.VLESS,
                     settings={"id": "00000000-0000-0000-0000-000000000001"},
                 )
             ],
         )
-        missing_proxy_user = db_models.User(username="missing_proxy")
+        missing_proxy_user = User(username="missing_proxy")
         self.db.add_all([new_inbound, existing_proxy_user, missing_proxy_user])
         self.db.commit()
 
-        proxies = crud.exclude_protocol_inbounds_for_users(
+        proxies = inbound_crud.exclude_protocol_inbounds_for_users(
             self.db,
             protocol="vless",
             excluded_tags=["VLESS WS"],

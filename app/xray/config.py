@@ -10,12 +10,17 @@ import commentjson
 from sqlalchemy import func, inspect, text
 
 from app.db import GetDB
-from app.db import models as db_models
+from app.db.models.associations import excluded_inbounds_association
+from app.db.models.proxies import Proxy
+from app.db.models.users import User
 from app.db.base import engine
 from app.models.proxy import ACCOUNT_PROTOCOLS, ProxyTypes, XRAY_INBOUND_PROTOCOLS
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
+from app.db.crud import proxy_inbounds as inbound_crud
+from app.db.crud import proxy_outbounds as outbound_crud
+from app.db.crud import routing as routing_crud
 
 
 def merge_dicts(a, b):  # B will override A dictionary key and values
@@ -514,12 +519,10 @@ class XRayConfig(dict):
         config = self.copy()
 
         with GetDB() as db:
-            from app.db import crud
-
-            assignments = crud.get_inbound_node_ids_map(
+            assignments = inbound_crud.get_inbound_node_ids_map(
                 db, list(self.inbounds_by_tag)
             )
-            outbound_assignments = crud.get_outbound_node_ids_map(
+            outbound_assignments = outbound_crud.get_outbound_node_ids_map(
                 db,
                 [
                     outbound.get("tag")
@@ -527,7 +530,7 @@ class XRayConfig(dict):
                     if outbound.get("tag")
                 ],
             )
-            routing_rules = crud.get_routing_rules_for_node(db, node_id)
+            routing_rules = routing_crud.get_routing_rules_for_node(db, node_id)
 
         allowed_tags = {
             tag for tag, node_ids in assignments.items() if node_id in node_ids
@@ -587,23 +590,23 @@ class XRayConfig(dict):
 
         with GetDB() as db:
             query = db.query(
-                db_models.User.id,
-                db_models.User.username,
-                func.lower(db_models.Proxy.type).label('type'),
-                db_models.Proxy.settings,
-                func.group_concat(db_models.excluded_inbounds_association.c.inbound_tag).label('excluded_inbound_tags')
+                User.id,
+                User.username,
+                func.lower(Proxy.type).label('type'),
+                Proxy.settings,
+                func.group_concat(excluded_inbounds_association.c.inbound_tag).label('excluded_inbound_tags')
             ).join(
-                db_models.Proxy, db_models.User.id == db_models.Proxy.user_id
+                Proxy, User.id == Proxy.user_id
             ).outerjoin(
-                db_models.excluded_inbounds_association,
-                db_models.Proxy.id == db_models.excluded_inbounds_association.c.proxy_id
+                excluded_inbounds_association,
+                Proxy.id == excluded_inbounds_association.c.proxy_id
             ).filter(
-                db_models.User.status.in_([UserStatus.active, UserStatus.on_hold])
+                User.status.in_([UserStatus.active, UserStatus.on_hold])
             ).group_by(
-                func.lower(db_models.Proxy.type),
-                db_models.User.id,
-                db_models.User.username,
-                db_models.Proxy.settings,
+                func.lower(Proxy.type),
+                User.id,
+                User.username,
+                Proxy.settings,
             )
             result = query.all()
 

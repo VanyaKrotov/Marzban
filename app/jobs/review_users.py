@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from app import logger, scheduler, xray
-from app.db import (GetDB, get_notification_reminder, get_users,
-                    start_user_expire, update_user_status, reset_user_by_next)
+from app.db import GetDB
+from app.db.crud import notifications as notification_crud
+from app.db.crud import users as user_crud
 from app.models.user import ReminderType, UserResponse, UserStatus
 from app.utils import report
 from app.utils.helpers import (calculate_expiration_days,
@@ -14,7 +15,7 @@ from app.utils.runtime_settings import get_runtime_settings
 from config import JOB_REVIEW_USERS_INTERVAL
 
 if TYPE_CHECKING:
-    from app.db.models import User
+    from app.db.models.users import User
 
 
 def add_notification_reminders(db: Session, user: "User", now: datetime = datetime.utcnow()) -> None:
@@ -24,7 +25,8 @@ def add_notification_reminders(db: Session, user: "User", now: datetime = dateti
 
         for percent in sorted(settings.notify_reached_usage_percent, reverse=True):
             if usage_percent >= percent:
-                if not get_notification_reminder(db, user.id, ReminderType.data_usage, threshold=percent):
+                if not notification_crud.get_notification_reminder(
+                        db, user.id, ReminderType.data_usage, threshold=percent):
                     report.data_usage_percent_reached(
                         db, usage_percent, UserResponse.model_validate(user),
                         user.id, user.expire, threshold=percent
@@ -36,7 +38,8 @@ def add_notification_reminders(db: Session, user: "User", now: datetime = dateti
 
         for days_left in sorted(settings.notify_days_left):
             if expire_days <= days_left:
-                if not get_notification_reminder(db, user.id, ReminderType.expiration_date, threshold=days_left):
+                if not notification_crud.get_notification_reminder(
+                        db, user.id, ReminderType.expiration_date, threshold=days_left):
                     report.expire_days_reached(
                         db, expire_days, UserResponse.model_validate(user),
                         user.id, user.expire, threshold=days_left
@@ -45,7 +48,7 @@ def add_notification_reminders(db: Session, user: "User", now: datetime = dateti
 
 
 def reset_user_by_next_report(db: Session, user: "User"):
-    user = reset_user_by_next(db, user)
+    user = user_crud.reset_user_by_next(db, user)
 
     xray.operations.update_user(user)
 
@@ -56,7 +59,7 @@ def review():
     now = datetime.utcnow()
     now_ts = now.timestamp()
     with GetDB() as db:
-        for user in get_users(db, status=UserStatus.active):
+        for user in user_crud.get_users(db, status=UserStatus.active):
 
             limited = user.data_limit and user.used_traffic >= user.data_limit
             expired = user.expire and user.expire <= now_ts
@@ -82,14 +85,14 @@ def review():
                 continue
 
             xray.operations.remove_user(user)
-            update_user_status(db, user, status)
+            user_crud.update_user_status(db, user, status)
 
             report.status_change(username=user.username, status=status,
                                  user=UserResponse.model_validate(user), user_admin=user.admin)
 
             logger.info(f"User \"{user.username}\" status changed to {status}")
 
-        for user in get_users(db, status=UserStatus.on_hold):
+        for user in user_crud.get_users(db, status=UserStatus.on_hold):
 
             if user.edit_at:
                 base_time = datetime.timestamp(user.edit_at)
@@ -107,8 +110,8 @@ def review():
             else:
                 continue
 
-            update_user_status(db, user, status)
-            start_user_expire(db, user)
+            user_crud.update_user_status(db, user, status)
+            user_crud.start_user_expire(db, user)
 
             report.status_change(username=user.username, status=status,
                                  user=UserResponse.model_validate(user), user_admin=user.admin)

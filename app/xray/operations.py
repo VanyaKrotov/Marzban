@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import logger, xray
-from app.db import GetDB, crud
+from app.db import GetDB
 from app.models.node import NodeStatus
 from app.models.proxy import ProxyTypes
 from app.models.user import UserResponse
@@ -13,15 +13,17 @@ from app.xray.node import XRayNode
 from app.utils.node_restart_state import clear_node_pending_restart
 from xray_api import XRay as XRayAPI
 from xray_api.types.account import Account, XTLSFlows
+from app.db.crud import proxy_inbounds as inbound_crud
+from app.db.crud import nodes as node_crud
 
 if TYPE_CHECKING:
-    from app.db import User as DBUser
-    from app.db.models import Node as DBNode
+    from app.db.models.users import User as DBUser
+    from app.db.models.nodes import Node as DBNode
 
 
 def _get_inbound_node_ids():
     with GetDB() as db:
-        return crud.get_inbound_node_ids_map(
+        return inbound_crud.get_inbound_node_ids_map(
             db, list(xray.config.inbounds_by_tag)
         )
 
@@ -53,9 +55,11 @@ def _restart_inbound_nodes(inbound_tags: set[str], inbound_node_ids: dict):
 
 @lru_cache(maxsize=None)
 def get_tls():
-    from app.db import GetDB, get_tls_certificate
+    from app.db import GetDB
+    from app.db.crud import settings as settings_crud
+
     with GetDB() as db:
-        tls = get_tls_certificate(db)
+        tls = settings_crud.get_tls_certificate(db)
         return {
             "key": tls.key,
             "certificate": tls.certificate
@@ -254,7 +258,7 @@ def add_node(dbnode: "DBNode"):
 def _change_node_status(node_id: int, status: NodeStatus, message: str = None, version: str = None):
     with GetDB() as db:
         try:
-            dbnode = crud.get_node_by_id(db, node_id)
+            dbnode = node_crud.get_node_by_id(db, node_id)
             if not dbnode:
                 return
 
@@ -262,7 +266,7 @@ def _change_node_status(node_id: int, status: NodeStatus, message: str = None, v
                 remove_node(dbnode.id)
                 return
 
-            crud.update_node_status(db, dbnode, status, message, version)
+            node_crud.update_node_status(db, dbnode, status, message, version)
         except SQLAlchemyError:
             db.rollback()
 
@@ -279,7 +283,7 @@ def connect_node(node_id, config=None):
         return
 
     with GetDB() as db:
-        dbnode = crud.get_node_by_id(db, node_id)
+        dbnode = node_crud.get_node_by_id(db, node_id)
 
     if not dbnode:
         return
@@ -318,7 +322,7 @@ def connect_node(node_id, config=None):
 @threaded_function
 def restart_node(node_id, config=None):
     with GetDB() as db:
-        dbnode = crud.get_node_by_id(db, node_id)
+        dbnode = node_crud.get_node_by_id(db, node_id)
 
     if not dbnode:
         return

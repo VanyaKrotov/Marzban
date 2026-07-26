@@ -1,7 +1,7 @@
 import datetime
 
 from app import logger
-from app.db.models import User
+from app.db.models.users import User
 from app.telegram import bot
 from telebot.apihelper import ApiTelegramException
 from datetime import datetime

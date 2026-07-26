@@ -2,8 +2,9 @@ from datetime import datetime as dt
 from typing import Optional
 
 from app import telegram
-from app.db import Session, create_notification_reminder, get_admin_by_id, GetDB
-from app.db.models import UserStatus, User
+from app.db import Session
+from app.db.models.users import UserStatus
+from app.db.crud import notifications as notification_crud
 from app.models.admin import Admin
 from app.models.user import ReminderType, UserResponse
 from app.utils.notification import (Notification, ReachedDaysLeft,
@@ -179,14 +180,19 @@ def data_usage_percent_reached(
         db: Session, percent: float, user: UserResponse, user_id: int, expire: Optional[int] = None, threshold: Optional[int] = None) -> None:
     if get_runtime_settings().notify_if_data_usage_percent_reached:
         notify(ReachedUsagePercent(username=user.username, user=user, used_percent=percent))
-        create_notification_reminder(db, ReminderType.data_usage,
-                                     expires_at=dt.utcfromtimestamp(expire) if expire else None, user_id=user_id, threshold=threshold)
+        notification_crud.create_notification_reminder(
+            db,
+            ReminderType.data_usage,
+            expires_at=dt.utcfromtimestamp(expire) if expire else None,
+            user_id=user_id,
+            threshold=threshold,
+        )
 
 
 def expire_days_reached(db: Session, days: int, user: UserResponse, user_id: int, expire: int, threshold=None) -> None:
     notify(ReachedDaysLeft(username=user.username, user=user, days_left=days))
     if get_runtime_settings().notify_if_days_left_reached:
-        create_notification_reminder(
+        notification_crud.create_notification_reminder(
             db, ReminderType.expiration_date, expires_at=dt.utcfromtimestamp(expire),
             user_id=user_id, threshold=threshold)
 
