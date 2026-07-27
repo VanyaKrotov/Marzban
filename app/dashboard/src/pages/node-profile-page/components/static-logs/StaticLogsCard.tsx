@@ -121,6 +121,17 @@ export function StaticLogsCard({ node }: { node: NodeType & { id: number } }) {
           <p className="text-sm text-destructive">
             {t("staticLogs.loadError")}
           </p>
+        ) : !files.length ? (
+          <Empty className="min-h-56 rounded-lg border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FolderOpen />
+              </EmptyMedia>
+              <EmptyTitle className="text-sm">
+                {t("staticLogs.filesNotCreated")}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <Accordion
             type="multiple"
@@ -170,31 +181,33 @@ export function StaticLogsCard({ node }: { node: NodeType & { id: number } }) {
                                   ).format(new Date(file.modified_at))}`}
                                 </p>
                               </div>
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label={t("staticLogs.download")}
-                                onClick={() =>
-                                  downloadNodeStaticLog(
-                                    node.id,
-                                    file.type,
-                                    file.filename,
-                                  ).catch(generateErrorMessage)
-                                }
-                              >
-                                <Download />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                                aria-label={t("delete")}
-                                onClick={() => setPendingDelete(file)}
-                              >
-                                <Trash2 />
-                              </Button>
+                              <div className="flex items-center gap-x-1">
+                                <Button
+                                  type="button"
+                                  size="icon-sm"
+                                  variant="ghost"
+                                  aria-label={t("staticLogs.download")}
+                                  onClick={() =>
+                                    downloadNodeStaticLog(
+                                      node.id,
+                                      file.type,
+                                      file.filename,
+                                    ).catch(generateErrorMessage)
+                                  }
+                                >
+                                  <Download />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="icon-sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive"
+                                  aria-label={t("delete")}
+                                  onClick={() => setPendingDelete(file)}
+                                >
+                                  <Trash2 />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>

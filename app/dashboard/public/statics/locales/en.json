@@ -549,6 +549,7 @@
   "hostsPage.noGroups": "No host groups",
   "hostsPage.noGroupsShort": "No groups",
   "hostsPage.manageGroups": "Groups",
+  "hostsPage.balancers": "Balancers",
   "hostsPage.groupsManagerTitle": "Host groups",
   "hostsPage.groupsManagerDescription": "Create, edit, and delete groups used for host filtering and assignment.",
   "hostsPage.noGroupsManagerDescription": "Create the first group to organize hosts.",
@@ -706,6 +707,7 @@
   ,"staticLogs.active": "Active"
   ,"staticLogs.download": "Download"
   ,"staticLogs.empty": "No log files"
+  ,"staticLogs.filesNotCreated": "Log files have not been created yet"
   ,"staticLogs.disabled": "Static logs are disabled"
   ,"staticLogs.configure": "Configure"
   ,"staticLogs.loadError": "Failed to load static logs"

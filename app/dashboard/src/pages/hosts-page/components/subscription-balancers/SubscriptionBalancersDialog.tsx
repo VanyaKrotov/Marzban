@@ -8,11 +8,10 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import type { DragEvent } from "react";
+import type { DragEvent, PropsWithChildren } from "react";
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import {
@@ -44,6 +43,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Empty,
@@ -72,8 +72,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { HostType } from "@/pages/hosts-page/types";
-import { api } from "@/service/http";
 import {
   generateErrorMessage,
   generateSuccessMessage,
@@ -88,8 +86,10 @@ import {
   useReorderSubscriptionBalancersMutation,
   useSubscriptionBalancersQuery,
   useUpdateSubscriptionBalancerMutation,
-} from "../lib/query";
+} from "../../lib/subscription-balancers-query";
 import { cn } from "@/lib/utils";
+import { useHostsQuery } from "../../lib/query";
+import type { HostType } from "../../types";
 
 const balancerFormSchema = z.object({
   name: z.string().trim().min(1).max(256),
@@ -141,17 +141,14 @@ type BalancerDropTarget = {
   position: "before" | "after";
 } | null;
 
-export function SubscriptionBalancersDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+export function SubscriptionBalancersDialog({ children }: PropsWithChildren) {
+  const [open, onOpenChange] = useState(false);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="min-w-0 max-h-[calc(100svh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-4xl">
-        {open && <SubscriptionBalancersContent />}
+        <SubscriptionBalancersContent />
       </DialogContent>
     </Dialog>
   );
@@ -270,7 +267,9 @@ function SubscriptionBalancersContent() {
                     <TableHead>
                       {t("settingsPage.balancers.strategyLabel")}
                     </TableHead>
-                    <TableHead className="text-right">{t("settingsPage.balancers.hosts")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("settingsPage.balancers.hosts")}
+                    </TableHead>
                     <TableHead>
                       {t("settingsPage.balancers.probeUrl")}
                     </TableHead>
@@ -473,7 +472,9 @@ function BalancerListItem({
       </TableCell>
       <TableCell align="right">{balancer.host_ids.length}</TableCell>
       <TableCell className="max-w-72">
-        <span className="block truncate text-xs text-muted-foreground">{balancer.probe_url}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {balancer.probe_url}
+        </span>
         <span className="text-xs text-muted-foreground">
           {balancer.probe_interval}s
         </span>
@@ -551,10 +552,7 @@ function BalancerEditorContent({
   const { t } = useTranslation();
   const createBalancer = useCreateSubscriptionBalancerMutation();
   const updateBalancer = useUpdateSubscriptionBalancerMutation();
-  const hostsQuery = useQuery({
-    queryKey: ["hosts", "v2", "subscription-balancer"],
-    queryFn: () => api.get<HostType[]>("/hosts/v2"),
-  });
+  const hostsQuery = useHostsQuery();
   const hosts = hostsQuery.data ?? [];
   const hostsById = useMemo(
     () => new Map(hosts.map((host) => [host.id, host])),

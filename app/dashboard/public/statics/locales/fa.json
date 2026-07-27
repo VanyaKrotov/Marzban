@@ -550,6 +550,7 @@
   "hostsPage.noGroups": "هیچ گروه میزبانی وجود ندارد",
   "hostsPage.noGroupsShort": "بدون گروه",
   "hostsPage.manageGroups": "گروه‌ها",
+  "hostsPage.balancers": "متعادل‌کننده‌ها",
   "hostsPage.groupsManagerTitle": "گروه‌های هاست",
   "hostsPage.groupsManagerDescription": "گروه‌های مورد استفاده برای فیلتر و اختصاص هاست را ایجاد، ویرایش و حذف کنید.",
   "hostsPage.noGroupsManagerDescription": "برای سازمان‌دهی هاست‌ها، اولین گروه را ایجاد کنید.",
@@ -707,6 +708,7 @@
   ,"staticLogs.active": "فعال"
   ,"staticLogs.download": "دانلود"
   ,"staticLogs.empty": "فایل رخدادی وجود ندارد"
+  ,"staticLogs.filesNotCreated": "فایل‌های رخداد هنوز ایجاد نشده‌اند"
   ,"staticLogs.disabled": "رخدادهای ثابت غیرفعال هستند"
   ,"staticLogs.configure": "پیکربندی"
   ,"staticLogs.loadError": "بارگذاری رخدادهای ثابت ناموفق بود"

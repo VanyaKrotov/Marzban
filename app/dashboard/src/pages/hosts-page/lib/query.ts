@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useInboundsListQuery } from "hooks/useInboundsQuery";
+import { subscriptionBalancersQueryKey } from "./subscription-balancers-query";
 import type {
   HostGroupType,
   HostGroupPayload,
@@ -64,6 +65,7 @@ export function useUpdateHostGroupMutation() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: hostsQueryKey }),
         queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: subscriptionBalancersQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["users"] }),
       ]),
   });
@@ -77,6 +79,7 @@ export function useDeleteHostGroupMutation() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: hostsQueryKey }),
         queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: subscriptionBalancersQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["users"] }),
       ]),
   });
@@ -92,6 +95,7 @@ function useHostsMutation<TData, TVariables>(
       Promise.all([
         queryClient.invalidateQueries({ queryKey: hostsQueryKey }),
         queryClient.invalidateQueries({ queryKey: hostGroupsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: subscriptionBalancersQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["users"] }),
       ]),
   });
@@ -138,4 +142,6 @@ export function useDetachHostGroupsMutation() {
   );
 }
 
-export { useInboundsListQuery as useInboundsQuery };
+export function useInboundsQuery(includeTag?: string) {
+  return useInboundsListQuery({ assignedOnly: true, includeTag });
+}

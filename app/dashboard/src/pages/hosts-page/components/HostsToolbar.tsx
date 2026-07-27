@@ -1,4 +1,4 @@
-import { ChevronsUpDown, FolderTree, Search, X } from "lucide-react";
+import { ChevronsUpDown, FolderTree, Gauge, Search, X } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 
 import { HostGroupsManagerDialog } from "./host-groups/HostGroupsManagerDialog";
+import { SubscriptionBalancersDialog } from "./subscription-balancers/SubscriptionBalancersDialog";
 
 import type { HostGroupType } from "../types";
 
@@ -75,6 +76,13 @@ export function HostsToolbar({
             </Button>
           }
         />
+        <SubscriptionBalancersDialog>
+          <Button type="button" variant="outline">
+            <Gauge />
+            {t("hostsPage.balancers")}
+          </Button>
+        </SubscriptionBalancersDialog>
+
         <HostGroupsFilter
           groups={groups}
           selectedGroupIds={selectedGroupIds}

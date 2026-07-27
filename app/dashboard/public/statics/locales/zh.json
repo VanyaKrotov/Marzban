@@ -549,6 +549,7 @@
   "hostsPage.noGroups": "没有主机分组",
   "hostsPage.noGroupsShort": "无分组",
   "hostsPage.manageGroups": "分组",
+  "hostsPage.balancers": "负载均衡器",
   "hostsPage.groupsManagerTitle": "主机分组",
   "hostsPage.groupsManagerDescription": "创建、编辑和删除用于主机筛选与分配的分组。",
   "hostsPage.noGroupsManagerDescription": "创建第一个分组来整理主机。",
@@ -706,6 +707,7 @@
   ,"staticLogs.active": "活动"
   ,"staticLogs.download": "下载"
   ,"staticLogs.empty": "没有日志文件"
+  ,"staticLogs.filesNotCreated": "日志文件尚未创建"
   ,"staticLogs.disabled": "静态日志已禁用"
   ,"staticLogs.configure": "配置"
   ,"staticLogs.loadError": "无法加载静态日志"

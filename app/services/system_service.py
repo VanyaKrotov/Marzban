@@ -189,6 +189,8 @@ def get_system_stats(
 
 
 def get_inbounds(
+    assigned_only: bool = False,
+    include_tag: str | None = None,
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.get_current),
 ):
@@ -208,6 +210,9 @@ def get_inbounds(
                 "nodes": nodes_by_inbound_tag.get(inbound["tag"], []),
             }
             for inbound in inbounds
+            if not assigned_only
+            or nodes_by_inbound_tag.get(inbound["tag"])
+            or inbound["tag"] == include_tag
         ]
         for protocol, inbounds in registry.inbounds_by_protocol.items()
     }

@@ -66,7 +66,7 @@ function HostDialogContent({
     data: inbounds = [],
     isLoading: inboundsLoading,
     isError: inboundsError,
-  } = useInboundsQuery(true);
+  } = useInboundsQuery(inboundTag ?? void 0);
   const initialInbound = inboundTag ?? inbounds[0]?.tag ?? "";
   const form = useForm<HostFormValues>({
     resolver: zodResolver(hostFormSchema),

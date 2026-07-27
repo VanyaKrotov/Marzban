@@ -551,6 +551,7 @@
   "hostsPage.noGroups": "Группы хостов не созданы",
   "hostsPage.noGroupsShort": "Без групп",
   "hostsPage.manageGroups": "Группы",
+  "hostsPage.balancers": "Балансировщики",
   "hostsPage.groupsManagerTitle": "Группы хостов",
   "hostsPage.groupsManagerDescription": "Создавайте, редактируйте и удаляйте группы для фильтрации и назначения хостов.",
   "hostsPage.noGroupsManagerDescription": "Создайте первую группу, чтобы организовать хосты.",
@@ -708,6 +709,7 @@
   ,"staticLogs.active": "Активный"
   ,"staticLogs.download": "Скачать"
   ,"staticLogs.empty": "Файлы логов отсутствуют"
+  ,"staticLogs.filesNotCreated": "Файлы логов ещё не созданы"
   ,"staticLogs.disabled": "Статические логи отключены"
   ,"staticLogs.configure": "Настроить"
   ,"staticLogs.loadError": "Не удалось загрузить статические логи"
