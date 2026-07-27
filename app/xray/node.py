@@ -1,4 +1,3 @@
-import base64
 import re
 import socket
 import ssl
@@ -7,7 +6,7 @@ import threading
 import time
 from collections import deque
 from contextlib import contextmanager
-from typing import List
+from typing import Iterable, Iterator, List
 
 import grpc
 import requests
@@ -231,28 +230,55 @@ class ReSTXRayNode:
         return self.make_request("/geo-resources", timeout=15).get("files", [])
 
     def upload_geo_resource(
-        self, filename: str, content: bytes, overwrite: bool = False
+        self, filename: str, chunks: Iterable[bytes], overwrite: bool = False
     ):
         if not self.connected:
             self.connect()
-        return self.make_request(
-            "/geo-resources/upload",
-            timeout=60,
-            filename=filename,
-            content=base64.b64encode(content).decode("ascii"),
-            overwrite=overwrite,
-        )
+        try:
+            response = self.session.post(
+                self._rest_api_url + "/geo-resources/upload",
+                params={
+                    "session_id": self._session_id,
+                    "filename": filename,
+                    "overwrite": overwrite,
+                },
+                data=chunks,
+                headers={"Content-Type": "application/octet-stream"},
+                timeout=(5, 300),
+            )
+            data = response.json()
+        except Exception as exc:
+            raise NodeAPIError(0, str(exc)) from exc
 
-    def download_geo_resource(self, filename: str) -> bytes:
+        if response.status_code == 200:
+            return data
+        raise NodeAPIError(response.status_code, data.get("detail", "Node request failed"))
+
+    def download_geo_resource(self, filename: str) -> Iterator[bytes]:
         if not self.connected:
             self.connect()
-        result = self.make_request(
-            "/geo-resources/download", timeout=60, filename=filename
-        )
         try:
-            return base64.b64decode(result["content"], validate=True)
-        except (KeyError, ValueError) as exc:
-            raise NodeAPIError(502, "Node returned invalid file content") from exc
+            response = self.session.post(
+                self._rest_api_url + "/geo-resources/download",
+                timeout=(5, 300),
+                stream=True,
+                json={"session_id": self._session_id, "filename": filename},
+            )
+        except requests.RequestException as exc:
+            raise NodeAPIError(0, str(exc)) from exc
+        if response.status_code != 200:
+            try:
+                detail = response.json().get("detail", "Node request failed")
+            except ValueError:
+                detail = "Node request failed"
+            response.close()
+            raise NodeAPIError(response.status_code, detail)
+
+        def stream():
+            with response:
+                yield from response.iter_content(chunk_size=64 * 1024)
+
+        return stream()
 
     def rename_geo_resource(
         self, filename: str, new_filename: str, overwrite: bool = False
@@ -530,11 +556,21 @@ class RPyCXRayNode:
         return self.remote.list_geo_resources()
 
     def upload_geo_resource(
-        self, filename: str, content: bytes, overwrite: bool = False
+        self, filename: str, chunks: Iterable[bytes], overwrite: bool = False
     ):
-        return self.remote.upload_geo_resource(filename, content, overwrite)
+        token = self.remote.begin_geo_resource_upload(filename, overwrite)
+        try:
+            for chunk in chunks:
+                self.remote.append_geo_resource_upload(token, chunk)
+            return self.remote.finish_geo_resource_upload(token)
+        except Exception:
+            try:
+                self.remote.abort_geo_resource_upload(token)
+            except Exception:
+                pass
+            raise
 
-    def download_geo_resource(self, filename: str) -> bytes:
+    def download_geo_resource(self, filename: str) -> Iterator[bytes]:
         return self.remote.download_geo_resource(filename)
 
     def rename_geo_resource(

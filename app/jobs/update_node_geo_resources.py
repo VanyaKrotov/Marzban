@@ -29,10 +29,10 @@ def update_due_node_geo_resources():
         resources = geo_resource_crud.get_due_node_geo_resource_updates(db, now)
         for resource in resources:
             try:
-                content = download_geo_resource(resource.url)
-                upload_remote_geo_resource(
-                    resource.node, resource.filename, content, overwrite=True
-                )
+                with download_geo_resource(resource.url) as chunks:
+                    upload_remote_geo_resource(
+                        resource.node, resource.filename, chunks, overwrite=True
+                    )
                 mark_nodes_pending_restart([resource.node_id])
                 updated_node_ids.add(resource.node_id)
                 error = None

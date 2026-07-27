@@ -9,7 +9,6 @@ from fastapi import (
     File,
     HTTPException,
     Query,
-    Response,
     UploadFile,
     WebSocket,
 )
@@ -41,7 +40,6 @@ from app.models.node import (
 from app.xray.node import NodeAPIError
 from app.models.proxy import ProxyHost
 from app.utils.node_geo_resources import (
-    MAX_GEO_RESOURCE_SIZE,
     download_geo_resource,
     get_next_run_at,
     get_remote_node,
@@ -389,10 +387,9 @@ def upload_node_geo_resource(
     dbnode: NodeResponse = Depends(get_node),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
-    content = file.file.read(MAX_GEO_RESOURCE_SIZE + 1)
     try:
         upload_remote_geo_resource(
-            dbnode, file.filename or "", content, overwrite=overwrite
+            dbnode, file.filename or "", file.file, overwrite=overwrite
         )
     except Exception as exc:
         _raise_geo_resource_error(exc)
@@ -407,10 +404,10 @@ def create_remote_node_geo_resource(
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
     try:
-        content = download_geo_resource(request.url)
-        upload_remote_geo_resource(
-            dbnode, request.filename, content, overwrite=request.overwrite
-        )
+        with download_geo_resource(request.url) as chunks:
+            upload_remote_geo_resource(
+                dbnode, request.filename, chunks, overwrite=request.overwrite
+            )
         resource = geo_resource_crud.upsert_node_geo_resource_update(
             db,
             node_id=dbnode.id,
@@ -487,8 +484,8 @@ def refresh_node_geo_resource(
     if not resource:
         raise HTTPException(status_code=404, detail="Auto-update configuration not found")
     try:
-        content = download_geo_resource(resource.url)
-        upload_remote_geo_resource(dbnode, filename, content, overwrite=True)
+        with download_geo_resource(resource.url) as chunks:
+            upload_remote_geo_resource(dbnode, filename, chunks, overwrite=True)
         geo_resource_crud.update_node_geo_resource_result(
             db, resource, next_run_at=get_next_run_at(resource.cron)
         )
@@ -511,11 +508,11 @@ def download_node_geo_resource(
 ):
     filename = _validate_geo_resource_path(filename)
     try:
-        content = get_remote_node(dbnode).download_geo_resource(filename)
+        stream = get_remote_node(dbnode).download_geo_resource(filename)
     except Exception as exc:
         _raise_geo_resource_error(exc)
-    return Response(
-        content=content,
+    return StreamingResponse(
+        stream,
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
