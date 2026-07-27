@@ -707,6 +707,8 @@
   ,"staticLogs.active": "فعال"
   ,"staticLogs.download": "دانلود"
   ,"staticLogs.empty": "فایل رخدادی وجود ندارد"
+  ,"staticLogs.disabled": "رخدادهای ثابت غیرفعال هستند"
+  ,"staticLogs.configure": "پیکربندی"
   ,"staticLogs.loadError": "بارگذاری رخدادهای ثابت ناموفق بود"
   ,"staticLogs.deleteTitle": "فایل رخداد حذف شود؟"
   ,"staticLogs.deleteDescription": "فایل {{filename}} برای همیشه از نود حذف می شود."

@@ -35,7 +35,7 @@ def normalize_xray_config_template(payload: Dict[str, Any], api_port: int) -> Di
         rule_tags.add(rule_tag)
 
     try:
-        XRayConfig(normalized, api_port=api_port)
+        XRayConfig(normalized, api_port=api_port, allow_empty_inbounds=True)
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

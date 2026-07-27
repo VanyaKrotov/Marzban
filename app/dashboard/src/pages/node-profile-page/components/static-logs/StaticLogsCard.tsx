@@ -1,5 +1,6 @@
 import {
   Download,
+  FileCog,
   FileText,
   FolderOpen,
   LoaderCircle,
@@ -28,9 +29,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { NodeType } from "types/Node";
 import { generateErrorMessage } from "utils/toastHandler";
 
+import { NodeLoggingSettingsDialog } from "../NodeLoggingSettingsDialog";
 import {
   downloadNodeStaticLog,
   type NodeStaticLogFile,
@@ -40,13 +50,16 @@ import {
 
 const logTypes = ["access", "error"] as const;
 
-export function StaticLogsCard({ nodeId }: { nodeId: number }) {
+export function StaticLogsCard({ node }: { node: NodeType & { id: number } }) {
   const { t, i18n } = useTranslation();
-  const query = useNodeStaticLogsQuery(nodeId);
-  const remove = useDeleteNodeStaticLogMutation(nodeId);
+  const staticLogsDisabled =
+    !node.access_log_enabled && !node.error_log_enabled;
+  const query = useNodeStaticLogsQuery(node.id, !staticLogsDisabled);
+  const remove = useDeleteNodeStaticLogMutation(node.id);
   const [pendingDelete, setPendingDelete] = useState<NodeStaticLogFile | null>(
     null,
   );
+  const [loggingSettingsOpen, setLoggingSettingsOpen] = useState(false);
   const files = query.data ?? [];
 
   const confirmDelete = () => {
@@ -78,7 +91,28 @@ export function StaticLogsCard({ nodeId }: { nodeId: number }) {
         <CardTitle>{t("staticLogs.title")}</CardTitle>
       </CardHeader>
       <CardContent>
-        {query.isLoading ? (
+        {staticLogsDisabled ? (
+          <Empty className="min-h-56 rounded-lg border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileCog />
+              </EmptyMedia>
+              <EmptyTitle className="text-sm">
+                {t("staticLogs.disabled")}
+              </EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLoggingSettingsOpen(true)}
+              >
+                <FileCog />
+                {t("staticLogs.configure")}
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : query.isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -143,7 +177,7 @@ export function StaticLogsCard({ nodeId }: { nodeId: number }) {
                                 aria-label={t("staticLogs.download")}
                                 onClick={() =>
                                   downloadNodeStaticLog(
-                                    nodeId,
+                                    node.id,
                                     file.type,
                                     file.filename,
                                   ).catch(generateErrorMessage)
@@ -210,6 +244,11 @@ export function StaticLogsCard({ nodeId }: { nodeId: number }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <NodeLoggingSettingsDialog
+        node={node}
+        open={loggingSettingsOpen}
+        onOpenChange={setLoggingSettingsOpen}
+      />
     </Card>
   );
 }

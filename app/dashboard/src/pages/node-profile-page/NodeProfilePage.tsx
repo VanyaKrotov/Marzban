@@ -274,7 +274,7 @@ export function NodeProfilePage() {
           <TabsTrigger value="runtime">{t("staticLogs.runtime")}</TabsTrigger>
         </TabsList>
         <TabsContent value="static">
-          <StaticLogsCard nodeId={profileNode.id} />
+          <StaticLogsCard node={profileNode} />
         </TabsContent>
         <TabsContent value="runtime">
           <RuntimeLogsCard nodeId={profileNode.id} />

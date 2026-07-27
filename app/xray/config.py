@@ -229,7 +229,8 @@ class XRayConfig(dict):
     def __init__(self,
                  config: Union[dict, str, PosixPath] = {},
                  api_host: str = "127.0.0.1",
-                 api_port: int = 8080):
+                 api_port: int = 8080,
+                 allow_empty_inbounds: bool = False):
         if isinstance(config, str):
             try:
                 # considering string as json
@@ -250,7 +251,9 @@ class XRayConfig(dict):
         self.api_port = api_port
 
         super().__init__(config)
-        self._validate()
+        if allow_empty_inbounds and not self.get("inbounds"):
+            self["inbounds"] = []
+        self._validate(allow_empty_inbounds=allow_empty_inbounds)
 
         self.inbounds = []
         self.inbounds_by_protocol = {}
@@ -332,8 +335,8 @@ class XRayConfig(dict):
             if service not in services:
                 services.append(service)
 
-    def _validate(self):
-        if not self.get("inbounds"):
+    def _validate(self, allow_empty_inbounds: bool = False):
+        if not self.get("inbounds") and not allow_empty_inbounds:
             raise ValueError("config doesn't have inbounds")
 
         if not self.get("outbounds"):

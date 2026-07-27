@@ -706,6 +706,8 @@
   ,"staticLogs.active": "Active"
   ,"staticLogs.download": "Download"
   ,"staticLogs.empty": "No log files"
+  ,"staticLogs.disabled": "Static logs are disabled"
+  ,"staticLogs.configure": "Configure"
   ,"staticLogs.loadError": "Failed to load static logs"
   ,"staticLogs.deleteTitle": "Delete log file?"
   ,"staticLogs.deleteDescription": "The file {{filename}} will be permanently deleted from the node."

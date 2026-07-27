@@ -708,6 +708,8 @@
   ,"staticLogs.active": "Активный"
   ,"staticLogs.download": "Скачать"
   ,"staticLogs.empty": "Файлы логов отсутствуют"
+  ,"staticLogs.disabled": "Статические логи отключены"
+  ,"staticLogs.configure": "Настроить"
   ,"staticLogs.loadError": "Не удалось загрузить статические логи"
   ,"staticLogs.deleteTitle": "Удалить файл лога?"
   ,"staticLogs.deleteDescription": "Файл {{filename}} будет удален с ноды без возможности восстановления."

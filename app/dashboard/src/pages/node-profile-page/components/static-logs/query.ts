@@ -13,10 +13,11 @@ export type NodeStaticLogFile = {
 export const nodeStaticLogsQueryKey = (nodeId: number) =>
   ["node-static-logs", nodeId] as const;
 
-export function useNodeStaticLogsQuery(nodeId: number) {
+export function useNodeStaticLogsQuery(nodeId: number, enabled = true) {
   return useQuery({
     queryKey: nodeStaticLogsQueryKey(nodeId),
     queryFn: () => api.get<NodeStaticLogFile[]>(`/node/${nodeId}/static-logs`),
+    enabled,
     refetchOnWindowFocus: false,
   });
 }

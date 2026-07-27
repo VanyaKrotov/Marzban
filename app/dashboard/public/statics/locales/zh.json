@@ -706,6 +706,8 @@
   ,"staticLogs.active": "活动"
   ,"staticLogs.download": "下载"
   ,"staticLogs.empty": "没有日志文件"
+  ,"staticLogs.disabled": "静态日志已禁用"
+  ,"staticLogs.configure": "配置"
   ,"staticLogs.loadError": "无法加载静态日志"
   ,"staticLogs.deleteTitle": "删除日志文件？"
   ,"staticLogs.deleteDescription": "文件 {{filename}} 将从节点永久删除。"
