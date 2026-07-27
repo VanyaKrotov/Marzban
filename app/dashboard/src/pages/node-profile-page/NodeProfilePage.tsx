@@ -268,16 +268,16 @@ export function NodeProfilePage() {
         <NodeRoutingCard node={profileNode} />
         <NodeOutboundsCard node={profileNode} />
       </div>
-      <Tabs defaultValue="runtime">
+      <Tabs defaultValue="static">
         <TabsList>
-          <TabsTrigger value="runtime">{t("staticLogs.runtime")}</TabsTrigger>
           <TabsTrigger value="static">{t("staticLogs.static")}</TabsTrigger>
+          <TabsTrigger value="runtime">{t("staticLogs.runtime")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="runtime">
-          <RuntimeLogsCard nodeId={profileNode.id} />
-        </TabsContent>
         <TabsContent value="static">
           <StaticLogsCard nodeId={profileNode.id} />
+        </TabsContent>
+        <TabsContent value="runtime">
+          <RuntimeLogsCard nodeId={profileNode.id} />
         </TabsContent>
       </Tabs>
     </Page>
