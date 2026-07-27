@@ -108,26 +108,49 @@ def _normalize_routing_rule_tags(config: dict) -> dict:
 
 def upgrade() -> None:
     template = _load_template()
-
-    op.add_column(
-        "runtime_settings",
-        sa.Column("default_node_config", sa.JSON(), nullable=True),
-    )
-    op.add_column(
-        "nodes",
-        sa.Column("config_template", sa.JSON(), nullable=True),
-    )
-
     connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    runtime_settings_columns = {
+        column["name"] for column in inspector.get_columns("runtime_settings")
+    }
+    node_columns = {column["name"] for column in inspector.get_columns("nodes")}
+
+    if "default_node_config" not in runtime_settings_columns:
+        op.add_column(
+            "runtime_settings",
+            sa.Column("default_node_config", sa.JSON(), nullable=True),
+        )
+    if "config_template" not in node_columns:
+        op.add_column(
+            "nodes",
+            sa.Column("config_template", sa.JSON(), nullable=True),
+        )
+
     connection.execute(
-        runtime_settings_table.update().values(default_node_config=template)
+        runtime_settings_table.update()
+        .where(runtime_settings_table.c.default_node_config.is_(None))
+        .values(default_node_config=template)
     )
-    connection.execute(nodes_table.update().values(config_template=template))
+    connection.execute(
+        nodes_table.update()
+        .where(nodes_table.c.config_template.is_(None))
+        .values(config_template=template)
+    )
 
     with op.batch_alter_table("runtime_settings") as batch_op:
-        batch_op.alter_column("default_node_config", nullable=False)
+        batch_op.alter_column(
+            "default_node_config",
+            existing_type=sa.JSON(),
+            existing_nullable=True,
+            nullable=False,
+        )
     with op.batch_alter_table("nodes") as batch_op:
-        batch_op.alter_column("config_template", nullable=False)
+        batch_op.alter_column(
+            "config_template",
+            existing_type=sa.JSON(),
+            existing_nullable=True,
+            nullable=False,
+        )
 
 
 def downgrade() -> None:
