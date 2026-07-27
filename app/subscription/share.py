@@ -370,6 +370,13 @@ def process_inbounds_and_tags(
 
     with GetDB() as db:
         registry = get_enabled_inbound_registry(db)
+        from app.db.crud import subscription_balancers as balancer_crud
+
+        active_balancers = [
+            balancer
+            for balancer in balancer_crud.get_subscription_balancers(db)
+            if balancer.enabled
+        ]
         if hosts_by_inbound is None:
             host_source = build_subscription_hosts_by_inbound(host_crud.get_hosts_v2(db))
         else:
@@ -405,6 +412,7 @@ def process_inbounds_and_tags(
                 )
                 sequence += 1
 
+    endpoint_records = []
     for _, _, _, _, _, protocol, inbound, host, settings in sorted(targets):
         format_variables.update({"PROTOCOL": getattr(protocol, "name", protocol)})
         format_variables.update({"TRANSPORT": inbound["network"]})
@@ -417,7 +425,7 @@ def process_inbounds_and_tags(
             sni = random.choice(sni_list).replace("*", salt)
 
         if sids := inbound.get("sids"):
-            inbound["sid"] = random.choice(sids)
+            host_inbound["sid"] = random.choice(sids)
 
         req_host = ""
         req_host_list = host["host"] or inbound["host"]
@@ -456,12 +464,99 @@ def process_inbounds_and_tags(
             }
         )
 
-        conf.add(
-            remark=host["remark"].format_map(format_variables),
-            address=address.format_map(format_variables),
-            inbound=host_inbound,
-            settings=settings.model_dump()
+        endpoint_records.append(
+            {
+                "host_id": host["id"],
+                "remark": host["remark"].format_map(format_variables),
+                "address": address.format_map(format_variables),
+                "inbound": host_inbound,
+                "settings": settings.model_dump(),
+            }
         )
+
+    supports_balancers = isinstance(
+        conf, (V2rayJsonConfig, SingBoxConfiguration, ClashConfiguration, ClashMetaConfiguration)
+    )
+    profile_records = []
+    if supports_balancers:
+        for balancer in active_balancers:
+            selected_host_ids = set(balancer.host_ids)
+            records = [
+                record for record in endpoint_records if record["host_id"] in selected_host_ids
+            ]
+            if records:
+                profile_records.append((balancer, records))
+
+    def add_endpoint(configuration, record, **kwargs):
+        return configuration.add(
+            remark=record["remark"],
+            address=record["address"],
+            inbound=record["inbound"],
+            settings=record["settings"],
+            **kwargs,
+        )
+
+    if isinstance(conf, V2rayJsonConfig):
+        assigned_host_ids = set()
+        for balancer, records in profile_records:
+            added = conf.add_balancer_config(
+                balancer_id=balancer.id,
+                name=balancer.name,
+                strategy=balancer.strategy,
+                probe_url=balancer.probe_url,
+                probe_interval=balancer.probe_interval,
+                endpoints=records,
+            )
+            if added:
+                assigned_host_ids.update(record["host_id"] for record in records)
+        for record in endpoint_records:
+            if record["host_id"] not in assigned_host_ids:
+                add_endpoint(conf, record)
+    elif isinstance(conf, SingBoxConfiguration):
+        endpoint_tags = {}
+        for record in endpoint_records:
+            endpoint_tags[record["host_id"]] = add_endpoint(
+                conf,
+                record,
+                include_in_default=True,
+            )
+        assigned_tags = set()
+        for balancer, records in profile_records:
+            tags = [endpoint_tags[record["host_id"]] for record in records if endpoint_tags.get(record["host_id"])]
+            if tags:
+                conf.add_balancer(
+                    balancer.name, tags, balancer.probe_url, balancer.probe_interval
+                )
+                assigned_tags.update(tags)
+        conf.default_proxy_remarks = [
+            tag for tag in conf.default_proxy_remarks if tag not in assigned_tags
+        ]
+    elif isinstance(conf, ClashConfiguration):
+        endpoint_tags = {}
+        for record in endpoint_records:
+            endpoint_tags[record["host_id"]] = add_endpoint(
+                conf,
+                record,
+                include_in_default=True,
+            )
+        assigned_tags = set()
+        for balancer, records in profile_records:
+            tags = [endpoint_tags[record["host_id"]] for record in records if endpoint_tags.get(record["host_id"])]
+            if tags:
+                conf.add_balancer(
+                    balancer.name,
+                    tags,
+                    balancer.probe_url,
+                    balancer.probe_interval,
+                    balancer.strategy,
+                )
+                assigned_tags.update(tags)
+        conf.default_proxy_remarks = [
+            tag for tag in conf.default_proxy_remarks if tag not in assigned_tags
+        ]
+    else:
+        for record in endpoint_records:
+            add_endpoint(conf, record)
 
     return conf.render(reverse=reverse)
 

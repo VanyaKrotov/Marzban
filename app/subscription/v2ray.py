@@ -517,6 +517,7 @@ class V2rayJsonConfig(str):
         from app.utils.runtime_settings import get_subscription_template
 
         self.config = []
+        self.balancer_configs = []
         self.template = render_template_content(get_subscription_template("v2ray_subscription"))
         self.mux_template = render_template_content(get_subscription_template("mux"))
         user_agent_data = json.loads(render_template_content(get_subscription_template("user_agent")))
@@ -547,9 +548,10 @@ class V2rayJsonConfig(str):
         self.config.append(json_template)
 
     def render(self, reverse=False):
+        configs = list(self.config)
         if reverse:
-            self.config.reverse()
-        return json.dumps(self.config, indent=4, cls=UUIDEncoder)
+            configs.reverse()
+        return json.dumps(self.balancer_configs + configs, indent=4, cls=UUIDEncoder)
 
     @staticmethod
     def tls_config(sni=None, fp=None, alpn=None, ais: bool = False) -> dict:
@@ -1024,7 +1026,15 @@ class V2rayJsonConfig(str):
                                           tls_settings=tls_settings,
                                           sockopt=sockopt)
 
-    def add(self, remark: str, address: str, inbound: dict, settings: dict):
+    def add(
+        self,
+        remark: str,
+        address: str,
+        inbound: dict,
+        settings: dict,
+        outbound_tag: str = "proxy",
+        return_outbounds: bool = False,
+    ):
 
         net = inbound['network']
         protocol = inbound['protocol']
@@ -1047,7 +1057,7 @@ class V2rayJsonConfig(str):
                 path = get_grpc_gun(path)
 
         outbound = {
-            "tag": "proxy",
+            "tag": outbound_tag,
             "protocol": protocol
         }
 
@@ -1088,6 +1098,7 @@ class V2rayJsonConfig(str):
         dialer_proxy = ''
         extra_outbound = self.make_dialer_outbound(fragment, noise)
         if extra_outbound:
+            extra_outbound["tag"] = f"{outbound_tag}-dialer"
             dialer_proxy = extra_outbound['tag']
             outbounds.append(extra_outbound)
 
@@ -1127,4 +1138,62 @@ class V2rayJsonConfig(str):
             outbound["mux"] = mux_config
             outbound["mux"]["enabled"] = True
 
+        if return_outbounds:
+            return outbounds
         self.add_config(remarks=remark, outbounds=outbounds)
+
+    def add_balancer_config(
+        self,
+        balancer_id: int,
+        name: str,
+        strategy: str,
+        probe_url: str,
+        probe_interval: int,
+        endpoints: list[dict],
+    ) -> bool:
+        profile_outbounds = []
+        selector_prefix = f"mb-balancer-{balancer_id}-"
+
+        for endpoint in endpoints:
+            outbound_tag = f"{selector_prefix}host-{endpoint['host_id']}"
+            outbounds = self.add(
+                remark=endpoint["remark"],
+                address=endpoint["address"],
+                inbound=endpoint["inbound"],
+                settings=endpoint["settings"],
+                outbound_tag=outbound_tag,
+                return_outbounds=True,
+            )
+            if outbounds:
+                profile_outbounds.extend(outbounds)
+
+        if not profile_outbounds:
+            return False
+
+        config = json.loads(self.template)
+        config["remarks"] = name
+        config["outbounds"] = profile_outbounds + config.get("outbounds", [])
+        config["observatory"] = {
+            "subjectSelector": [selector_prefix],
+            "probeUrl": probe_url,
+            "probeInterval": f"{probe_interval}s",
+            "enableConcurrency": True,
+        }
+        routing = config.setdefault("routing", {})
+        routing.setdefault("rules", []).append(
+            {"type": "field", "balancerTag": f"mb-balancer-{balancer_id}"}
+        )
+        routing.setdefault("balancers", []).append(
+            {
+                "tag": f"mb-balancer-{balancer_id}",
+                "selector": [selector_prefix],
+                "strategy": {"type": {
+                    "least_ping": "leastPing",
+                    "least_load": "leastLoad",
+                    "random": "random",
+                    "round_robin": "roundRobin",
+                }[strategy]},
+            }
+        )
+        self.balancer_configs.append(config)
+        return True

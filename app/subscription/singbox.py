@@ -15,6 +15,8 @@ class SingBoxConfiguration(str):
         from app.utils.runtime_settings import get_subscription_template
 
         self.proxy_remarks = []
+        self.default_proxy_remarks = []
+        self.managed_balancer_tags = set()
         self.config = json.loads(render_template_content(get_subscription_template("singbox_subscription")))
         self.mux_template = render_template_content(get_subscription_template("mux"))
         user_agent_data = json.loads(render_template_content(get_subscription_template("user_agent")))
@@ -45,19 +47,24 @@ class SingBoxConfiguration(str):
         self.config["outbounds"].append(outbound_data)
 
     def render(self, reverse=False):
-        urltest_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2"]
-        urltest_tags = [outbound["tag"]
-                        for outbound in self.config["outbounds"] if outbound["type"] in urltest_types]
-        selector_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2", "urltest"]
-        selector_tags = [outbound["tag"]
-                         for outbound in self.config["outbounds"] if outbound["type"] in selector_types]
+        urltest_tags = list(self.default_proxy_remarks)
+        selector_tags = list(self.default_proxy_remarks)
+        selector_tags.extend(
+            outbound["tag"]
+            for outbound in self.config["outbounds"]
+            if outbound.get("type") == "urltest"
+        )
 
         for outbound in self.config["outbounds"]:
-            if outbound.get("type") == "urltest":
+            if (
+                outbound.get("type") == "urltest"
+                and outbound["tag"] not in self.managed_balancer_tags
+                and outbound.get("outbounds") is None
+            ):
                 outbound["outbounds"] = urltest_tags
 
         for outbound in self.config["outbounds"]:
-            if outbound.get("type") == "selector":
+            if outbound.get("type") == "selector" and outbound.get("outbounds") is None:
                 outbound["outbounds"] = selector_tags
 
         if reverse:
@@ -279,14 +286,21 @@ class SingBoxConfiguration(str):
 
         return config
 
-    def add(self, remark: str, address: str, inbound: dict, settings: dict):
+    def add(
+        self,
+        remark: str,
+        address: str,
+        inbound: dict,
+        settings: dict,
+        include_in_default: bool = True,
+    ):
 
         net = inbound["network"]
         path = inbound["path"]
 
         # not supported by sing-box
         if net in ("kcp", "splithttp", "xhttp") or (net == "quic" and inbound["header_type"] != "none"):
-            return
+            return None
 
         if net in ("grpc", "gun"):
             path = get_grpc_gun(path)
@@ -311,7 +325,9 @@ class SingBoxConfiguration(str):
                 ais=inbound.get("ais", ""),
             )
             self.add_outbound(outbound)
-            return
+            if include_in_default:
+                self.default_proxy_remarks.append(remark)
+            return remark
 
         outbound = self.make_outbound(
             remark=remark,
@@ -347,3 +363,20 @@ class SingBoxConfiguration(str):
             outbound['method'] = settings['method']
 
         self.add_outbound(outbound)
+        if include_in_default:
+            self.default_proxy_remarks.append(remark)
+        return remark
+
+    def add_balancer(
+        self, name: str, endpoint_tags: list[str], probe_url: str, probe_interval: int
+    ) -> None:
+        self.add_outbound(
+            {
+                "type": "urltest",
+                "tag": name,
+                "outbounds": endpoint_tags,
+                "url": probe_url,
+                "interval": f"{probe_interval}s",
+            }
+        )
+        self.managed_balancer_tags.add(name)

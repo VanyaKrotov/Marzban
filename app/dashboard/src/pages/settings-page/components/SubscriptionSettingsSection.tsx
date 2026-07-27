@@ -49,6 +49,7 @@ import {
   TextareaInput,
   TextInput,
 } from "./form-controls";
+import { SubscriptionBalancersDialog } from "./SubscriptionBalancersDialog";
 
 export function SubscriptionSettingsSection({
   settings,
@@ -59,6 +60,7 @@ export function SubscriptionSettingsSection({
   const updateSettings = useUpdateRuntimeSettingsMutation();
   const [customJsonDialogOpen, setCustomJsonDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [balancersDialogOpen, setBalancersDialogOpen] = useState(false);
   const form = useForm<SubscriptionSettingsForm>({
     resolver: zodResolver(subscriptionSettingsFormSchema),
     mode: "onChange",
@@ -155,6 +157,19 @@ export function SubscriptionSettingsSection({
                     {t("settingsPage.change")}
                   </Button>
                 </SettingsActionItem>
+                <SettingsActionItem
+                  title={t("settingsPage.balancers.title")}
+                  description={t("settingsPage.balancers.description")}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBalancersDialogOpen(true)}
+                  >
+                    {t("settingsPage.change")}
+                  </Button>
+                </SettingsActionItem>
               </div>
             </Section>
           </CardContent>
@@ -170,6 +185,10 @@ export function SubscriptionSettingsSection({
         open={statusDialogOpen}
         onOpenChange={setStatusDialogOpen}
         settings={settings}
+      />
+      <SubscriptionBalancersDialog
+        open={balancersDialogOpen}
+        onOpenChange={setBalancersDialogOpen}
       />
     </>
   );

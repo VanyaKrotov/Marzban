@@ -4,11 +4,19 @@ import tempfile
 
 from fastapi import Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
+from sqlalchemy.exc import IntegrityError
 from starlette.background import BackgroundTask
 
 from app.db import Session, get_db
 from app.models.admin import Admin
-from app.models.settings import RuntimeSettingsModify, SubscriptionTemplateModify
+from app.db.crud import subscription_balancers as balancer_crud
+from app.models.settings import (
+    RuntimeSettingsModify,
+    SubscriptionBalancerCreate,
+    SubscriptionBalancerModify,
+    SubscriptionBalancerReorder,
+    SubscriptionTemplateModify,
+)
 from app.utils.backups import (
     create_full_backup_archive,
     database_backup_filename,
@@ -65,6 +73,67 @@ def modify_settings_subscription_template(
         return update_subscription_template(db, template_key, modified_template.content)
     except KeyError:
         raise HTTPException(status_code=404, detail="Template not found")
+
+
+def get_subscription_balancers(
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    return balancer_crud.get_subscription_balancers(db)
+
+
+def create_subscription_balancer(
+    balancer: SubscriptionBalancerCreate,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        return balancer_crud.create_subscription_balancer(db, balancer)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Balancer name already exists") from exc
+
+
+def update_subscription_balancer(
+    balancer_id: int,
+    balancer: SubscriptionBalancerModify,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    db_balancer = balancer_crud.get_subscription_balancer(db, balancer_id)
+    if not db_balancer:
+        raise HTTPException(status_code=404, detail="Subscription balancer not found")
+    try:
+        return balancer_crud.update_subscription_balancer(db, db_balancer, balancer)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Balancer name already exists") from exc
+
+
+def delete_subscription_balancer(
+    balancer_id: int,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    db_balancer = balancer_crud.get_subscription_balancer(db, balancer_id)
+    if not db_balancer:
+        raise HTTPException(status_code=404, detail="Subscription balancer not found")
+    balancer_crud.delete_subscription_balancer(db, db_balancer)
+
+
+def reorder_subscription_balancers(
+    payload: SubscriptionBalancerReorder,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        return balancer_crud.reorder_subscription_balancers(db, payload.balancer_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def download_database_backup(admin: Admin = Depends(Admin.check_sudo_admin)):

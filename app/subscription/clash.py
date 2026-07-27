@@ -22,6 +22,7 @@ class ClashConfiguration(object):
             'rules': []
         }
         self.proxy_remarks = []
+        self.default_proxy_remarks = []
         self.mux_template = render_template_content(get_subscription_template("mux"))
         user_agent_data = json.loads(render_template_content(get_subscription_template("user_agent")))
 
@@ -51,7 +52,7 @@ class ClashConfiguration(object):
             yaml.load(
                 render_template_content(
                     get_subscription_template("clash_subscription"),
-                    {"conf": self.data, "proxy_remarks": self.proxy_remarks}
+                    {"conf": self.data, "proxy_remarks": self.default_proxy_remarks}
                 ),
                 Loader=yaml.SafeLoader
 
@@ -254,10 +255,17 @@ class ClashConfiguration(object):
 
         return node
 
-    def add(self, remark: str, address: str, inbound: dict, settings: dict):
+    def add(
+        self,
+        remark: str,
+        address: str,
+        inbound: dict,
+        settings: dict,
+        include_in_default: bool = True,
+    ):
         # not supported by clash
         if inbound['network'] in ("kcp", "splithttp", "xhttp"):
-            return
+            return None
 
         proxy_remark = self._remark_validation(remark)
 
@@ -293,10 +301,33 @@ class ClashConfiguration(object):
             node['cipher'] = settings['method']
 
         else:
-            return
+            return None
 
         self.data['proxies'].append(node)
         self.proxy_remarks.append(proxy_remark)
+        if include_in_default:
+            self.default_proxy_remarks.append(proxy_remark)
+        return proxy_remark
+
+    def add_balancer(
+        self,
+        name: str,
+        endpoint_tags: list[str],
+        probe_url: str,
+        probe_interval: int,
+        strategy: str,
+    ) -> None:
+        group = {
+            "name": name,
+            "proxies": endpoint_tags,
+            "url": probe_url,
+            "interval": probe_interval,
+        }
+        if strategy == "round_robin":
+            group.update({"type": "load-balance", "strategy": "round-robin"})
+        else:
+            group["type"] = "url-test"
+        self.data["proxy-groups"].append(group)
 
 
 class ClashMetaConfiguration(ClashConfiguration):
@@ -345,10 +376,17 @@ class ClashMetaConfiguration(ClashConfiguration):
 
         return node
 
-    def add(self, remark: str, address: str, inbound: dict, settings: dict):
+    def add(
+        self,
+        remark: str,
+        address: str,
+        inbound: dict,
+        settings: dict,
+        include_in_default: bool = True,
+    ):
         # not supported by clash-meta
         if inbound['network'] in ("kcp", "splithttp", "xhttp") or (inbound['network'] == "quic" and inbound["header_type"] != "none"):
-            return
+            return None
 
         proxy_remark = self._remark_validation(remark)
 
@@ -369,7 +407,9 @@ class ClashMetaConfiguration(ClashConfiguration):
                 node["skip-cert-verify"] = inbound["ais"]
             self.data["proxies"].append(node)
             self.proxy_remarks.append(proxy_remark)
-            return
+            if include_in_default:
+                self.default_proxy_remarks.append(proxy_remark)
+            return proxy_remark
 
         node = self.make_node(
             name=remark,
@@ -412,7 +452,10 @@ class ClashMetaConfiguration(ClashConfiguration):
             node['cipher'] = settings['method']
 
         else:
-            return
+            return None
 
         self.data['proxies'].append(node)
         self.proxy_remarks.append(proxy_remark)
+        if include_in_default:
+            self.default_proxy_remarks.append(proxy_remark)
+        return proxy_remark
