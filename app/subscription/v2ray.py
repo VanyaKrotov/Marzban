@@ -1181,7 +1181,11 @@ class V2rayJsonConfig(str):
         }
         routing = config.setdefault("routing", {})
         routing.setdefault("rules", []).append(
-            {"type": "field", "balancerTag": f"mb-balancer-{balancer_id}"}
+            {
+                "type": "field",
+                "network": "tcp,udp",
+                "balancerTag": f"mb-balancer-{balancer_id}",
+            }
         )
         routing.setdefault("balancers", []).append(
             {

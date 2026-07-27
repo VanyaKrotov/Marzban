@@ -1,3 +1,4 @@
+import json
 from unittest import TestCase
 
 from sqlalchemy import create_engine, func
@@ -15,6 +16,7 @@ from app.models.settings import (
     SubscriptionBalancerModify,
     SubscriptionBalancerResponse,
 )
+from app.subscription.v2ray import V2rayJsonConfig
 
 
 class SubscriptionBalancerTests(TestCase):
@@ -160,3 +162,31 @@ class SubscriptionBalancerTests(TestCase):
         self.assertEqual([balancer.id for balancer in reordered], [second.id, first.id])
         with self.assertRaises(ValueError):
             balancer_crud.reorder_subscription_balancers(self.db, [first.id])
+
+    def test_v2ray_balancer_rule_matches_tcp_and_udp(self):
+        config = str.__new__(V2rayJsonConfig, "")
+        config.template = json.dumps({"outbounds": [], "routing": {"rules": []}})
+        config.balancer_configs = []
+        config.add = lambda **kwargs: [{"tag": kwargs["outbound_tag"]}]
+
+        added = config.add_balancer_config(
+            balancer_id=1,
+            name="Automatic",
+            strategy="least_ping",
+            probe_url="https://www.gstatic.com/generate_204",
+            probe_interval=300,
+            endpoints=[
+                {
+                    "host_id": 1,
+                    "remark": "First",
+                    "address": "first.example.com",
+                    "inbound": {},
+                    "settings": {},
+                }
+            ],
+        )
+
+        self.assertTrue(added)
+        rule = config.balancer_configs[0]["routing"]["rules"][-1]
+        self.assertEqual(rule["network"], "tcp,udp")
+        self.assertEqual(rule["balancerTag"], "mb-balancer-1")

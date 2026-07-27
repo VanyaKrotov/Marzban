@@ -42,13 +42,11 @@ def get_inbound_or_raise(db: Session, inbound_tag: str) -> ProxyInbound:
     return inbound
 
 
-def get_inbounds(db: Session) -> List[ProxyInbound]:
-    return (
-        db.query(ProxyInbound)
-        .options(joinedload(ProxyInbound.nodes))
-        .order_by(ProxyInbound.tag)
-        .all()
-    )
+def get_inbounds(db: Session, node_id: int | None = None) -> List[ProxyInbound]:
+    query = db.query(ProxyInbound).options(joinedload(ProxyInbound.nodes))
+    if node_id is not None:
+        query = query.join(ProxyInbound.nodes).filter(Node.id == node_id)
+    return query.order_by(ProxyInbound.tag).all()
 
 
 def get_inbound(db: Session, inbound_tag: str) -> Optional[ProxyInbound]:

@@ -214,10 +214,14 @@ def get_inbounds(
 
 
 def get_inbound_configs(
+    node_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
-    return [_inbound_response(inbound) for inbound in inbound_crud.get_inbounds(db)]
+    return [
+        _inbound_response(inbound)
+        for inbound in inbound_crud.get_inbounds(db, node_id=node_id)
+    ]
 
 
 def create_inbound_config(
@@ -299,10 +303,14 @@ def delete_inbound_config(
 
 
 def get_outbound_configs(
+    node_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
-    return [_outbound_response(outbound) for outbound in outbound_crud.get_outbounds(db)]
+    return [
+        _outbound_response(outbound)
+        for outbound in outbound_crud.get_outbounds(db, node_id=node_id)
+    ]
 
 
 def create_outbound_config(

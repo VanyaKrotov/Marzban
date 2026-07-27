@@ -22,10 +22,13 @@ export type InboundUpdate = Partial<
 
 export const inboundConfigsQueryKey = ["inbound-configs"] as const;
 
-export function useInboundConfigsQuery() {
+export function useInboundConfigsQuery(nodeId: number) {
   return useQuery({
-    queryKey: inboundConfigsQueryKey,
-    queryFn: () => api.get<InboundConfig[]>("/inbounds/configs"),
+    queryKey: [...inboundConfigsQueryKey, nodeId],
+    queryFn: () =>
+      api.get<InboundConfig[]>("/inbounds/configs", {
+        params: { node_id: nodeId },
+      }),
   });
 }
 

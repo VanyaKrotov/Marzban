@@ -28,24 +28,36 @@ export const routingRulesQueryKey = ["routing-rules"] as const;
 const routingInboundsQueryKey = ["node-profile-routing-inbounds"] as const;
 const routingOutboundsQueryKey = ["node-profile-routing-outbounds"] as const;
 
-export function useRoutingRulesQuery() {
+export function useRoutingRulesQuery(nodeId?: number) {
   return useQuery({
-    queryKey: routingRulesQueryKey,
-    queryFn: () => api.get<RoutingRule[]>("/routing/rules"),
+    queryKey:
+      nodeId === undefined
+        ? routingRulesQueryKey
+        : [...routingRulesQueryKey, nodeId],
+    queryFn: () =>
+      api.get<RoutingRule[]>("/routing/rules", {
+        params: nodeId === undefined ? undefined : { node_id: nodeId },
+      }),
   });
 }
 
-export function useRoutingInboundsQuery() {
+export function useRoutingInboundsQuery(nodeId: number) {
   return useQuery({
-    queryKey: routingInboundsQueryKey,
-    queryFn: () => api.get<TaggedConfig[]>("/inbounds/configs"),
+    queryKey: [...routingInboundsQueryKey, nodeId],
+    queryFn: () =>
+      api.get<TaggedConfig[]>("/inbounds/configs", {
+        params: { node_id: nodeId },
+      }),
   });
 }
 
-export function useRoutingOutboundsQuery() {
+export function useRoutingOutboundsQuery(nodeId: number) {
   return useQuery({
-    queryKey: routingOutboundsQueryKey,
-    queryFn: () => api.get<TaggedConfig[]>("/outbounds/configs"),
+    queryKey: [...routingOutboundsQueryKey, nodeId],
+    queryFn: () =>
+      api.get<TaggedConfig[]>("/outbounds/configs", {
+        params: { node_id: nodeId },
+      }),
   });
 }
 

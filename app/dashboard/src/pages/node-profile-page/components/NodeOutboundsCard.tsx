@@ -30,7 +30,7 @@ export function NodeOutboundsCard({
   node: NodeType & { id: number };
 }) {
   const { t } = useTranslation();
-  const query = useOutboundConfigsQuery();
+  const query = useOutboundConfigsQuery(node.id);
   const create = useCreateOutboundMutation();
   const update = useUpdateOutboundMutation();
   const remove = useDeleteOutboundMutation();

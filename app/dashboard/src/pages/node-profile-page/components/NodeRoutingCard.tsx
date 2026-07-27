@@ -73,7 +73,8 @@ import { cn } from "@/lib/utils";
 
 export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
   const { t } = useTranslation();
-  const query = useRoutingRulesQuery();
+  const query = useRoutingRulesQuery(node.id);
+  const allRulesQuery = useRoutingRulesQuery();
   const create = useCreateRoutingRuleMutation();
   const update = useUpdateRoutingRuleMutation();
   const reorder = useReorderRoutingRulesMutation();
@@ -86,9 +87,9 @@ export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
     id: number;
     position: "before" | "after";
   } | null>(null);
-  const allRules = query.data ?? [];
+  const allRules = allRulesQuery.data ?? [];
   const rules = readonlyFirst(
-    allRules.filter((rule) => isVisibleOnNode(rule, node.id)),
+    (query.data ?? []).filter((rule) => isVisibleOnNode(rule, node.id)),
   ).map((rule) => ({
     ...rule,
     enabled: isEnabledOnNode(rule, node.id),
@@ -125,7 +126,11 @@ export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
   };
 
   const dropRule = (targetId: number) => {
-    if (draggedId == null || dropTarget?.id !== targetId) {
+    if (
+      draggedId == null ||
+      dropTarget?.id !== targetId ||
+      !allRulesQuery.data
+    ) {
       resetDrag();
       return;
     }
@@ -226,7 +231,9 @@ export function NodeRoutingCard({ node }: { node: NodeType & { id: number } }) {
                 {rules.map((rule) => (
                   <TableRow
                     key={rule.id}
-                    draggable={!pending && !rule.readonly}
+                    draggable={
+                      !pending && !allRulesQuery.isLoading && !rule.readonly
+                    }
                     className={cn(
                       {
                         ["cursor-default hover:bg-transparent"]: rule.readonly,

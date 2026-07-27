@@ -5,7 +5,7 @@ export type NodeAssignedConfig = {
 };
 
 export function isVisibleOnNode(config: NodeAssignedConfig, nodeId: number) {
-  return config.readonly || config.node_ids.includes(nodeId);
+  return config.node_ids.includes(nodeId);
 }
 
 export function isEnabledOnNode(config: NodeAssignedConfig, nodeId: number) {

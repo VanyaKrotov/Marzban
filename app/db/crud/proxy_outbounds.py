@@ -8,13 +8,11 @@ from app.db.models.nodes import Node
 from app.db.models.proxies import ProxyOutbound
 from app.models.proxy import OutboundCreate, OutboundModify
 
-def get_outbounds(db: Session) -> List[ProxyOutbound]:
-    return (
-        db.query(ProxyOutbound)
-        .options(joinedload(ProxyOutbound.nodes))
-        .order_by(ProxyOutbound.tag)
-        .all()
-    )
+def get_outbounds(db: Session, node_id: int | None = None) -> List[ProxyOutbound]:
+    query = db.query(ProxyOutbound).options(joinedload(ProxyOutbound.nodes))
+    if node_id is not None:
+        query = query.join(ProxyOutbound.nodes).filter(Node.id == node_id)
+    return query.order_by(ProxyOutbound.tag).all()
 
 
 def get_outbound(db: Session, outbound_tag: str) -> Optional[ProxyOutbound]:

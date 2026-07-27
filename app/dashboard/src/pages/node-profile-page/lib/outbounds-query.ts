@@ -20,10 +20,13 @@ export type OutboundUpdate = Partial<
 
 export const outboundConfigsQueryKey = ["outbound-configs"] as const;
 
-export function useOutboundConfigsQuery() {
+export function useOutboundConfigsQuery(nodeId: number) {
   return useQuery({
-    queryKey: outboundConfigsQueryKey,
-    queryFn: () => api.get<OutboundConfig[]>("/outbounds/configs"),
+    queryKey: [...outboundConfigsQueryKey, nodeId],
+    queryFn: () =>
+      api.get<OutboundConfig[]>("/outbounds/configs", {
+        params: { node_id: nodeId },
+      }),
   });
 }
 

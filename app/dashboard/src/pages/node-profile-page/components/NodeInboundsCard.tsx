@@ -33,7 +33,7 @@ export function NodeInboundsCard({
   node: NodeType & { id: number };
 }) {
   const { t } = useTranslation();
-  const query = useInboundConfigsQuery();
+  const query = useInboundConfigsQuery(node.id);
   const create = useCreateInboundMutation();
   const update = useUpdateInboundMutation();
   const remove = useDeleteInboundMutation();

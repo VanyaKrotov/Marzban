@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 
 from app.db import Session, get_db
 from app.models.admin import Admin
@@ -34,10 +34,14 @@ def _validate_content(content: dict) -> dict:
 
 
 def get_routing_rules(
+    node_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
-    return [_response(rule) for rule in routing_crud.get_routing_rules(db)]
+    return [
+        _response(rule)
+        for rule in routing_crud.get_routing_rules(db, node_id=node_id)
+    ]
 
 
 def create_routing_rule(

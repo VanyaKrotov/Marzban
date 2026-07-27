@@ -21,13 +21,11 @@ from config import XRAY_EXCLUDE_INBOUND_TAGS
 
 from app.db.crud import proxy_inbounds as inbound_crud
 
-def get_routing_rules(db: Session) -> List[RoutingRule]:
-    return (
-        db.query(RoutingRule)
-        .options(joinedload(RoutingRule.nodes))
-        .order_by(RoutingRule.position, RoutingRule.id)
-        .all()
-    )
+def get_routing_rules(db: Session, node_id: int | None = None) -> List[RoutingRule]:
+    query = db.query(RoutingRule).options(joinedload(RoutingRule.nodes))
+    if node_id is not None:
+        query = query.join(RoutingRule.nodes).filter(Node.id == node_id)
+    return query.order_by(RoutingRule.position, RoutingRule.id).all()
 
 
 def get_routing_rule(db: Session, rule_id: int) -> Optional[RoutingRule]:

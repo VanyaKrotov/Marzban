@@ -102,8 +102,8 @@ function RoutingRuleDialogContent({
   | "onSubmit"
 >) {
   const { t } = useTranslation();
-  const inboundsQuery = useRoutingInboundsQuery();
-  const outboundsQuery = useRoutingOutboundsQuery();
+  const inboundsQuery = useRoutingInboundsQuery(nodeId);
+  const outboundsQuery = useRoutingOutboundsQuery(nodeId);
   const geoResourcesQuery = useNodeGeoResourcesQuery(nodeId);
   const inboundTags = useMemo(
     () =>
