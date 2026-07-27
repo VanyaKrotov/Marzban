@@ -29,6 +29,10 @@ class Node(BaseModel):
     port: int = 62050
     api_port: int = 62051
     usage_coefficient: float = Field(gt=0, default=1.0)
+    access_log_enabled: bool = False
+    error_log_enabled: bool = False
+    log_retention_days: int = Field(default=14, ge=1)
+    log_storage_limit_bytes: Optional[int] = Field(default=None, ge=1)
 
 
 class NodeCreate(Node):
@@ -52,6 +56,10 @@ class NodeModify(Node):
     api_port: Optional[int] = Field(None, nullable=True)
     status: Optional[NodeStatus] = Field(None, nullable=True)
     usage_coefficient: Optional[float] = Field(None, nullable=True)
+    access_log_enabled: Optional[bool] = Field(None, nullable=True)
+    error_log_enabled: Optional[bool] = Field(None, nullable=True)
+    log_retention_days: Optional[int] = Field(None, ge=1, nullable=True)
+    log_storage_limit_bytes: Optional[int] = Field(None, ge=1, nullable=True)
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "name": "DE node",
@@ -158,6 +166,25 @@ def validate_geo_resource_filename(value: str) -> str:
     ):
         raise ValueError("Filename must be a plain .dat filename")
     return value
+
+
+def validate_static_log_filename(value: str) -> str:
+    value = value.strip()
+    if not re.fullmatch(r"(?:0[1-9]|[12]\d|3[01])-(?:0[1-9]|1[0-2])-\d{4}\.txt", value):
+        raise ValueError("Filename must use DD-MM-YYYY.txt format")
+    try:
+        datetime.strptime(value[:-4], "%d-%m-%Y")
+    except ValueError as exc:
+        raise ValueError("Filename must use a valid date") from exc
+    return value
+
+
+class NodeStaticLogFileResponse(BaseModel):
+    type: str
+    filename: str
+    size: int
+    modified_at: datetime
+    active: bool
 
 
 class NodeGeoResourceRemoteCreate(BaseModel):

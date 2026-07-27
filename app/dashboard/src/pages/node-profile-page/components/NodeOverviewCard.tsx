@@ -1,10 +1,11 @@
-import { FileJson, Pencil, RefreshCw } from "lucide-react";
+import { FileCog, FileJson, Pencil, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Card,
   CardAction,
@@ -14,6 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCopy } from "@/hooks/use-copy";
 import { NodeStatusBadge } from "@/pages/nodes-page/components/NodeStatusBadge";
 import { useReconnectNodeMutation } from "@/pages/nodes-page/lib/query";
@@ -23,10 +29,12 @@ import { generateErrorMessage } from "utils/toastHandler";
 import { NodeErrorDialog } from "./NodeErrorDialog";
 import { NodeConfigTemplateDialog } from "./NodeConfigTemplateDialog";
 import { NodeSettingsDialog } from "./NodeSettingsDialog";
+import { NodeLoggingSettingsDialog } from "./NodeLoggingSettingsDialog";
 
 export function NodeOverviewCard({ node }: { node: NodeType }) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [loggingSettingsOpen, setLoggingSettingsOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
   const reconnect = useReconnectNodeMutation();
@@ -63,15 +71,27 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
               <FileJson />
               {t("nodeProfile.editConfigTemplate")}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Pencil />
-              {t("nodeProfile.editSettings")}
-            </Button>
+            <ButtonGroup>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Pencil />
+                {t("nodeProfile.editSettings")}
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                aria-label={t("nodeLoggingSettings.title")}
+                title={t("nodeLoggingSettings.title")}
+                onClick={() => setLoggingSettingsOpen(true)}
+              >
+                <FileCog />
+              </Button>
+            </ButtonGroup>
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col gap-4">
@@ -142,6 +162,11 @@ export function NodeOverviewCard({ node }: { node: NodeType }) {
         node={node}
         open={configOpen}
         onOpenChange={setConfigOpen}
+      />
+      <NodeLoggingSettingsDialog
+        node={node}
+        open={loggingSettingsOpen}
+        onOpenChange={setLoggingSettingsOpen}
       />
       <NodeErrorDialog
         node={node}

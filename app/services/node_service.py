@@ -13,6 +13,7 @@ from fastapi import (
     UploadFile,
     WebSocket,
 )
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect
 
@@ -33,6 +34,7 @@ from app.models.node import (
     NodeModify,
     NodeResponse,
     NodeSettings,
+    validate_static_log_filename,
     NodeStatus,
     validate_geo_resource_filename,
 )
@@ -281,6 +283,67 @@ def _validate_geo_resource_path(filename: str) -> str:
         return validate_geo_resource_filename(filename)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+def _validate_static_log_path(log_type: str, filename: str) -> tuple[str, str]:
+    if log_type not in {"access", "error"}:
+        raise HTTPException(status_code=422, detail="Unknown log type")
+    try:
+        return log_type, validate_static_log_filename(filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _raise_static_log_error(exc: Exception) -> None:
+    if isinstance(exc, NodeAPIError):
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=f"Node static log request failed: {exc.detail}",
+        ) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    raise HTTPException(status_code=502, detail=f"Node static log request failed: {exc}") from exc
+
+
+def get_node_static_logs(
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    try:
+        return get_remote_node(dbnode).list_static_logs()
+    except Exception as exc:
+        _raise_static_log_error(exc)
+
+
+def download_node_static_log(
+    log_type: str,
+    filename: str,
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    log_type, filename = _validate_static_log_path(log_type, filename)
+    try:
+        stream = get_remote_node(dbnode).download_static_log(log_type, filename)
+    except Exception as exc:
+        _raise_static_log_error(exc)
+    return StreamingResponse(
+        stream,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def delete_node_static_log(
+    log_type: str,
+    filename: str,
+    dbnode: NodeResponse = Depends(get_node),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    log_type, filename = _validate_static_log_path(log_type, filename)
+    try:
+        return get_remote_node(dbnode).delete_static_log(log_type, filename)
+    except Exception as exc:
+        _raise_static_log_error(exc)
 
 
 def get_node_geo_resources(

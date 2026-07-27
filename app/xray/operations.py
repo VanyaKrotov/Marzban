@@ -12,7 +12,7 @@ from app.models.user import UserResponse
 from app.utils.concurrency import threaded_function
 from app.xray.node import XRayNode
 from app.utils.node_restart_state import clear_node_pending_restart
-from app.xray.config import load_node_xray_config
+from app.xray.config import get_node_log_settings, load_node_xray_config
 from xray_api import XRay as XRayAPI
 from xray_api.types.account import Account, XTLSFlows
 from app.db.crud import proxy_inbounds as inbound_crud
@@ -349,7 +349,7 @@ def connect_node(node_id, config=None):
 
         config = config or load_node_xray_config(dbnode).include_db_users()
 
-        node.start(config)
+        node.start(config, get_node_log_settings(dbnode))
         version = node.get_version()
         _change_node_status(node_id, NodeStatus.connected, version=version)
         clear_node_pending_restart(node_id)
@@ -387,7 +387,7 @@ def restart_node(node_id, config=None):
 
         config = config or load_node_xray_config(dbnode).include_db_users()
 
-        node.restart(config)
+        node.restart(config, get_node_log_settings(dbnode))
         version = node.get_version()
         _change_node_status(node_id, NodeStatus.connected, version=version)
         clear_node_pending_restart(node_id)

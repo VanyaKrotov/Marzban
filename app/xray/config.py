@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import PosixPath
 from typing import Any, Union
 
@@ -193,12 +194,35 @@ def load_node_xray_config(
     api_host: str = "127.0.0.1",
     api_port: int | None = None,
 ) -> "XRayConfig":
+    payload = deepcopy(node.config_template or default_node_config())
+    log_config = payload.get("log")
+    if not isinstance(log_config, dict):
+        log_config = {}
+        payload["log"] = log_config
+    filename = datetime.now(timezone.utc).strftime("%d-%m-%Y.txt")
+    for log_type, enabled in (
+        ("access", node.access_log_enabled),
+        ("error", node.error_log_enabled),
+    ):
+        if enabled:
+            log_config[log_type] = f"/logs/{log_type}/{filename}"
+        else:
+            log_config.pop(log_type, None)
     return load_xray_config(
-        node.config_template or default_node_config(),
+        payload,
         api_host=api_host,
         api_port=node.api_port if api_port is None else api_port,
         node_id=node.id,
     )
+
+
+def get_node_log_settings(node: Node) -> dict:
+    return {
+        "access_log_enabled": node.access_log_enabled,
+        "error_log_enabled": node.error_log_enabled,
+        "log_retention_days": node.log_retention_days,
+        "log_storage_limit_bytes": node.log_storage_limit_bytes,
+    }
 
 
 class XRayConfig(dict):

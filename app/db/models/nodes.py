@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Integer, JSON, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Float, Integer, JSON, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 
@@ -52,3 +52,7 @@ class Node(Base):
         cascade="all, delete-orphan",
     )
     usage_coefficient = Column(Float, nullable=False, server_default=text("1.0"), default=1)
+    access_log_enabled = Column(Boolean, nullable=False, server_default=text("0"), default=False)
+    error_log_enabled = Column(Boolean, nullable=False, server_default=text("0"), default=False)
+    log_retention_days = Column(Integer, nullable=False, server_default=text("14"), default=14)
+    log_storage_limit_bytes = Column(BigInteger, nullable=True)

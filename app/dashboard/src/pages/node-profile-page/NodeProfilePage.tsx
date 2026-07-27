@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RuntimeLogsCard } from "@/components/runtime-logs/RuntimeLogsCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyContent,
@@ -55,6 +56,7 @@ import { NodeInboundsCard } from "./components/NodeInboundsCard";
 import { NodeOutboundsCard } from "./components/NodeOutboundsCard";
 import { NodeOverviewCard } from "./components/NodeOverviewCard";
 import { NodeRoutingCard } from "./components/NodeRoutingCard";
+import { StaticLogsCard } from "./components/static-logs/StaticLogsCard";
 
 export function NodeProfilePage() {
   const { t } = useTranslation();
@@ -266,7 +268,18 @@ export function NodeProfilePage() {
         <NodeRoutingCard node={profileNode} />
         <NodeOutboundsCard node={profileNode} />
       </div>
-      <RuntimeLogsCard nodeId={profileNode.id} />
+      <Tabs defaultValue="runtime">
+        <TabsList>
+          <TabsTrigger value="runtime">{t("staticLogs.runtime")}</TabsTrigger>
+          <TabsTrigger value="static">{t("staticLogs.static")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="runtime">
+          <RuntimeLogsCard nodeId={profileNode.id} />
+        </TabsContent>
+        <TabsContent value="static">
+          <StaticLogsCard nodeId={profileNode.id} />
+        </TabsContent>
+      </Tabs>
     </Page>
   );
 }

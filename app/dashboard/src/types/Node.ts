@@ -23,6 +23,10 @@ export const NodeSchema = z.object({
   usage_coefficient: z
     .number()
     .or(z.string().transform((value) => parseFloat(value))),
+  access_log_enabled: z.boolean().optional(),
+  error_log_enabled: z.boolean().optional(),
+  log_retention_days: z.number().int().positive().optional(),
+  log_storage_limit_bytes: z.number().int().positive().nullable().optional(),
 });
 
 export type NodeType = z.infer<typeof NodeSchema>;
@@ -34,4 +38,8 @@ export const getNodeDefaultValues = (): NodeType => ({
   api_port: 62051,
   xray_version: "",
   usage_coefficient: 1,
+  access_log_enabled: false,
+  error_log_enabled: false,
+  log_retention_days: 14,
+  log_storage_limit_bytes: null,
 });

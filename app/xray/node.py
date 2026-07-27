@@ -147,7 +147,7 @@ class ReSTXRayNode:
         res = self.make_request("/", timeout=3)
         return res.get('core_version')
 
-    def start(self, config: XRayConfig):
+    def start(self, config: XRayConfig, log_settings: dict | None = None):
         if not self.connected:
             self.connect()
 
@@ -155,10 +155,12 @@ class ReSTXRayNode:
         json_config = config.to_json()
 
         try:
-            res = self.make_request("/start", timeout=10, config=json_config)
+            res = self.make_request(
+                "/start", timeout=10, config=json_config, log_settings=log_settings
+            )
         except NodeAPIError as exc:
             if exc.detail == 'Xray is started already':
-                return self.restart(config)
+                return self.restart(config, log_settings)
             else:
                 raise exc
 
@@ -186,14 +188,16 @@ class ReSTXRayNode:
         self._api = None
         self._started = False
 
-    def restart(self, config: XRayConfig):
+    def restart(self, config: XRayConfig, log_settings: dict | None = None):
         if not self.connected:
             self.connect()
 
         config = self._prepare_config(config)
         json_config = config.to_json()
 
-        res = self.make_request("/restart", timeout=10, config=json_config)
+        res = self.make_request(
+            "/restart", timeout=10, config=json_config, log_settings=log_settings
+        )
 
         self._started = True
 
@@ -268,6 +272,48 @@ class ReSTXRayNode:
             self.connect()
         return self.make_request(
             "/geo-resources/delete", timeout=30, filenames=filenames
+        )
+
+    def list_static_logs(self):
+        if not self.connected:
+            self.connect()
+        return self.make_request("/static-logs", timeout=15)
+
+    def download_static_log(self, log_type: str, filename: str):
+        if not self.connected:
+            self.connect()
+        try:
+            response = self.session.post(
+                self._rest_api_url + "/static-logs/download",
+                timeout=(5, 60),
+                stream=True,
+                json={
+                    "session_id": self._session_id,
+                    "log_type": log_type,
+                    "filename": filename,
+                },
+            )
+        except requests.RequestException as exc:
+            raise NodeAPIError(0, str(exc)) from exc
+        if response.status_code != 200:
+            try:
+                detail = response.json().get("detail", "Node request failed")
+            except ValueError:
+                detail = "Node request failed"
+            response.close()
+            raise NodeAPIError(response.status_code, detail)
+
+        def stream():
+            with response:
+                yield from response.iter_content(chunk_size=64 * 1024)
+
+        return stream()
+
+    def delete_static_log(self, log_type: str, filename: str):
+        if not self.connected:
+            self.connect()
+        return self.make_request(
+            "/static-logs/delete", timeout=15, log_type=log_type, filename=filename
         )
 
     def _bg_fetch_logs(self):
@@ -429,10 +475,10 @@ class RPyCXRayNode:
         # remote node, so the panel must not try to read and inline them here.
         return config
 
-    def start(self, config: XRayConfig):
+    def start(self, config: XRayConfig, log_settings: dict | None = None):
         config = self._prepare_config(config)
         json_config = config.to_json()
-        self.remote.start(json_config)
+        self.remote.start(json_config, log_settings)
         self.started = True
 
         # connect to API
@@ -467,11 +513,11 @@ class RPyCXRayNode:
         self.started = False
         self._api = None
 
-    def restart(self, config: XRayConfig):
+    def restart(self, config: XRayConfig, log_settings: dict | None = None):
         self.started = False
         config = self._prepare_config(config)
         json_config = config.to_json()
-        self.remote.restart(json_config)
+        self.remote.restart(json_config, log_settings)
         self.started = True
 
     def issue_certificate(self, **params):
@@ -498,6 +544,15 @@ class RPyCXRayNode:
 
     def delete_geo_resources(self, filenames: List[str]):
         return self.remote.delete_geo_resources(filenames)
+
+    def list_static_logs(self):
+        return self.remote.list_static_logs()
+
+    def download_static_log(self, log_type: str, filename: str):
+        return self.remote.download_static_log(log_type, filename)
+
+    def delete_static_log(self, log_type: str, filename: str):
+        return self.remote.delete_static_log(log_type, filename)
 
     @contextmanager
     def get_logs(self):

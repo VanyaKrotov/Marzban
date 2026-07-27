@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.models.node import (
     NodeCertificateResponse,
     NodeGeoResourceResponse,
+    NodeStaticLogFileResponse,
     NodeResponse,
     NodeSettings,
     NodesUsageResponse,
@@ -46,6 +47,19 @@ router.get(
     "/node/{node_id}/geo-resources",
     response_model=List[NodeGeoResourceResponse],
 )(service.get_node_geo_resources)
+
+router.get(
+    "/node/{node_id}/static-logs",
+    response_model=List[NodeStaticLogFileResponse],
+)(service.get_node_static_logs)
+
+router.get("/node/{node_id}/static-logs/{log_type}/{filename}/download")(
+    service.download_node_static_log
+)
+
+router.delete("/node/{node_id}/static-logs/{log_type}/{filename}")(
+    service.delete_node_static_log
+)
 
 router.post("/node/{node_id}/geo-resources/upload")(service.upload_node_geo_resource)
 

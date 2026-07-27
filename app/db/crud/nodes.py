@@ -120,6 +120,10 @@ def create_node(db: Session, node: NodeCreate, config_template: dict | None = No
                   address=node.address,
                   port=node.port,
                   api_port=node.api_port,
+                  access_log_enabled=node.access_log_enabled,
+                  error_log_enabled=node.error_log_enabled,
+                  log_retention_days=node.log_retention_days,
+                  log_storage_limit_bytes=node.log_storage_limit_bytes,
                   config_template=deepcopy(config_template or default_node_config()))
 
     db.add(dbnode)
@@ -199,8 +203,17 @@ def update_node(db: Session, dbnode: Node, modify: NodeModify) -> Node:
     else:
         dbnode.status = NodeStatus.connecting
 
-    if modify.usage_coefficient:
+    if modify.usage_coefficient is not None:
         dbnode.usage_coefficient = modify.usage_coefficient
+
+    for field in (
+        "access_log_enabled",
+        "error_log_enabled",
+        "log_retention_days",
+        "log_storage_limit_bytes",
+    ):
+        if field in modify.model_fields_set:
+            setattr(dbnode, field, getattr(modify, field))
 
     db.commit()
     db.refresh(dbnode)
