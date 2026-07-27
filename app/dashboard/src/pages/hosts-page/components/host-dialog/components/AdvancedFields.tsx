@@ -1,4 +1,4 @@
-import { Controller, type UseFormReturn } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,14 +13,9 @@ import { HOST_BOOLEAN_FIELDS } from "../lib/constants";
 import type { HostFormValues } from "../lib/form";
 import { HostSelectField, HostTextField } from "./FormFields";
 
-export function AdvancedFields({
-  form,
-  pending,
-}: {
-  form: UseFormReturn<HostFormValues>;
-  pending: boolean;
-}) {
+export function AdvancedFields({ pending }: { pending: boolean }) {
   const { t } = useTranslation();
+  const form = useFormContext<HostFormValues>();
 
   return (
     <section className="space-y-4 border-t pt-5">

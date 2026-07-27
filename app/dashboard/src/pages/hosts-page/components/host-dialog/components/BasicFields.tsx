@@ -1,18 +1,20 @@
-import { Controller, type UseFormReturn } from "react-hook-form";
+import { useMemo } from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import find from "lodash/find";
 import { useTranslation } from "react-i18next";
 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxLabel,
-  ComboboxList,
-} from "@/components/ui/combobox";
+import { useComboboxAnchor } from "@/components/ui/combobox";
 import type { InboundType } from "types/Inbound";
 
 import type { HostFormValues } from "../lib/form";
@@ -61,62 +63,62 @@ function groupInboundsByNodes(
 }
 
 export function BasicFields({
-  form,
   inbounds,
-  selectedInbound,
   pending,
 }: {
-  form: UseFormReturn<HostFormValues>;
   inbounds: InboundType[];
-  selectedInbound?: InboundType;
   pending: boolean;
 }) {
   const { t } = useTranslation();
+  const form = useFormContext<HostFormValues>();
+  const inboundComboboxAnchor = useComboboxAnchor();
   const inboundGroups = groupInboundsByNodes(
     inbounds,
     t("hostsPage.unassignedNodes"),
   );
+  const activeInboundTag = form.watch("inboundTag");
+  const activeInbound = useMemo(
+    () => find(inbounds, { tag: activeInboundTag }),
+    [inbounds, activeInboundTag],
+  );
 
   return (
     <>
-      <Controller
-        name="inboundTag"
-        control={form.control}
-        render={({ field }) => (
-          <Field>
-            <FieldLabel htmlFor="host-inbound">
-              {t("hostsPage.inbound")}
-            </FieldLabel>
-            <Combobox
-              value={selectedInbound ?? null}
+      <Field>
+        <FieldLabel htmlFor="host-inbound">{t("hostsPage.inbound")}</FieldLabel>
+        <Controller
+          control={form.control}
+          name="inboundTag"
+          render={({ field }) => (
+            <Select
+              value={field.value}
               disabled={pending}
-              itemToStringLabel={getInboundLabel}
-              itemToStringValue={(inbound) => inbound.tag}
-              isItemEqualToValue={(left, right) => left.tag === right.tag}
-              onValueChange={(inbound) => field.onChange(inbound?.tag ?? "")}
+              onValueChange={(inbound) => {
+                field.onChange(inbound, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
             >
-              <ComboboxInput id="host-inbound" className="w-full" />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>
-                    {t("hostsPage.noInboundMatches")}
-                  </ComboboxEmpty>
-                  {inboundGroups.map((group) => (
-                    <ComboboxGroup key={group.key}>
-                      <ComboboxLabel>{group.label}</ComboboxLabel>
-                      {group.inbounds.map((inbound) => (
-                        <ComboboxItem key={inbound.tag} value={inbound}>
-                          {getInboundLabel(inbound)}
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxGroup>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </Field>
-        )}
-      />
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {inboundGroups.map(({ inbounds, key, label }) => (
+                  <SelectGroup key={key}>
+                    <SelectLabel>{label}</SelectLabel>
+                    {inbounds.map((inbound) => (
+                      <SelectItem key={inbound.tag} value={inbound.tag}>
+                        {getInboundLabel(inbound)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+      </Field>
 
       <Field data-invalid={Boolean(form.formState.errors.remark)}>
         <div className="flex items-center gap-1.5">
@@ -156,7 +158,7 @@ export function BasicFields({
                 id="host-port"
                 type="number"
                 min="1"
-                placeholder={String(selectedInbound?.port ?? 8080)}
+                placeholder={String(activeInbound?.port ?? 8080)}
                 disabled={pending}
                 value={field.value ?? ""}
                 onChange={(event) =>

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -72,50 +72,32 @@ function HostDialogContent({
     resolver: zodResolver(hostFormSchema),
     defaultValues: getHostFormValues(initialInbound, host),
   });
-  const selectedInboundTag = useWatch({
-    control: form.control,
-    name: "inboundTag",
-  });
-  const selectedInbound = inbounds.find(
-    (inbound) => inbound.tag === selectedInboundTag,
-  );
 
   return (
     <>
-        <HostDialogHeader isEditing={Boolean(host)} />
-        {inboundsLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : inboundsError || !inbounds.length ? (
-          <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-            {inboundsError
-              ? t("hostsPage.loadErrorDescription")
-              : t("hostsPage.noInboundsDescription")}
-          </p>
-        ) : (
-          <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-            <BasicFields
-              form={form}
-              inbounds={inbounds}
-              selectedInbound={selectedInbound}
-              pending={pending}
-            />
-            <GroupsField
-              form={form}
-              groups={hostGroups}
-              pending={pending}
-            />
-            <AdvancedFields form={form} pending={pending} />
-            <FormActions
-              form={form}
-              isEditing={Boolean(host)}
-              pending={pending}
-            />
-          </form>
-        )}
+      <HostDialogHeader isEditing={Boolean(host)} />
+      {inboundsLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      ) : inboundsError || !inbounds.length ? (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+          {inboundsError
+            ? t("hostsPage.loadErrorDescription")
+            : t("hostsPage.noInboundsDescription")}
+        </p>
+      ) : (
+        <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+          <FormProvider {...form}>
+            <BasicFields inbounds={inbounds} pending={pending} />
+            <GroupsField groups={hostGroups} pending={pending} />
+            <AdvancedFields pending={pending} />
+            <FormActions isEditing={Boolean(host)} pending={pending} />
+          </FormProvider>
+        </form>
+      )}
     </>
   );
 }

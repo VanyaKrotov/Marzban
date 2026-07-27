@@ -1,5 +1,5 @@
 import { LoaderCircle } from "lucide-react";
-import { Controller, type UseFormReturn } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import type { HostFormValues } from "../lib/form";
 
 export function FormActions({
-  form,
   isEditing,
   pending,
 }: {
-  form: UseFormReturn<HostFormValues>;
   isEditing: boolean;
   pending: boolean;
 }) {
   const { t } = useTranslation();
+  const form = useFormContext<HostFormValues>();
 
   return (
     <div className="flex flex-col gap-x-3 gap-y-5 border-t pt-4 sm:flex-row sm:items-center">

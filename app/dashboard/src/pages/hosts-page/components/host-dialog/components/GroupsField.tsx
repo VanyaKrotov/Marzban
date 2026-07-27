@@ -1,6 +1,6 @@
 import { ChevronsUpDown, Plus } from "lucide-react";
 import { useState } from "react";
-import { Controller, type UseFormReturn } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,15 +17,14 @@ import type { HostGroupType } from "../../../types";
 import type { HostFormValues } from "../lib/form";
 
 export function GroupsField({
-  form,
   groups,
   pending,
 }: {
-  form: UseFormReturn<HostFormValues>;
   groups: HostGroupType[];
   pending: boolean;
 }) {
   const { t } = useTranslation();
+  const form = useFormContext<HostFormValues>();
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
