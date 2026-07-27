@@ -15,11 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useCopy } from "@/hooks/use-copy";
 import { NodeStatusBadge } from "@/pages/nodes-page/components/NodeStatusBadge";
 import { useReconnectNodeMutation } from "@/pages/nodes-page/lib/query";
