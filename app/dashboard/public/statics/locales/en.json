@@ -566,6 +566,8 @@
   "hostsPage.loadErrorDescription": "Check the panel connection and try again.",
   "hostsPage.noInboundsTitle": "No inbounds available",
   "hostsPage.noInboundsDescription": "Add an inbound to the Xray configuration before creating hosts.",
+  "hostsPage.unassignedNodes": "Unassigned",
+  "hostsPage.noInboundMatches": "No matching inbounds",
   "navigation.stats": "Statistics",
   "navigation.api": "API",
   "statsPage.title": "Statistics",

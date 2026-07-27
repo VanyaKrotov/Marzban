@@ -4,19 +4,61 @@ import { useTranslation } from "react-i18next";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import type { InboundType } from "types/Inbound";
 
 import type { HostFormValues } from "../lib/form";
 import { HostTextField } from "./FormFields";
 import { InfoTooltip } from "./InfoTooltip";
 import { VariablesPopover } from "./VariablesPopover";
+
+type InboundGroup = {
+  key: string;
+  label: string;
+  inbounds: InboundType[];
+};
+
+function getInboundLabel(inbound: InboundType) {
+  return `${inbound.tag} (${inbound.protocol}/${inbound.network})`;
+}
+
+function groupInboundsByNodes(
+  inbounds: InboundType[],
+  unassignedLabel: string,
+): InboundGroup[] {
+  const groups = new Map<string, InboundGroup>();
+
+  for (const inbound of inbounds) {
+    const nodes = [...inbound.nodes].sort((left, right) => left.id - right.id);
+    const key = nodes.map((node) => node.id).join(",") || "unassigned";
+    const label = nodes.length
+      ? [...nodes]
+          .sort(
+            (left, right) =>
+              left.name.localeCompare(right.name) || left.id - right.id,
+          )
+          .map((node) => node.name)
+          .join(", ")
+      : unassignedLabel;
+    const group = groups.get(key);
+
+    if (group) {
+      group.inbounds.push(inbound);
+    } else {
+      groups.set(key, { key, label, inbounds: [inbound] });
+    }
+  }
+
+  return [...groups.values()];
+}
 
 export function BasicFields({
   form,
@@ -30,6 +72,10 @@ export function BasicFields({
   pending: boolean;
 }) {
   const { t } = useTranslation();
+  const inboundGroups = groupInboundsByNodes(
+    inbounds,
+    t("hostsPage.unassignedNodes"),
+  );
 
   return (
     <>
@@ -41,24 +87,33 @@ export function BasicFields({
             <FieldLabel htmlFor="host-inbound">
               {t("hostsPage.inbound")}
             </FieldLabel>
-            <Select
-              value={field.value}
+            <Combobox
+              value={selectedInbound ?? null}
               disabled={pending}
-              onValueChange={field.onChange}
+              itemToStringLabel={getInboundLabel}
+              itemToStringValue={(inbound) => inbound.tag}
+              isItemEqualToValue={(left, right) => left.tag === right.tag}
+              onValueChange={(inbound) => field.onChange(inbound?.tag ?? "")}
             >
-              <SelectTrigger id="host-inbound" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {inbounds.map((inbound) => (
-                    <SelectItem key={inbound.tag} value={inbound.tag}>
-                      {inbound.tag} ({inbound.protocol}/{inbound.network})
-                    </SelectItem>
+              <ComboboxInput id="host-inbound" className="w-full" />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>
+                    {t("hostsPage.noInboundMatches")}
+                  </ComboboxEmpty>
+                  {inboundGroups.map((group) => (
+                    <ComboboxGroup key={group.key}>
+                      <ComboboxLabel>{group.label}</ComboboxLabel>
+                      {group.inbounds.map((inbound) => (
+                        <ComboboxItem key={inbound.tag} value={inbound}>
+                          {getInboundLabel(inbound)}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxGroup>
                   ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </Field>
         )}
       />

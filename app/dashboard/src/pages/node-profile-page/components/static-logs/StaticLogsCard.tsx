@@ -5,9 +5,10 @@ import {
   LoaderCircle,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatBytes } from "@/utils/formatByte";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,6 @@ import {
   useDeleteNodeStaticLogMutation,
   useNodeStaticLogsQuery,
 } from "./query";
-import { formatBytes } from "@/utils/formatByte";
 
 const logTypes = ["access", "error"] as const;
 
@@ -56,6 +56,21 @@ export function StaticLogsCard({ nodeId }: { nodeId: number }) {
       onError: (error) => generateErrorMessage(error),
     });
   };
+
+  const types = useMemo(() => {
+    const access: NodeStaticLogFile[] = [];
+    const error: NodeStaticLogFile[] = [];
+
+    for (const file of files) {
+      if (file.type === "access") {
+        access.push(file);
+      } else {
+        error.push(file);
+      }
+    }
+
+    return { access, error };
+  }, [files]);
 
   return (
     <Card>
@@ -78,80 +93,86 @@ export function StaticLogsCard({ nodeId }: { nodeId: number }) {
             defaultValue={[...logTypes]}
             className="rounded-lg border px-3"
           >
-            {logTypes.map((type) => {
-              const typeFiles = files.filter((file) => file.type === type);
-              return (
-                <AccordionItem value={type} key={type}>
-                  <AccordionTrigger className="py-3 no-underline hover:no-underline">
-                    <span className="flex items-center gap-2">
-                      <FolderOpen className="size-4 text-muted-foreground" />
-                      {t(`staticLogs.${type}`)}
-                      <Badge variant="secondary">{typeFiles.length}</Badge>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    {typeFiles.length ? (
-                      <div className="divide-y rounded-md border">
-                        {typeFiles.map((file) => (
-                          <div
-                            key={file.filename}
-                            className="flex min-w-0 items-center gap-3 px-3 py-2.5"
-                          >
-                            <FileText className="size-4 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate font-medium">
-                                  {file.filename}
-                                </span>
-                                {file.active && (
-                                  <div className="size-2 rounded-full bg-primary" />
-                                )}
+            {logTypes
+              .filter((x) => Boolean(types[x]?.length))
+              .map((type) => {
+                const typeFiles = types[type];
+
+                return (
+                  <AccordionItem value={type} key={type}>
+                    <AccordionTrigger className="py-3 no-underline hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        <FolderOpen className="size-4 text-muted-foreground" />
+                        {t(`staticLogs.${type}`)}
+                        <Badge variant="secondary">{typeFiles.length}</Badge>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {typeFiles.length ? (
+                        <div className="divide-y rounded-md border">
+                          {typeFiles.map((file) => (
+                            <div
+                              key={file.filename}
+                              className="flex min-w-0 items-center gap-3 px-3 py-2.5"
+                            >
+                              <FileText className="size-4 shrink-0 text-muted-foreground" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate font-medium">
+                                    {file.filename}
+                                  </span>
+                                  {file.active && (
+                                    <div className="size-2 rounded-full bg-primary" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatBytes(file.size)}
+                                  {` - ${new Intl.DateTimeFormat(
+                                    i18n.language,
+                                    {
+                                      dateStyle: "medium",
+                                      timeStyle: "short",
+                                    },
+                                  ).format(new Date(file.modified_at))}`}
+                                </p>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {formatBytes(file.size)}
-                                {` - ${new Intl.DateTimeFormat(i18n.language, {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                }).format(new Date(file.modified_at))}`}
-                              </p>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label={t("staticLogs.download")}
+                                onClick={() =>
+                                  downloadNodeStaticLog(
+                                    nodeId,
+                                    file.type,
+                                    file.filename,
+                                  ).catch(generateErrorMessage)
+                                }
+                              >
+                                <Download />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                aria-label={t("delete")}
+                                onClick={() => setPendingDelete(file)}
+                              >
+                                <Trash2 />
+                              </Button>
                             </div>
-                            <Button
-                              type="button"
-                              size="icon-sm"
-                              variant="ghost"
-                              aria-label={t("staticLogs.download")}
-                              onClick={() =>
-                                downloadNodeStaticLog(
-                                  nodeId,
-                                  file.type,
-                                  file.filename,
-                                ).catch(generateErrorMessage)
-                              }
-                            >
-                              <Download />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon-sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              aria-label={t("delete")}
-                              onClick={() => setPendingDelete(file)}
-                            >
-                              <Trash2 />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="py-2 text-sm text-muted-foreground">
-                        {t("staticLogs.empty")}
-                      </p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="py-2 text-sm text-muted-foreground">
+                          {t("staticLogs.empty")}
+                        </p>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
           </Accordion>
         )}
       </CardContent>

@@ -193,7 +193,24 @@ def get_inbounds(
     admin: Admin = Depends(Admin.get_current),
 ):
     """Retrieve inbound configurations grouped by protocol."""
-    return get_enabled_inbound_registry(db).inbounds_by_protocol
+    nodes_by_inbound_tag = {
+        inbound.tag: [
+            {"id": node.id, "name": node.name}
+            for node in sorted(inbound.nodes, key=lambda node: (node.name, node.id))
+        ]
+        for inbound in inbound_crud.get_inbounds(db)
+    }
+    registry = get_enabled_inbound_registry(db)
+    return {
+        protocol: [
+            {
+                **inbound,
+                "nodes": nodes_by_inbound_tag.get(inbound["tag"], []),
+            }
+            for inbound in inbounds
+        ]
+        for protocol, inbounds in registry.inbounds_by_protocol.items()
+    }
 
 
 def get_inbound_configs(

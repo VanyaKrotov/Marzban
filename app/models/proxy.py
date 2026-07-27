@@ -358,12 +358,18 @@ class ProxyHostReorder(BaseModel):
     host_ids: List[int]
 
 
+class InboundNodeRef(BaseModel):
+    id: int
+    name: str
+
+
 class ProxyInbound(BaseModel):
     tag: str
     protocol: ProxyTypes
     network: str
     tls: str
     port: Union[int, str]
+    nodes: List[InboundNodeRef] = Field(default_factory=list)
 
 
 def validate_config_tag(content: Dict[str, Any], entity: str) -> str:

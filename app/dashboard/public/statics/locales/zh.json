@@ -566,6 +566,8 @@
   "hostsPage.loadErrorDescription": "请检查面板连接后重试。",
   "hostsPage.noInboundsTitle": "没有可用入站",
   "hostsPage.noInboundsDescription": "创建主机前，请先在 Xray 配置中添加入站。",
+  "hostsPage.unassignedNodes": "未分配",
+  "hostsPage.noInboundMatches": "未找到匹配的入站",
   "navigation.stats": "Statistics",
   "navigation.api": "API",
   "statsPage.title": "Statistics",

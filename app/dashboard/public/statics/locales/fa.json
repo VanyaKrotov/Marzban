@@ -567,6 +567,8 @@
   "hostsPage.loadErrorDescription": "اتصال پنل را بررسی کرده و دوباره تلاش کنید.",
   "hostsPage.noInboundsTitle": "ورودی در دسترس نیست",
   "hostsPage.noInboundsDescription": "قبل از ایجاد هاست، یک ورودی به تنظیمات Xray اضافه کنید.",
+  "hostsPage.unassignedNodes": "اختصاص داده نشده",
+  "hostsPage.noInboundMatches": "هیچ ورودی مطابقی یافت نشد",
   "navigation.stats": "Statistics",
   "navigation.api": "API",
   "statsPage.title": "Statistics",

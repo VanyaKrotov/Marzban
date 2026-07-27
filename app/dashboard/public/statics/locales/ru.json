@@ -566,6 +566,8 @@
   "hostsPage.loadErrorDescription": "Проверьте соединение с панелью и повторите попытку.",
   "hostsPage.noInboundsTitle": "Нет доступных инбаундов",
   "hostsPage.noInboundsDescription": "Добавьте инбаунд в конфигурацию Xray перед созданием хостов.",
+  "hostsPage.unassignedNodes": "Не назначено",
+  "hostsPage.noInboundMatches": "Подходящие инбаунды не найдены",
   "navigation.stats": "Статистика",
   "navigation.api": "API",
   "statsPage.title": "Статистика",

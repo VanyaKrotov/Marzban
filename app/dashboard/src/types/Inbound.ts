@@ -12,6 +12,12 @@ export type InboundType = {
   network: string;
   tls: string;
   port?: number;
+  nodes: InboundNodeRef[];
+};
+
+export type InboundNodeRef = {
+  id: number;
+  name: string;
 };
 
 export type InboundsResponse = Record<ProtocolType, InboundType[]>;
