@@ -349,6 +349,28 @@ def _host_order_value(value):
     return value if value is not None else float("inf")
 
 
+def _filter_balanced_hosts_for_unsupported_clients(
+        endpoint_records: list[dict],
+        active_balancers: Sequence,
+        supports_balancers: bool,
+) -> list[dict]:
+    if supports_balancers:
+        return endpoint_records
+
+    balanced_host_ids = {
+        host_id
+        for balancer in active_balancers
+        for host_id in balancer.host_ids
+    }
+    if not balanced_host_ids:
+        return endpoint_records
+
+    return [
+        record for record in endpoint_records
+        if record["host_id"] not in balanced_host_ids
+    ]
+
+
 def process_inbounds_and_tags(
         inbounds: dict,
         proxies: dict,
@@ -476,6 +498,11 @@ def process_inbounds_and_tags(
 
     supports_balancers = isinstance(
         conf, (V2rayJsonConfig, SingBoxConfiguration, ClashConfiguration, ClashMetaConfiguration)
+    )
+    endpoint_records = _filter_balanced_hosts_for_unsupported_clients(
+        endpoint_records,
+        active_balancers,
+        supports_balancers,
     )
     profile_records = []
     if supports_balancers:

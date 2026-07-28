@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 from unittest import TestCase
 
 from sqlalchemy import create_engine, func
@@ -16,6 +17,7 @@ from app.models.settings import (
     SubscriptionBalancerModify,
     SubscriptionBalancerResponse,
 )
+from app.subscription.share import _filter_balanced_hosts_for_unsupported_clients
 from app.subscription.v2ray import V2rayJsonConfig
 
 
@@ -190,3 +192,27 @@ class SubscriptionBalancerTests(TestCase):
         rule = config.balancer_configs[0]["routing"]["rules"][-1]
         self.assertEqual(rule["network"], "tcp,udp")
         self.assertEqual(rule["balancerTag"], "mb-balancer-1")
+
+    def test_balanced_hosts_are_hidden_for_clients_without_balancer_support(self):
+        records = [
+            {"host_id": 1, "remark": "Balanced"},
+            {"host_id": 2, "remark": "Direct"},
+            {"host_id": 3, "remark": "Also balanced"},
+        ]
+        active_balancers = [SimpleNamespace(host_ids=[1, 3])]
+
+        filtered = _filter_balanced_hosts_for_unsupported_clients(
+            records,
+            active_balancers,
+            supports_balancers=False,
+        )
+
+        self.assertEqual([record["host_id"] for record in filtered], [2])
+        self.assertIs(
+            _filter_balanced_hosts_for_unsupported_clients(
+                records,
+                active_balancers,
+                supports_balancers=True,
+            ),
+            records,
+        )
