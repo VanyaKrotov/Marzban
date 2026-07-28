@@ -125,7 +125,11 @@ function ComboboxContent({
   );
 }
 
-function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
+function ComboboxList({
+  className,
+  onWheelCapture,
+  ...props
+}: ComboboxPrimitive.List.Props) {
   return (
     <ComboboxPrimitive.List
       data-slot="combobox-list"
@@ -133,6 +137,10 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
         "max-h-[min(18rem,var(--available-height))] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
         className,
       )}
+      onWheelCapture={(event) => {
+        onWheelCapture?.(event);
+        event.stopPropagation();
+      }}
       {...props}
     />
   );
