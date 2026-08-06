@@ -39,6 +39,9 @@ export type HostType = {
   alpn: string;
   fingerprint: string;
   use_sni_as_host: boolean;
+  sc_max_buffered_posts: number | null;
+  x_padding_obfs_mode: boolean | null;
+  uplink_http_method: string | null;
   groups: HostGroupRef[];
 };
 

@@ -220,6 +220,9 @@ def build_subscription_hosts_by_inbound(hosts: Sequence) -> dict:
                 "noise_setting": host.noise_setting,
                 "random_user_agent": host.random_user_agent,
                 "use_sni_as_host": host.use_sni_as_host,
+                "scMaxBufferedPosts": host.sc_max_buffered_posts,
+                "xPaddingObfsMode": host.x_padding_obfs_mode,
+                "uplinkHTTPMethod": host.uplink_http_method,
             }
         )
     return dict(hosts_by_inbound)
@@ -485,6 +488,9 @@ def process_inbounds_and_tags(
                 "random_user_agent": host["random_user_agent"],
             }
         )
+        for setting_name in ("scMaxBufferedPosts", "xPaddingObfsMode", "uplinkHTTPMethod"):
+            if host[setting_name] is not None:
+                host_inbound[setting_name] = host[setting_name]
 
         endpoint_records.append(
             {

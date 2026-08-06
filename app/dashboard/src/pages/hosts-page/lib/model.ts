@@ -25,6 +25,9 @@ export const getDefaultHost = (): Omit<HostPayload, "inbound_tag"> => ({
   alpn: "",
   fingerprint: "",
   use_sni_as_host: false,
+  sc_max_buffered_posts: null,
+  x_padding_obfs_mode: null,
+  uplink_http_method: null,
   group_ids: [],
 });
 
@@ -49,6 +52,9 @@ export function toHostPayload(values: {
     alpn: values.alpn,
     fingerprint: values.fingerprint,
     use_sni_as_host: values.use_sni_as_host,
+    sc_max_buffered_posts: values.sc_max_buffered_posts,
+    x_padding_obfs_mode: values.x_padding_obfs_mode ? true : null,
+    uplink_http_method: values.uplink_http_method || null,
     group_ids: values.group_ids,
   };
 }

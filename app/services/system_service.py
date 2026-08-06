@@ -229,6 +229,28 @@ def get_inbound_configs(
     ]
 
 
+def _validate_host_xhttp_settings(host: ProxyHost, inbound) -> None:
+    xhttp_fields = (
+        "sc_max_buffered_posts",
+        "x_padding_obfs_mode",
+        "uplink_http_method",
+    )
+    if not any(getattr(host, field) is not None for field in xhttp_fields):
+        return
+
+    stream_settings = (inbound.content or {}).get("streamSettings", {})
+    network = stream_settings.get("network", "tcp").lower()
+    if network not in {"xhttp", "splithttp"}:
+        raise HTTPException(status_code=400, detail="XHTTP host settings require an XHTTP inbound")
+
+    xhttp_settings = stream_settings.get("xhttpSettings") or stream_settings.get("splithttpSettings") or {}
+    if host.uplink_http_method == "GET" and xhttp_settings.get("mode", "auto") != "packet-up":
+        raise HTTPException(
+            status_code=400,
+            detail="Uplink HTTP method GET requires XHTTP packet-up mode",
+        )
+
+
 def create_inbound_config(
     inbound: InboundCreate,
     db: Session = Depends(get_db),
@@ -538,10 +560,12 @@ def create_host_v2(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Create a proxy host."""
-    if not inbound_crud.get_inbound(db, host.inbound_tag):
+    inbound = inbound_crud.get_inbound(db, host.inbound_tag)
+    if not inbound:
         raise HTTPException(
             status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
         )
+    _validate_host_xhttp_settings(host, inbound)
     try:
         dbhost = host_crud.create_host_v2(db, host)
     except ValueError as exc:
@@ -569,10 +593,12 @@ def update_host_v2(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Update a proxy host."""
-    if not inbound_crud.get_inbound(db, host.inbound_tag):
+    inbound = inbound_crud.get_inbound(db, host.inbound_tag)
+    if not inbound:
         raise HTTPException(
             status_code=400, detail=f"Inbound {host.inbound_tag} doesn't exist"
         )
+    _validate_host_xhttp_settings(host, inbound)
     dbhost = host_crud.get_host_v2(db, host_id)
     if not dbhost:
         raise HTTPException(status_code=404, detail="Host not found")
@@ -642,6 +668,9 @@ def modify_hosts(
             )
 
     for inbound_tag, hosts in modified_hosts.items():
+        inbound = inbound_crud.get_inbound_or_raise(db, inbound_tag)
+        for host in hosts:
+            _validate_host_xhttp_settings(host, inbound)
         host_crud.update_hosts(db, inbound_tag, hosts)
 
     return {tag: host_crud.get_hosts(db, tag) for tag in known_inbounds}

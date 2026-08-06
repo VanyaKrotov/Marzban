@@ -547,6 +547,14 @@ class XRayConfig(dict):
                     settings["mode"] = net_settings.get("mode", "auto")
                     settings["noGRPCHeader"] = net_settings.get("noGRPCHeader", False)
                     settings["keepAlivePeriod"] = net_settings.get("keepAlivePeriod", 0)
+                    for setting_name in (
+                        "xPaddingKey",
+                        "xPaddingHeader",
+                        "xPaddingMethod",
+                        "xPaddingPlacement",
+                    ):
+                        if setting_name in net_settings:
+                            settings[setting_name] = net_settings[setting_name]
 
                 elif net == 'kcp':
                     header = net_settings.get('header', {})

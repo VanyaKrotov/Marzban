@@ -20,6 +20,14 @@ export const hostFormSchema = z.object({
   alpn: z.string(),
   fingerprint: z.string(),
   use_sni_as_host: z.boolean(),
+  sc_max_buffered_posts: z.number().int().nonnegative().nullable(),
+  x_padding_obfs_mode: z.boolean().nullable(),
+  uplink_http_method: z
+    .string()
+    .trim()
+    .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]*$/, "Invalid HTTP method")
+    .transform((value) => value.toUpperCase())
+    .nullable(),
   group_ids: z.array(z.string()),
 });
 
@@ -34,6 +42,7 @@ export function getHostFormValues(
     ...(host
       ? {
           ...host,
+          x_padding_obfs_mode: host.x_padding_obfs_mode || null,
           group_ids: host.groups.map((group) => group.id),
         }
       : {
@@ -53,6 +62,9 @@ export function getHostFormValues(
           alpn: "",
           fingerprint: "",
           use_sni_as_host: false,
+          sc_max_buffered_posts: null,
+          x_padding_obfs_mode: null,
+          uplink_http_method: null,
           group_ids: [],
         }),
   };

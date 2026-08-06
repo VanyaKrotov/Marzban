@@ -1,21 +1,62 @@
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   proxyALPN,
   proxyFingerprint,
   proxyHostSecurity,
 } from "constants/Proxies";
+import type { InboundType } from "types/Inbound";
 
 import { HOST_BOOLEAN_FIELDS } from "../lib/constants";
 import type { HostFormValues } from "../lib/form";
 import { HostSelectField, HostTextField } from "./FormFields";
 
-export function AdvancedFields({ pending }: { pending: boolean }) {
+const UPLINK_HTTP_METHODS = [
+  "POST",
+  "GET",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+  "CONNECT",
+  "TRACE",
+];
+
+export function AdvancedFields({
+  pending,
+  inbounds,
+}: {
+  pending: boolean;
+  inbounds: InboundType[];
+}) {
   const { t } = useTranslation();
   const form = useFormContext<HostFormValues>();
+  const inboundTag = form.watch("inboundTag");
+  const inbound = inbounds.find((item) => item.tag === inboundTag);
+  const isXhttp =
+    inbound?.network === "xhttp" || inbound?.network === "splithttp";
+
+  useEffect(() => {
+    if (!isXhttp) {
+      form.setValue("sc_max_buffered_posts", null);
+      form.setValue("x_padding_obfs_mode", null);
+      form.setValue("uplink_http_method", null);
+    }
+  }, [form, isXhttp]);
 
   return (
     <section className="space-y-4 border-t pt-5">
@@ -84,6 +125,90 @@ export function AdvancedFields({ pending }: { pending: boolean }) {
         disabled={pending}
         {...form.register("noise_setting")}
       />
+
+      {isXhttp ? (
+        <div className="space-y-4 rounded-lg border p-4">
+          <h4 className="font-medium">{t("hostsDialog.xhttpOptions")}</h4>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Controller
+              name="sc_max_buffered_posts"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel htmlFor="host-sc-max-buffered-posts">
+                    scMaxBufferedPosts
+                  </FieldLabel>
+                  <Input
+                    id="host-sc-max-buffered-posts"
+                    type="number"
+                    min="0"
+                    placeholder="30"
+                    disabled={pending}
+                    value={field.value ?? ""}
+                    onChange={(event) =>
+                      field.onChange(
+                        event.target.value ? event.target.valueAsNumber : null,
+                      )
+                    }
+                  />
+                </Field>
+              )}
+            />
+            <Controller
+              name="uplink_http_method"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel htmlFor="host-uplink-http-method">
+                    uplinkHTTPMethod
+                  </FieldLabel>
+                  <Select
+                    disabled={pending}
+                    value={field.value ?? "__unset__"}
+                    onValueChange={(value) =>
+                      field.onChange(value === "__unset__" ? null : value)
+                    }
+                  >
+                    <SelectTrigger id="host-uplink-http-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {UPLINK_HTTP_METHODS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            />
+          </div>
+          <Controller
+            name="x_padding_obfs_mode"
+            control={form.control}
+            render={({ field }) => (
+              <Field orientation="horizontal" className="justify-between">
+                <FieldLabel htmlFor="host-x-padding-obfs-mode">
+                  xPaddingObfsMode
+                </FieldLabel>
+                <Switch
+                  id="host-x-padding-obfs-mode"
+                  checked={field.value === true}
+                  disabled={pending}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked ? true : null)
+                  }
+                />
+              </Field>
+            )}
+          />
+          <p className="text-sm text-muted-foreground">
+            {t("hostsDialog.uplinkHttpMethod.info")}
+          </p>
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {HOST_BOOLEAN_FIELDS.map(([name, label]) => (
           <Controller

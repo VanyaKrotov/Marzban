@@ -93,7 +93,7 @@ function HostDialogContent({
           <FormProvider {...form}>
             <BasicFields inbounds={inbounds} pending={pending} />
             <GroupsField groups={hostGroups} pending={pending} />
-            <AdvancedFields pending={pending} />
+            <AdvancedFields pending={pending} inbounds={inbounds} />
             <FormActions isEditing={Boolean(host)} pending={pending} />
           </FormProvider>
         </form>

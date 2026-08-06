@@ -623,6 +623,32 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
           description: "Optional XHTTP padding byte range.",
           examples: ["100-1000"],
         },
+        xPaddingObfsMode: {
+          type: "boolean",
+          description: "Enables XHTTP padding obfuscation mode.",
+        },
+        xPaddingKey: {
+          type: "string",
+          description: "Name of the XHTTP padding key.",
+        },
+        xPaddingHeader: {
+          type: "string",
+          description: "HTTP header used to carry XHTTP padding.",
+        },
+        xPaddingPlacement: {
+          type: "string",
+          enum: ["cookie", "header", "query", "queryInHeader"],
+          description: "Location of XHTTP padding data.",
+        },
+        xPaddingMethod: {
+          type: "string",
+          enum: ["repeat-x", "tokenish"],
+          description: "Method used to generate XHTTP padding.",
+        },
+        uplinkHTTPMethod: {
+          type: "string",
+          description: "HTTP method used for XHTTP uplink requests; GET requires packet-up mode.",
+        },
         scMaxEachPostBytes: {
           type: "integer",
           minimum: 0,
@@ -630,6 +656,11 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
         scMinPostsIntervalMs: {
           type: "integer",
           minimum: 0,
+        },
+        scMaxBufferedPosts: {
+          type: "integer",
+          minimum: 0,
+          description: "Maximum buffered XHTTP POST requests per sub-connection.",
         },
         extra: {
           type: "object",
@@ -644,6 +675,12 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
             },
             noSSEHeader: { type: "boolean" },
             xPaddingBytes: { type: "string" },
+            xPaddingObfsMode: { type: "boolean" },
+            xPaddingKey: { type: "string" },
+            xPaddingHeader: { type: "string" },
+            xPaddingPlacement: { enum: ["cookie", "header", "query", "queryInHeader"] },
+            xPaddingMethod: { enum: ["repeat-x", "tokenish"] },
+            uplinkHTTPMethod: { type: "string" },
             scMaxEachPostBytes: { type: "integer", minimum: 0 },
             scMinPostsIntervalMs: { type: "integer", minimum: 0 },
             scMaxBufferedPosts: { type: "integer", minimum: 0 },
@@ -672,8 +709,15 @@ export const xrayStreamSettingsSchema: MonacoJsonSchema = {
               additionalProperties: { type: "string" },
             },
             xPaddingBytes: { type: "string" },
+            xPaddingObfsMode: { type: "boolean" },
+            xPaddingKey: { type: "string" },
+            xPaddingHeader: { type: "string" },
+            xPaddingPlacement: { enum: ["cookie", "header", "query", "queryInHeader"] },
+            xPaddingMethod: { enum: ["repeat-x", "tokenish"] },
+            uplinkHTTPMethod: { type: "string" },
             scMaxEachPostBytes: { type: "integer", minimum: 0 },
             scMinPostsIntervalMs: { type: "integer", minimum: 0 },
+            scMaxBufferedPosts: { type: "integer", minimum: 0 },
           },
         },
       },

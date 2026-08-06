@@ -109,6 +109,9 @@ class ProxyHost(Base):
     noise_setting = Column(String(2000), nullable=True)
     random_user_agent = Column(Boolean, nullable=False, default=False, server_default='0')
     use_sni_as_host = Column(Boolean, nullable=False, default=False, server_default="0")
+    sc_max_buffered_posts = Column(Integer, nullable=True)
+    x_padding_obfs_mode = Column(Boolean, nullable=True)
+    uplink_http_method = Column(String(32), nullable=True)
 
     @property
     def inbound_tag(self):

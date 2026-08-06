@@ -225,6 +225,9 @@ def _apply_host_fields(dbhost: ProxyHost, host: ProxyHostModify) -> None:
     dbhost.noise_setting = host.noise_setting
     dbhost.random_user_agent = host.random_user_agent
     dbhost.use_sni_as_host = host.use_sni_as_host
+    dbhost.sc_max_buffered_posts = host.sc_max_buffered_posts
+    dbhost.x_padding_obfs_mode = host.x_padding_obfs_mode
+    dbhost.uplink_http_method = host.uplink_http_method
 
 
 def create_host_v2(db: Session, host: ProxyHostCreate) -> ProxyHost:
@@ -299,7 +302,17 @@ def add_host(db: Session, inbound_tag: str, host: ProxyHostModify) -> List[Proxy
             position=inbound_crud.get_next_host_position(db),
             security=host.security,
             alpn=host.alpn,
-            fingerprint=host.fingerprint
+            fingerprint=host.fingerprint,
+            allowinsecure=host.allowinsecure,
+            is_disabled=host.is_disabled,
+            mux_enable=host.mux_enable,
+            fragment_setting=host.fragment_setting,
+            noise_setting=host.noise_setting,
+            random_user_agent=host.random_user_agent,
+            use_sni_as_host=host.use_sni_as_host,
+            sc_max_buffered_posts=host.sc_max_buffered_posts,
+            x_padding_obfs_mode=host.x_padding_obfs_mode,
+            uplink_http_method=host.uplink_http_method,
         )
     )
     db.commit()
@@ -341,6 +354,9 @@ def update_hosts(db: Session, inbound_tag: str, modified_hosts: List[ProxyHostMo
             noise_setting=host.noise_setting,
             random_user_agent=host.random_user_agent,
             use_sni_as_host=host.use_sni_as_host,
+            sc_max_buffered_posts=host.sc_max_buffered_posts,
+            x_padding_obfs_mode=host.x_padding_obfs_mode,
+            uplink_http_method=host.uplink_http_method,
         ) for index, host in enumerate(modified_hosts)
     ]
     db.commit()

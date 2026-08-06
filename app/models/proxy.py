@@ -22,6 +22,7 @@ FRAGMENT_PATTERN = re.compile(r'^((\d{1,4}-\d{1,4})|(\d{1,4})),((\d{1,3}-\d{1,3}
 
 NOISE_PATTERN = re.compile(
     r'^(rand:(\d{1,4}-\d{1,4}|\d{1,4})|str:.+|hex:.+|base64:.+)(,(\d{1,4}-\d{1,4}|\d{1,4}))?(&(rand:(\d{1,4}-\d{1,4}|\d{1,4})|str:.+|hex:.+|base64:.+)(,(\d{1,4}-\d{1,4}|\d{1,4}))?)*$')
+HTTP_TOKEN_PATTERN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 
 
 class ProxyTypes(str, Enum):
@@ -250,6 +251,9 @@ class ProxyHost(BaseModel):
     noise_setting: Optional[str] = Field(None, nullable=True)
     random_user_agent: Union[bool, None] = None
     use_sni_as_host: Union[bool, None] = None
+    sc_max_buffered_posts: Optional[int] = Field(None, ge=0)
+    x_padding_obfs_mode: Optional[bool] = None
+    uplink_http_method: Optional[str] = Field(None, max_length=32)
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator("remark", mode="after")
@@ -292,6 +296,18 @@ class ProxyHost(BaseModel):
                     "Noise can't be longer that 2000 character"
                 )
         return v
+
+    @field_validator("uplink_http_method")
+    @classmethod
+    def validate_uplink_http_method(cls, v):
+        if v is None:
+            return None
+        value = v.strip()
+        if not value:
+            return None
+        if not HTTP_TOKEN_PATTERN.fullmatch(value):
+            raise ValueError("Uplink HTTP method must be a valid HTTP token")
+        return value.upper()
 
 
 class HostGroupBase(BaseModel):
