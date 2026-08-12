@@ -649,7 +649,8 @@
   "statsPage.summary.disabled": "Заблокированные",
   "statsPage.summary.limited": "Лимитированные",
   "statsPage.summary.expired": "Просроченные",
-  "statsPage.summary.percentTooltip": "{{value}} из {{total}} пользователей"
+  "statsPage.summary.percentTooltip": "{{value}} из {{total}} пользователей",
+  "statsPage.summary.onlinePercentTooltip": "{{value}} пользователей онлайн из {{total}} активных пользователей"
   ,"nodeProfile.restart": "Перезапустить Xray"
   ,"nodeProfile.actions": "Действия с нодой"
   ,"nodeProfile.restartTitle": "Перезапустить Xray на этой ноде?"

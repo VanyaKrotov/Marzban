@@ -1,16 +1,5 @@
 import type { StatsGranularity } from "./query";
 
-export const CHART_COLORS = [
-  "var(--chart-2)",
-  "var(--chart-4)",
-  "var(--chart-1)",
-  "var(--chart-3)",
-  "var(--chart-5)",
-  "#14b8a6",
-  "#f59e0b",
-  "#e11d48",
-];
-
 export function formatPeriod(
   value: string,
   granularity: StatsGranularity,

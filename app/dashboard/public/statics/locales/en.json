@@ -647,7 +647,8 @@
   "statsPage.summary.disabled": "Disabled",
   "statsPage.summary.limited": "Limited",
   "statsPage.summary.expired": "Expired",
-  "statsPage.summary.percentTooltip": "{{value}} of {{total}} total users"
+  "statsPage.summary.percentTooltip": "{{value}} of {{total}} total users",
+  "statsPage.summary.onlinePercentTooltip": "{{value}} online users of {{total}} active users"
   ,"nodeProfile.restart": "Restart Xray"
   ,"nodeProfile.actions": "Node actions"
   ,"nodeProfile.restartTitle": "Restart Xray on this node?"

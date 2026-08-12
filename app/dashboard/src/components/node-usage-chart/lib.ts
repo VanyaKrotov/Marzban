@@ -34,17 +34,6 @@ type DayPeriodPreset = Extract<
   "last_7_days" | "last_30_days" | "last_90_days"
 >;
 
-export const NODE_USAGE_CHART_COLORS = [
-  "var(--chart-2)",
-  "var(--chart-4)",
-  "var(--chart-1)",
-  "var(--chart-3)",
-  "var(--chart-5)",
-  "#14b8a6",
-  "#f59e0b",
-  "#e11d48",
-];
-
 export function createNodeUsagePresetRange(
   preset: Exclude<NodeUsagePeriodPreset, "custom">,
 ): NodeUsageDateRange {

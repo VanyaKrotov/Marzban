@@ -32,6 +32,11 @@ import {
   chartTooltipContentStyle,
   chartTooltipItemStyle,
 } from "@/lib/chart-tooltip";
+import {
+  DEFAULT_NODE_CHART_COLOR,
+  createNodeChartColors,
+  getNodeChartColor,
+} from "@/lib/node-chart-colors";
 import { cn } from "@/lib/utils";
 import { formatCompactPercent } from "@/pages/stats-page/lib/chart";
 
@@ -39,7 +44,6 @@ import { NodeUsageDateRangeFilter } from "./DateRangeFilter";
 import {
   createDefaultNodeUsageRange,
   formatCompactBytes,
-  NODE_USAGE_CHART_COLORS,
   type NodeUsageDateRange,
   type NodeUsagePeriodPreset,
 } from "./lib";
@@ -56,6 +60,7 @@ type Props = {
   title?: string;
   description?: string;
   className?: string;
+  nodeColors?: ReadonlyMap<number, string>;
 };
 
 export function NodeUsageChart({
@@ -66,6 +71,7 @@ export function NodeUsageChart({
   title,
   description,
   className,
+  nodeColors: providedNodeColors,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [internalRange, setInternalRange] = useState(
@@ -77,6 +83,7 @@ export function NodeUsageChart({
   const preset = controlledPreset ?? internalPreset;
   const query = useNodeUsageChartQuery(range, username, preset);
   const data = (query.data?.usages ?? []).map((usage) => ({
+    nodeId: usage.node_id,
     name: usage.node_name,
     value:
       usage.used_traffic ?? (usage.uplink ?? 0) + (usage.downlink ?? 0),
@@ -84,6 +91,11 @@ export function NodeUsageChart({
   const totalTraffic = data.reduce((sum, usage) => sum + usage.value, 0);
   const hasData = data.some(({ value }) => value > 0);
   const showPeriodFilter = !controlledRange || Boolean(onPeriodChange);
+  const nodeColors =
+    providedNodeColors ??
+    createNodeChartColors(
+      data.flatMap(({ nodeId }) => (nodeId === null ? [] : [nodeId])),
+    );
 
   const changePeriod = (
     nextRange: NodeUsageDateRange,
@@ -167,14 +179,10 @@ export function NodeUsageChart({
                   stroke="var(--card)"
                   strokeWidth={2}
                 >
-                  {data.map((entry, index) => (
+                  {data.map((entry) => (
                     <Cell
-                      key={entry.name}
-                      fill={
-                        NODE_USAGE_CHART_COLORS[
-                          index % NODE_USAGE_CHART_COLORS.length
-                        ]
-                      }
+                      key={entry.nodeId ?? entry.name}
+                      fill={getNodeChartColor(entry.nodeId, nodeColors)}
                     />
                   ))}
                 </Pie>
@@ -236,9 +244,7 @@ function NodeUsageTooltip({
       <div className="grid gap-1.5">
         {payload.map((item, index) => {
           const value = getTooltipValue(item.value);
-          const color =
-            item.color ??
-            NODE_USAGE_CHART_COLORS[index % NODE_USAGE_CHART_COLORS.length];
+          const color = item.color ?? DEFAULT_NODE_CHART_COLOR;
 
           return (
             <div

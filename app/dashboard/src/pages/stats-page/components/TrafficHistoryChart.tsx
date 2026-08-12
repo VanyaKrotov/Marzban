@@ -22,10 +22,14 @@ import {
   chartTooltipItemStyle,
   chartTooltipLabelStyle,
 } from "@/lib/chart-tooltip";
+import {
+  DEFAULT_NODE_CHART_COLOR,
+  createNodeChartColors,
+  getNodeChartColor,
+} from "@/lib/node-chart-colors";
 import { cn } from "@/lib/utils";
 
 import {
-  CHART_COLORS,
   formatCompactBytes,
   formatCompactPercent,
   formatPeriod,
@@ -40,6 +44,7 @@ type Props = {
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  nodeColors?: ReadonlyMap<number, string>;
 };
 
 export function TrafficHistoryChart({
@@ -48,6 +53,7 @@ export function TrafficHistoryChart({
   loading,
   error,
   onRetry,
+  nodeColors: providedNodeColors,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [hiddenNodes, setHiddenNodes] = useState<Set<number>>(new Set());
@@ -67,6 +73,12 @@ export function TrafficHistoryChart({
   }, [traffic]);
   const hasData = traffic.some((series) =>
     series.points.some(({ total }) => total > 0),
+  );
+  const nodeColors = useMemo(
+    () =>
+      providedNodeColors ??
+      createNodeChartColors(traffic.map(({ node_id }) => node_id)),
+    [providedNodeColors, traffic],
   );
 
   const toggleNode = (nodeId: number) => {
@@ -125,12 +137,12 @@ export function TrafficHistoryChart({
                       />
                     )}
                   />
-                  {traffic.map((node, index) => (
+                  {traffic.map((node) => (
                     <Line
                       key={node.node_id}
                       type="monotone"
                       dataKey={`node_${node.node_id}`}
-                      stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                      stroke={getNodeChartColor(node.node_id, nodeColors)}
                       strokeWidth={activeNodeId === node.node_id ? 3 : 2}
                       opacity={
                         activeNodeId && activeNodeId !== node.node_id ? 0.25 : 1
@@ -144,9 +156,9 @@ export function TrafficHistoryChart({
               </ResponsiveContainer>
             </div>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {traffic.map((node, index) => {
+              {traffic.map((node) => {
                 const hidden = hiddenNodes.has(node.node_id);
-                const color = CHART_COLORS[index % CHART_COLORS.length];
+                const color = getNodeChartColor(node.node_id, nodeColors);
 
                 return (
                   <button
@@ -221,7 +233,7 @@ function TrafficTooltip({
       const node = traffic.find(
         ({ node_id }) => `node_${node_id}` === dataKey,
       );
-      const color = item.color ?? CHART_COLORS[index % CHART_COLORS.length];
+      const color = item.color ?? DEFAULT_NODE_CHART_COLOR;
 
       return {
         color,

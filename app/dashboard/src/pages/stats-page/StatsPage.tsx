@@ -17,6 +17,7 @@ import {
   type NodeUsagePeriodPreset,
 } from "@/components/node-usage-chart";
 import { Button } from "@/components/ui/button";
+import { createNodeChartColors } from "@/lib/node-chart-colors";
 
 import { StatsSummaryCards } from "./components/StatsSummaryCards";
 import { TrafficHistoryChart } from "./components/TrafficHistoryChart";
@@ -44,6 +45,12 @@ export function StatsPage() {
   const granularity = resolveStatsGranularity(pieRange, piePreset);
   const historyQuery = useStatsHistoryQuery(granularity, pieRange, piePreset);
   const systemStatsQuery = useSystemStatsQuery();
+  const nodeColors = useMemo(() => {
+    const traffic = historyQuery.data?.traffic;
+    return traffic
+      ? createNodeChartColors(traffic.map(({ node_id }) => node_id))
+      : undefined;
+  }, [historyQuery.data?.traffic]);
   const nodeUsageQueryKey = [
     "node-usage-chart",
     "all",
@@ -143,7 +150,11 @@ export function StatsPage() {
           loading={systemStatsQuery.isLoading}
         />
         <div className="grid gap-4 lg:grid-cols-2">
-          <NodeUsageChart range={pieRange} preset={piePreset} />
+          <NodeUsageChart
+            range={pieRange}
+            preset={piePreset}
+            nodeColors={nodeColors}
+          />
           <UserGrowthChart
             data={historyQuery.data}
             granularity={granularity}
@@ -157,6 +168,7 @@ export function StatsPage() {
             loading={historyQuery.isLoading}
             error={historyQuery.isError}
             onRetry={() => void historyQuery.refetch()}
+            nodeColors={nodeColors}
           />
         </div>
       </div>

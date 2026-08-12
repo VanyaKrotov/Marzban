@@ -33,6 +33,7 @@ type Props = {
 export function StatsSummaryCards({ data, loading }: Props) {
   const { t, i18n } = useTranslation();
   const totalUsers = data?.total_user ?? 0;
+  const activeUsers = data?.users_active ?? 0;
   const cards = [
     {
       key: "online",
@@ -73,49 +74,57 @@ export function StatsSummaryCards({ data, loading }: Props) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      {cards.map(({ key, label, value, icon: Icon, className }) => (
-        <Card size="sm" key={key}>
-          <CardContent className="flex items-center gap-3">
-            <div className={`rounded-lg p-2.5 ${className}`}>
-              <Icon className="size-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-sm text-muted-foreground">
-                  {label}
-                </p>
-                {loading ? (
-                  <Skeleton className="h-6 w-10" />
-                ) : (
-                  <p className="text-xl font-semibold tabular-nums">
-                    {(value ?? 0).toLocaleString(i18n.language)}
+      {cards.map(({ key, label, value, icon: Icon, className }) => {
+        const total = key === "online" ? activeUsers : totalUsers;
+        const tooltipKey =
+          key === "online"
+            ? "statsPage.summary.onlinePercentTooltip"
+            : "statsPage.summary.percentTooltip";
+
+        return (
+          <Card size="sm" key={key}>
+            <CardContent className="flex items-center gap-3">
+              <div className={`rounded-lg p-2.5 ${className}`}>
+                <Icon className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate text-sm text-muted-foreground">
+                    {label}
                   </p>
+                  {loading ? (
+                    <Skeleton className="h-6 w-10" />
+                  ) : (
+                    <p className="text-xl font-semibold tabular-nums">
+                      {(value ?? 0).toLocaleString(i18n.language)}
+                    </p>
+                  )}
+                </div>
+                {loading ? (
+                  <Skeleton className="mt-1 ml-auto h-4 w-20" />
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="mt-0.5 ml-auto block cursor-help text-right text-xs text-muted-foreground"
+                      >
+                        {formatPercent(value ?? 0, total, i18n.language)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t(tooltipKey, {
+                        value: (value ?? 0).toLocaleString(i18n.language),
+                        total: total.toLocaleString(i18n.language),
+                      })}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
-              {loading ? (
-                <Skeleton className="mt-1 ml-auto h-4 w-20" />
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="mt-0.5 ml-auto block cursor-help text-right text-xs text-muted-foreground"
-                    >
-                      {formatPercent(value ?? 0, totalUsers, i18n.language)}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("statsPage.summary.percentTooltip", {
-                      value: (value ?? 0).toLocaleString(i18n.language),
-                      total: totalUsers.toLocaleString(i18n.language),
-                    })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
