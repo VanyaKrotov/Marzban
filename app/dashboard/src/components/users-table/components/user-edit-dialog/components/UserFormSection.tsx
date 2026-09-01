@@ -2,6 +2,7 @@ import { CalendarIcon, Clock3, Dices } from "lucide-react";
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { addYears } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -268,6 +269,7 @@ export function UserFormSection({
                         before: new Date(new Date().setHours(0, 0, 0, 0)),
                       }}
                       captionLayout="dropdown"
+                      endMonth={addYears(new Date(), 10)}
                       onSelect={(date) => {
                         if (!date) return;
                         form.setValue("on_hold_expire_duration", null);
